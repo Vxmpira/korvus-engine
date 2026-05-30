@@ -106,6 +106,12 @@ def dashboard():
     return send_from_directory(HERE, "korvus_dashboard.html")
 
 
+@app.route("/legal")
+def legal():
+    # serves the Terms of Service / Privacy / Risk Disclosure page
+    return send_from_directory(HERE, "korvus_legal.html")
+
+
 # ----------------------------------------------------------------------------
 # PHASE 3 — live quotes for the panels
 # ----------------------------------------------------------------------------
