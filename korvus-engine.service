@@ -1,0 +1,26 @@
+# ============================================================
+#  Korvus engine (news/social scoring loop) — systemd service
+#  Runs korvus_engine.py --loop forever. This is the "24/7 brain."
+#
+#  INSTALL (on the server):
+#    sudo cp deploy/korvus-engine.service /etc/systemd/system/
+#    sudo systemctl daemon-reload
+#    sudo systemctl enable --now korvus-engine
+#    sudo systemctl status korvus-engine
+#    journalctl -u korvus-engine -f          # watch it work live
+# ============================================================
+[Unit]
+Description=Korvus engine (24/7 news + social scoring)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/korvus-engine
+ExecStart=/home/ubuntu/korvus-engine/venv/bin/python korvus_engine.py --loop
+Restart=always
+RestartSec=30
+EnvironmentFile=/home/ubuntu/korvus-engine/.env
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,789 @@
+<!--
+  ============================================================================
+  MARKET DESK — 24/7 News & Impact Terminal   (v0.2 — refined)
+  ============================================================================
+  WHAT THIS IS:
+    The "face" of your system — what you (and your members) stare at each day.
+    Runs on SAMPLE DATA for now so we can perfect the look and layout.
+
+  HOW THE REAL THING WORKS:
+    A backend engine runs 24/7 on YOUR server, pulls news + social + prices,
+    has Claude summarize/score each item, and writes results to a database.
+    THIS page reads that database and displays it. (A browser page alone can't
+    run 24/7 or safely hold API keys — the heavy lifting lives on the server.)
+
+  WHERE YOUR DATA PLUGS IN LATER:
+    Search the <script> for  >>> DATA SOURCE  markers (there are 4).
+  ============================================================================
+-->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Korvus — Market Intelligence Terminal · BlackCrownVxJ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#000000;
+    --bg-2:#040405;
+    --panel:rgba(17,19,24,.72);
+    --panel-solid:#0f1115;
+    --line:rgba(120,140,170,.13);
+    --line-soft:rgba(120,140,170,.07);
+    --ink:#eef2f8;
+    --ink-dim:#9aa6b8;
+    --ink-faint:#5c6677;
+    --bull:#46d17f;
+    --bull-dim:#1d6b42;
+    --bear:#ff5d57;
+    --bear-dim:#7a2723;
+    --neutral:#8089a0;
+    --gold:#f0b45a;          /* brand gold (kept in the wordmark) */
+    --gold-deep:#caa24a;
+    --gold-soft:rgba(240,180,90,.10);
+    --gold-line:rgba(240,180,90,.28);
+    --crown:#ff3a2f;         /* glowing-red crown */
+    --crown-deep:#c2160c;
+    --crown-glow:rgba(255,58,47,.6);
+    --teal:#5ad6e0;          /* cool secondary accent */
+    --hi:#ff5d57; --med:#f0b45a; --lo:#5c6677;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+    --body:'Hanken Grotesk',system-ui,sans-serif;
+    --disp:'Bricolage Grotesque',var(--body);
+    --r:14px;
+    --shadow:0 18px 50px -22px rgba(0,0,0,.85);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--body);
+    font-size:14px;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- atmosphere ---------- */
+  .aurora{position:fixed;inset:-20%;z-index:-2;filter:blur(22px);opacity:.42;}
+  .aurora span{position:absolute;border-radius:50%;mix-blend-mode:screen;}
+  .a1{width:55vw;height:55vw;left:-8vw;top:-18vw;
+      background:radial-gradient(circle,rgba(240,180,90,.16),transparent 62%);animation:drift1 26s ease-in-out infinite;}
+  .a2{width:50vw;height:50vw;right:-6vw;top:8vh;
+      background:radial-gradient(circle,rgba(255,58,47,.15),transparent 62%);animation:drift2 32s ease-in-out infinite;}
+  .a3{width:42vw;height:42vw;left:30vw;bottom:-22vw;
+      background:radial-gradient(circle,rgba(194,22,12,.10),transparent 62%);animation:drift1 38s ease-in-out infinite reverse;}
+  @keyframes drift1{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(4vw,3vh) scale(1.08);}}
+  @keyframes drift2{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(-3vw,4vh) scale(1.1);}}
+  body::after{ /* fine grid + grain for terminal soul */
+    content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      linear-gradient(rgba(120,140,170,.035) 1px,transparent 1px) 0 0/100% 46px,
+      linear-gradient(90deg,rgba(120,140,170,.035) 1px,transparent 1px) 0 0/46px 100%,
+      radial-gradient(circle at 50% 0%,rgba(255,255,255,.02),transparent 55%);
+    -webkit-mask-image:radial-gradient(circle at 50% 35%,#000,transparent 95%);
+            mask-image:radial-gradient(circle at 50% 35%,#000,transparent 95%);
+  }
+
+  .app{display:flex;flex-direction:column;height:100vh;}
+
+  /* ---------- header ---------- */
+  header{
+    display:flex;align-items:center;gap:18px;padding:13px 22px;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(10,13,18,.86),rgba(6,8,12,.6));
+    backdrop-filter:blur(14px);z-index:30;
+    animation:fadeDown .7s ease both;
+  }
+  @keyframes fadeDown{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:none;}}
+  .brand{display:flex;align-items:center;gap:13px;}
+  .glyph{
+    width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex:none;
+    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);
+    border:1px solid rgba(255,58,47,.42);box-shadow:0 0 28px -5px var(--crown-glow),inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  .glyph svg{animation:crownPulse 3.2s ease-in-out infinite;}
+  @keyframes crownPulse{0%,100%{filter:drop-shadow(0 0 7px var(--crown-glow));}50%{filter:drop-shadow(0 0 15px rgba(255,58,47,.98));}}
+  .brand .txt{line-height:1;}
+  .brand .mark{font-family:var(--disp);font-weight:800;font-size:18px;letter-spacing:-.01em;color:var(--ink);display:flex;align-items:baseline;}
+  .brand .mark b{color:var(--ink);font-weight:800;}
+  .brand .mark .llc{font-family:var(--mono);font-weight:500;font-size:9px;color:var(--gold-deep);letter-spacing:.14em;margin-left:5px;align-self:flex-start;}
+  .brand .tagline{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);margin-top:5px;}
+  .brand .tagline b{color:var(--gold);font-weight:600;}
+
+  .heartbeat{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--ink-dim);letter-spacing:.04em;
+    padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:rgba(70,209,127,.05);}
+  .hb{width:8px;height:8px;border-radius:50%;background:var(--bull);box-shadow:0 0 0 0 rgba(70,209,127,.6);animation:pulse 2.4s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(70,209,127,.55);}70%{box-shadow:0 0 0 8px rgba(70,209,127,0);}100%{box-shadow:0 0 0 0 rgba(70,209,127,0);}}
+
+  .members{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;color:var(--ink-dim);}
+  .avatars{display:flex;}
+  .avatars b{width:21px;height:21px;border-radius:50%;border:1.5px solid var(--bg);margin-left:-7px;font-family:var(--body);
+    font-weight:600;font-size:9.5px;display:grid;place-items:center;color:#0a0d12;}
+  .avatars b:first-child{margin-left:0;}
+
+  .econ{font-family:var(--mono);font-size:11px;padding:6px 12px;border-radius:999px;letter-spacing:.02em;
+    border:1px solid var(--gold-line);background:var(--gold-soft);color:var(--gold);}
+  .econ.clear{border-color:rgba(70,209,127,.3);background:rgba(70,209,127,.07);color:var(--bull);}
+
+  .spacer{flex:1;}
+  .sess{font-family:var(--mono);font-size:11px;padding:6px 11px;border:1px solid var(--line);border-radius:8px;color:var(--ink-dim);}
+  .sess b{color:var(--bull);}
+  .clock{font-family:var(--mono);font-size:14px;color:var(--ink);letter-spacing:.05em;text-align:right;}
+  .clock small{display:block;color:var(--ink-faint);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;margin-top:2px;}
+
+  /* ---------- futures ribbon (MORE INSTRUMENTS) ---------- */
+  .ribbon{
+    display:flex;gap:0;overflow-x:auto;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(12,16,22,.55),rgba(6,8,12,.3));
+    backdrop-filter:blur(8px);scrollbar-width:none;animation:fadeDown .7s .05s ease both;
+  }
+  .ribbon::-webkit-scrollbar{display:none;}
+  .fut{display:flex;align-items:center;gap:12px;padding:11px 20px;border-right:1px solid var(--line-soft);white-space:nowrap;
+    transition:background .2s;cursor:default;}
+  .fut:hover{background:rgba(240,180,90,.04);}
+  .fut .sym{font-family:var(--disp);font-weight:700;font-size:14px;color:var(--ink);letter-spacing:.01em;}
+  .fut .sym small{display:block;font-family:var(--mono);font-weight:400;font-size:8.5px;color:var(--ink-faint);letter-spacing:.1em;text-transform:uppercase;margin-top:2px;}
+  .fut .px{font-family:var(--mono);font-size:13px;color:var(--ink-dim);}
+  .fut .chg{font-family:var(--mono);font-size:12px;font-weight:600;}
+  .spk{display:block;}
+  .up{color:var(--bull);}.down{color:var(--bear);}
+
+  /* ---------- layout ---------- */
+  main{flex:1;display:grid;grid-template-columns:1fr 384px;gap:16px;padding:16px;min-height:0;}
+  .panel{
+    background:var(--panel);
+    border:1px solid rgba(255,255,255,.62);
+    border-radius:var(--r);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.16),
+      0 0 0 1px rgba(255,255,255,.14),
+      0 0 22px -2px rgba(255,255,255,.36),
+      0 0 50px -9px rgba(255,255,255,.22),
+      0 22px 55px -26px rgba(0,0,0,.92);
+    backdrop-filter:blur(10px);display:flex;flex-direction:column;min-height:0;overflow:hidden;
+    transition:border-color .25s,box-shadow .25s;
+    animation:rise .7s ease both, panelGlow 4.5s ease-in-out infinite;
+  }
+  @keyframes panelGlow{
+    0%,100%{box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.16),
+      0 0 0 1px rgba(255,255,255,.14),
+      0 0 22px -2px rgba(255,255,255,.34),
+      0 0 50px -9px rgba(255,255,255,.20),
+      0 22px 55px -26px rgba(0,0,0,.92);}
+    50%{box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.21),
+      0 0 0 1px rgba(255,255,255,.20),
+      0 0 30px -1px rgba(255,255,255,.50),
+      0 0 64px -7px rgba(255,255,255,.30),
+      0 22px 55px -26px rgba(0,0,0,.92);}
+  }
+  .panel:hover{
+    border-color:rgba(255,255,255,.90);
+    animation-play-state:paused;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.26),
+      0 0 0 1px rgba(255,255,255,.28),
+      0 0 36px 0 rgba(255,255,255,.60),
+      0 0 74px -5px rgba(255,255,255,.36),
+      0 22px 55px -26px rgba(0,0,0,.92);
+  }
+  @keyframes rise{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
+  .panel.news{animation-delay:.10s;}
+  .right{display:grid;grid-template-rows:auto 1fr;gap:16px;min-height:0;}
+  .panel.smt{animation-delay:.16s;}
+  .panel.watch{animation-delay:.22s;}
+
+  .phead{display:flex;align-items:center;gap:11px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.09);}
+  .phead h2{font-family:var(--disp);font-weight:700;font-size:15px;letter-spacing:.01em;margin:0;color:var(--ink);}
+  .phead .tag{font-family:var(--mono);font-size:9.5px;color:var(--ink-faint);letter-spacing:.14em;text-transform:uppercase;
+    padding:3px 8px;border:1px solid rgba(255,255,255,.12);border-radius:999px;}
+  .phead .meta{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-dim);}
+
+  /* ---------- news feed ---------- */
+  .feed{overflow-y:auto;padding:8px;}
+  .feed::-webkit-scrollbar,.watchbody::-webkit-scrollbar{width:10px;}
+  .feed::-webkit-scrollbar-thumb,.watchbody::-webkit-scrollbar-thumb{background:rgba(120,140,170,.18);border-radius:9px;border:3px solid transparent;background-clip:padding-box;}
+
+  .item{position:relative;display:grid;grid-template-columns:auto 1fr;gap:15px;padding:15px 16px 15px 14px;
+    border-radius:11px;transition:background .2s,transform .2s,box-shadow .2s;animation:slidein .45s ease both;}
+  @keyframes slidein{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:none;}}
+  .item:hover{background:rgba(255,255,255,.018);transform:translateX(2px);}
+  .item.flash{background:var(--gold-soft);box-shadow:inset 2px 0 0 var(--gold);}
+  .item+.item{margin-top:2px;}
+
+  .rail{display:flex;flex-direction:column;align-items:center;gap:9px;width:58px;}
+  .accent{width:3px;border-radius:3px;flex:1;min-height:38px;}
+  .accent.high{background:linear-gradient(var(--bear),var(--bear-dim));box-shadow:0 0 10px -2px var(--bear);}
+  .accent.med{background:linear-gradient(var(--gold),var(--gold-deep));box-shadow:0 0 10px -2px var(--gold);}
+  .accent.low{background:linear-gradient(#3a424f,#222a35);}
+  .railtop{display:flex;flex-direction:column;align-items:center;gap:7px;}
+  .time{font-family:var(--mono);font-size:11px;color:var(--ink-faint);}
+  .impact{font-family:var(--mono);font-size:8.5px;font-weight:600;letter-spacing:.12em;padding:3px 6px;border-radius:5px;text-transform:uppercase;border:1px solid;}
+  .impact.high{color:var(--hi);border-color:var(--bear-dim);background:rgba(255,93,87,.08);}
+  .impact.med{color:var(--med);border-color:var(--gold-line);background:var(--gold-soft);}
+  .impact.low{color:var(--lo);border-color:var(--line);}
+
+  .src{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .badge{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--ink-dim);}
+  .badge.x{color:#a9d8ff;border-color:rgba(120,180,255,.25);}
+  .badge.reddit{color:#ff9d6b;border-color:rgba(255,140,80,.25);}
+  .badge.wire{color:#c9b8ff;border-color:rgba(160,140,255,.25);}
+  .headline{font-family:var(--disp);font-weight:600;font-size:15.5px;line-height:1.32;margin:0 0 6px;color:var(--ink);letter-spacing:-.005em;}
+  .summary{font-size:13px;line-height:1.55;color:var(--ink-dim);margin:0 0 11px;}
+  .summary b{color:var(--ink);font-weight:600;}
+  .metarow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .dir{font-family:var(--mono);font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;border:1px solid;}
+  .dir.bull{color:var(--bull);border-color:var(--bull-dim);background:rgba(70,209,127,.06);}
+  .dir.bear{color:var(--bear);border-color:var(--bear-dim);background:rgba(255,93,87,.06);}
+  .dir.neut{color:var(--neutral);border-color:var(--line);}
+  .inst{font-family:var(--mono);font-size:10px;color:var(--gold);border:1px solid var(--gold-line);padding:3px 8px;border-radius:999px;background:var(--gold-soft);}
+  .conf{margin-left:auto;display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10px;color:var(--ink-faint);}
+  .confbar{width:42px;height:4px;border-radius:3px;background:rgba(120,140,170,.18);overflow:hidden;}
+  .confbar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-deep),var(--gold));border-radius:3px;}
+
+  /* ---------- SMT ---------- */
+  .smtbody{padding:16px 16px 18px;overflow-y:auto;}
+  .verdict{border:1px solid;border-radius:12px;padding:13px 15px;margin-bottom:15px;font-size:12.5px;line-height:1.5;color:var(--ink-dim);}
+  .verdict.warn{border-color:var(--bear-dim);background:linear-gradient(180deg,rgba(255,93,87,.08),rgba(255,93,87,.02));}
+  .verdict.ok{border-color:var(--bull-dim);background:linear-gradient(180deg,rgba(70,209,127,.07),rgba(70,209,127,.02));}
+  .verdict b{display:flex;align-items:center;gap:8px;font-family:var(--disp);font-size:13.5px;font-weight:700;letter-spacing:.01em;margin-bottom:6px;}
+  .verdict.warn b{color:var(--bear);}.verdict.ok b{color:var(--bull);}
+  .corr{display:flex;flex-direction:column;gap:13px;}
+  .crow{display:grid;grid-template-columns:62px 1fr 76px;align-items:center;gap:11px;}
+  .csym{font-family:var(--mono);font-weight:600;font-size:13.5px;color:var(--ink);}
+  .csym small{display:block;color:var(--ink-faint);font-size:9px;letter-spacing:.05em;margin-top:2px;}
+  .track{height:9px;border-radius:5px;background:rgba(120,140,170,.12);position:relative;overflow:hidden;}
+  .track i{position:absolute;top:0;bottom:0;border-radius:5px;}
+  .cchg{font-family:var(--mono);font-size:13px;text-align:right;}
+  .swing{font-family:var(--mono);font-size:9px;color:var(--ink-faint);text-align:right;letter-spacing:.06em;margin-top:2px;}
+
+  /* ---------- watchlist ---------- */
+  .watchbody{overflow-y:auto;padding:4px 0 8px;}
+  .grp{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);
+    padding:13px 18px 7px;}
+  .grp::after{content:"";flex:1;height:1px;background:var(--line-soft);}
+  .wrow{display:grid;grid-template-columns:52px 1fr 66px 60px;align-items:center;gap:8px;padding:7px 18px;transition:background .15s;}
+  .wrow:hover{background:rgba(255,255,255,.02);}
+  .wsym{font-family:var(--mono);font-weight:600;font-size:12.5px;color:var(--ink);}
+  .wname{font-size:11.5px;color:var(--ink-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .wpx{font-family:var(--mono);font-size:12px;text-align:right;color:var(--ink-dim);}
+  .wchg{font-family:var(--mono);font-size:12px;text-align:right;font-weight:600;}
+
+  footer{display:flex;flex-direction:column;gap:8px;padding:10px 22px 12px;border-top:1px solid var(--line);
+    background:rgba(8,11,16,.62);backdrop-filter:blur(10px);
+    font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);letter-spacing:.03em;}
+  .frow{display:flex;align-items:center;gap:18px;}
+  .frow .pill{color:var(--gold);}
+  .frow b{color:var(--ink-dim);}
+  .frow .rt{color:var(--bull);}
+  .legal{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;padding-top:9px;border-top:1px solid var(--line-soft);}
+  .legal .cpy{font-family:var(--disp);font-weight:600;font-size:11px;color:var(--ink-dim);letter-spacing:.01em;flex:none;}
+  .legal .disc{flex:1;min-width:300px;font-family:var(--body);font-size:9.5px;line-height:1.55;color:var(--ink-faint);}
+  .legal .links{flex:none;font-size:10px;}
+  .legal .links a{color:var(--gold-deep);text-decoration:none;}
+  .legal .links a:hover{color:var(--gold);text-decoration:underline;}
+
+  .discord{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+    color:#c5cbff;text-decoration:none;padding:6px 12px;border-radius:999px;
+    border:1px solid rgba(120,120,240,.4);background:rgba(88,101,242,.10);
+    box-shadow:0 0 16px -5px rgba(120,120,240,.6);transition:background .2s,box-shadow .2s,border-color .2s;}
+  .discord:hover{background:rgba(88,101,242,.2);border-color:rgba(140,140,255,.7);box-shadow:0 0 22px -3px rgba(120,120,240,.85);color:#e6e8ff;}
+  .discord svg{opacity:.9;}
+
+  .importbtn{margin-left:8px;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--gold);background:var(--gold-soft);border:1px solid var(--gold-line);border-radius:999px;
+    padding:3px 10px;cursor:pointer;transition:background .2s;}
+  .importbtn:hover{background:rgba(240,180,90,.18);}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);z-index:200;
+    display:none;align-items:center;justify-content:center;}
+  .modal-bg.show{display:flex;}
+  .modal{width:min(520px,92vw);background:var(--panel-solid);border:1px solid rgba(255,255,255,.5);
+    border-radius:16px;box-shadow:0 0 40px -8px rgba(255,255,255,.4),0 30px 70px -30px #000;padding:22px;}
+  .modal h3{font-family:var(--disp);font-weight:700;font-size:17px;margin:0 0 6px;color:var(--ink);}
+  .modal p{font-size:12.5px;color:var(--ink-dim);margin:0 0 14px;line-height:1.5;}
+  .modal textarea{width:100%;height:150px;background:#0a0d12;border:1px solid var(--line);border-radius:10px;
+    color:var(--ink);font-family:var(--mono);font-size:12.5px;padding:11px;resize:vertical;}
+  .modal textarea:focus{outline:none;border-color:var(--gold-line);}
+  .modal .row{display:flex;gap:10px;justify-content:flex-end;margin-top:14px;}
+  .modal button{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+    padding:9px 16px;border-radius:8px;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--ink-dim);}
+  .modal button.primary{background:var(--gold);border-color:var(--gold);color:#0a0d12;font-weight:600;}
+  .modal button.primary:hover{background:var(--gold-deep);}
+  .modal .hint{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);margin-top:8px;}
+</style>
+
+<div class="aurora"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
+
+<div class="app">
+  <header>
+    <div class="brand">
+      <span class="glyph" aria-label="BlackCrownVxJ">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="crwn" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#ff6a5d"/><stop offset="1" stop-color="#c2160c"/></linearGradient></defs>
+          <path d="M2 19 L4 8 L8.5 12 L12 5 L15.5 12 L20 8 L22 19 Z" fill="url(#crwn)"/>
+          <rect x="3" y="18.4" width="18" height="2.5" rx="1.1" fill="url(#crwn)"/>
+          <circle cx="4" cy="8" r="1.3" fill="#ff9a90"/><circle cx="12" cy="5" r="1.5" fill="#ff9a90"/><circle cx="20" cy="8" r="1.3" fill="#ff9a90"/>
+        </svg>
+      </span>
+      <span class="txt">
+        <div class="mark">KOR<b>VUS</b></div>
+        <div class="tagline">by <b>BlackCrownVxJ.LLC</b> · your edge while the world sleeps</div>
+      </span>
+    </div>
+    <div class="heartbeat"><span class="hb"></span>ENGINE LIVE · REAL-TIME</div>
+    <div class="members" title="Members currently on the desk">
+      <span class="avatars" id="avatars"></span><span id="memCount">— on the desk</span>
+    </div>
+    <a class="discord" href="https://discord.gg/ZXt7Hkq7fv" target="_blank" rel="noopener noreferrer" title="Join the Eclipse-X community on Discord">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M20.3 4.6A19 19 0 0 0 15.6 3l-.3.5a13 13 0 0 1 4 2 14 14 0 0 0-12.6 0 13 13 0 0 1 4-2L10.4 3a19 19 0 0 0-4.7 1.6C2.8 8.8 2 13 2.4 17.1a19 19 0 0 0 5.7 2.9l.5-.7a13 13 0 0 1-2-1l.4-.3a13.5 13.5 0 0 0 11.6 0l.4.3a13 13 0 0 1-2 1l.5.7a19 19 0 0 0 5.7-2.9C22 12.7 21.2 8.5 20.3 4.6ZM9 14.7c-.9 0-1.7-.8-1.7-1.9S8 11 9 11s1.7.8 1.7 1.9-.8 1.8-1.7 1.8Zm6 0c-.9 0-1.7-.8-1.7-1.9S14 11 15 11s1.7.8 1.7 1.9-.8 1.8-1.7 1.8Z"/></svg>
+      ECLIPSE-X
+    </a>
+    <span class="econ clear" id="econChip">● NO HIGH-IMPACT PRINTS TODAY</span>
+    <div class="spacer"></div>
+    <div class="sess" id="sess">SESSION <b>—</b></div>
+    <div class="clock"><span id="clock">--:--:--</span><small>New York / ET</small></div>
+  </header>
+
+  <!-- FUTURES BOARD — more instruments -->
+  <div class="ribbon" id="ribbon"></div>
+
+  <main>
+    <section class="panel news">
+      <div class="phead">
+        <h2>News &amp; Market Impact</h2>
+        <span class="tag">summarized by claude</span>
+        <span class="meta" id="feedMeta">— items</span>
+      </div>
+      <div class="feed" id="feed"></div>
+    </section>
+
+    <section class="right">
+      <section class="panel smt">
+        <div class="phead"><h2>SMT Divergence</h2><span class="tag">NQ · ES · YM</span></div>
+        <div class="smtbody" id="smt"></div>
+      </section>
+      <section class="panel watch">
+        <div class="phead"><h2>Funds Watch</h2><span class="tag">no crypto</span><span class="meta" id="watchMeta"></span><button id="importBtn" class="importbtn">+ Import</button></div>
+        <div class="watchbody" id="watch"></div>
+      </section>
+    </section>
+  </main>
+
+  <footer>
+    <div class="frow">
+      <span class="pill">◆ SAMPLE DATA</span>
+      <span>Real feeds plug in at the <b>&gt;&gt;&gt; DATA SOURCE</b> markers (4).</span>
+      <span style="flex:1"></span>
+      <span class="rt">● REAL-TIME</span>
+      <span id="lastUpd">last update —</span>
+    </div>
+    <div class="legal">
+      <span class="cpy">© 2026 BlackCrownVxJ LLC</span>
+      <span class="disc">Informational and educational use only. Nothing here is financial, investment, legal, or tax advice, or a recommendation to buy or sell any security, futures contract, or other instrument. Trading futures and leveraged products involves substantial risk of loss and is not suitable for everyone. You alone are responsible for your own trading decisions and outcomes; BlackCrownVxJ LLC and its owners, members, and affiliates accept no liability for any loss or damage arising from use of this platform or reliance on its content, which is provided "as is" without warranty of any kind. Use of this platform constitutes acceptance of the Terms of Service.</span>
+      <span class="links"><a href="#tos">Terms of Service</a> · <a href="#privacy">Privacy</a> · <a href="#risk">Risk Disclosure</a></span>
+    </div>
+  </footer>
+</div>
+
+<!-- Watchlist import modal -->
+<div class="modal-bg" id="importModal">
+  <div class="modal">
+    <h3>Import your watchlist</h3>
+    <p>Paste your tickers below — comma or line separated. You can add an optional
+       name and group with this format per line: <b>TICKER, Name, Group</b>.
+       Leaving this empty keeps the default Korvus board.</p>
+    <textarea id="importText" placeholder="NVDA, NVIDIA, My Tech
+AAPL, Apple, My Tech
+TAN, Solar ETF, Energy
+SPY
+QQQ"></textarea>
+    <div class="hint">Note: prices use the Korvus quote feed. Symbols must be valid US tickers/ETFs.</div>
+    <div class="row">
+      <button id="importCancel">Cancel</button>
+      <button id="importReset">Reset to default</button>
+      <button class="primary" id="importSave">Save watchlist</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================================
+   >>> DATA SOURCE (1/4) — FUTURES BOARD
+   Replace with quotes from your feed. For LIVE futures you'd use a real feed;
+   for a members site, prefer delayed/each-user's-own data (see notes in chat).
+   { sym, name, px, chg(%), series[] (for the sparkline) }
+   ============================================================================ */
+const SAMPLE_FUT = [
+  { sym:'MNQ', name:'Micro Nasdaq', px:'21,344.50', chg:+0.42, series:[3,4,3.5,5,4.6,6,5.4,7,6.6,8] },
+  { sym:'MES', name:'Micro S&P',    px:'5,982.25',  chg:+0.11, series:[5,5.2,4.8,5.4,5.1,5.6,5.3,5.7,5.5,5.8] },
+  { sym:'MYM', name:'Micro Dow',    px:'42,155',    chg:-0.06, series:[6,5.8,6.1,5.6,5.9,5.4,5.7,5.3,5.5,5.2] },
+  { sym:'M2K', name:'Micro Russell',px:'2,187.4',   chg:-0.22, series:[7,6.6,6.8,6.2,6.4,5.9,6.1,5.6,5.8,5.4] },
+  { sym:'CL',  name:'Crude Oil',    px:'74.20',     chg:-0.66, series:[8,7.6,7.8,7.2,7.4,6.9,7,6.5,6.7,6.3] },
+  { sym:'GC',  name:'Gold',         px:'2,438.8',   chg:+0.51, series:[4,4.3,4.1,4.6,4.4,4.9,4.7,5.1,5,5.3] },
+  { sym:'ZN',  name:'10Y T-Note',   px:'110.45',    chg:-0.12, series:[6,5.9,6,5.8,5.9,5.7,5.8,5.6,5.7,5.6] },
+  { sym:'6E',  name:'Euro FX',      px:'1.0842',    chg:+0.08, series:[5,5.1,5,5.2,5.1,5.3,5.2,5.3,5.25,5.35] },
+  { sym:'VX',  name:'VIX Futures',  px:'14.85',     chg:-1.74, series:[7,6.4,6.7,5.9,6.1,5.4,5.7,5,5.3,4.7] },
+];
+
+/* ============================================================================
+   >>> DATA SOURCE (2/4) — NEWS FEED   (fetch from your backend in production)
+   { time, source:'x'|'reddit'|'wire', headline, summary, impact, dir, inst[], conf }
+   ============================================================================ */
+const SAMPLE_NEWS = [
+  { time:'09:41', source:'x', headline:'Large semi account flags unusual after-hours options flow in megacap tech',
+    summary:'Aggregated chatter points to heavy <b>call buying in megacap semis</b>. Sentiment skew turning risk-on; watch for follow-through into the cash open.',
+    impact:'med', dir:'bull', inst:['MNQ'], conf:62 },
+  { time:'09:28', source:'wire', headline:'Fed official: "patient" on rate path, data-dependent through summer',
+    summary:'Tone read as <b>mildly dovish but non-committal</b>. No new policy signal — likely a muted, range-bound reaction rather than a directional driver.',
+    impact:'med', dir:'neut', inst:['MNQ','MES'], conf:54 },
+  { time:'09:12', source:'reddit', headline:'Retail thread momentum building around solar names ahead of ETF rebalance',
+    summary:'Rising mentions of <b>TAN / FSLR / ENPH</b>. Crowd-driven, low institutional confirmation — a watch item, not a thesis.',
+    impact:'low', dir:'bull', inst:['TAN'], conf:38 },
+  { time:'08:55', source:'wire', headline:'Overnight: Asian indices close mixed, Europe opens flat as yields steady',
+    summary:'No risk catalyst overnight. <b>Globex held its range.</b> Sets up a clean, news-light session — your preferred environment to trade structure.',
+    impact:'low', dir:'neut', inst:['MNQ','MES'], conf:71 },
+  { time:'08:33', source:'x', headline:'Macro account: dollar index quietly probing a 3-day high',
+    summary:'<b>DXY strength</b> can pressure indices at the margin. Minor headwind for longs — keep it on the correlation board, not front of mind.',
+    impact:'low', dir:'bear', inst:['MES'], conf:45 },
+  { time:'07:58', source:'wire', headline:'No tier-1 economic releases scheduled before the cash open',
+    summary:'<b>Empty calendar confirmed.</b> Action likely driven by positioning and liquidity, not headlines — fewer surprise gaps to fade.',
+    impact:'low', dir:'neut', inst:['MNQ','MES'], conf:80 },
+];
+
+/* ============================================================================
+   >>> DATA SOURCE (3/4) — SMT DIVERGENCE  (NQ vs ES vs YM)
+   Cheap start: ETF proxies QQQ/SPY/DIA (regular-hours only). Precise overnight
+   SMT stays on your Tradovate chart. verdict.state: 'warn' | 'ok'
+   ============================================================================ */
+const SAMPLE_SMT = {
+  verdict:{ state:'warn', title:'Bearish SMT — non-confirmation',
+    note:'NQ printed a higher high while ES failed to confirm (lower high). Classic distribution tell — favor caution on index longs until they realign.' },
+  legs:[
+    { sym:'NQ', proxy:'QQQ', chg:+0.42, swing:'HH' },
+    { sym:'ES', proxy:'SPY', chg:+0.11, swing:'LH' },
+    { sym:'YM', proxy:'DIA', chg:-0.05, swing:'LH' },
+  ]
+};
+
+/* ============================================================================
+   >>> DATA SOURCE (4/4) — FUNDS WATCHLIST (no crypto). Edit freely.
+   ============================================================================ */
+const SAMPLE_WATCH = [
+  { group:'Nasdaq Heavyweights', rows:[
+    { sym:'NVDA',name:'NVIDIA',px:139.42,chg:+1.96 },{ sym:'AAPL',name:'Apple',px:227.18,chg:+0.34 },
+    { sym:'MSFT',name:'Microsoft',px:441.05,chg:+0.61 },{ sym:'AMZN',name:'Amazon',px:201.77,chg:+0.88 },
+    { sym:'META',name:'Meta',px:612.30,chg:+1.21 },{ sym:'GOOGL',name:'Alphabet',px:178.54,chg:+0.27 },
+    { sym:'TSLA',name:'Tesla',px:344.61,chg:-1.08 },
+  ]},
+  { group:'Broad Index ETFs', rows:[
+    { sym:'QQQ',name:'Nasdaq 100',px:494.20,chg:+0.41 },{ sym:'SPY',name:'S&P 500',px:561.83,chg:+0.10 },
+    { sym:'DIA',name:'Dow 30',px:421.55,chg:-0.06 },{ sym:'IWM',name:'Russell 2000',px:218.74,chg:-0.22 },
+    { sym:'RSP',name:'S&P Equal Weight',px:181.02,chg:-0.04 },
+  ]},
+  { group:'Macro / Correlations', rows:[
+    { sym:'UUP',name:'US Dollar',px:28.91,chg:+0.18 },{ sym:'TLT',name:'20Y Treasuries',px:88.34,chg:-0.42 },
+    { sym:'HYG',name:'High-Yield Credit',px:79.55,chg:+0.06 },{ sym:'VIXY',name:'Volatility',px:42.10,chg:-1.74 },
+    { sym:'GLD',name:'Gold',px:243.88,chg:+0.51 },{ sym:'USO',name:'Crude Oil',px:74.20,chg:-0.66 },
+  ]},
+  { group:'Sectors', rows:[
+    { sym:'SMH',name:'Semiconductors',px:262.40,chg:+1.12 },{ sym:'SOXX',name:'Semis (iShares)',px:228.95,chg:+1.05 },
+    { sym:'XLK',name:'Technology',px:238.91,chg:+0.55 },{ sym:'XLY',name:'Cons. Discretionary',px:214.33,chg:+0.29 },
+    { sym:'XLF',name:'Financials',px:49.88,chg:+0.08 },{ sym:'XLE',name:'Energy',px:91.66,chg:-0.31 },
+    { sym:'XLV',name:'Healthcare',px:147.20,chg:-0.12 },{ sym:'XLI',name:'Industrials',px:139.84,chg:+0.14 },
+  ]},
+  { group:'Solar / Clean', rows:[
+    { sym:'TAN',name:'Solar ETF',px:38.94,chg:+1.84 },{ sym:'FSLR',name:'First Solar',px:201.12,chg:+2.31 },
+    { sym:'ENPH',name:'Enphase',px:64.50,chg:+0.92 },{ sym:'SEDG',name:'SolarEdge',px:18.77,chg:+1.40 },
+    { sym:'RUN',name:'Sunrun',px:11.07,chg:-0.64 },{ sym:'NEE',name:'NextEra Energy',px:71.55,chg:+0.22 },
+  ]},
+];
+
+/* ----------------------------- helpers ----------------------------- */
+function sign(n){return n>=0?'+':'';}
+function spark(series,up){
+  const w=56,h=18,min=Math.min(...series),max=Math.max(...series),rng=(max-min)||1;
+  const pts=series.map((v,i)=>`${(i/(series.length-1))*w},${(h-2)-((v-min)/rng)*(h-4)+1}`).join(' ');
+  return `<svg class="spk" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <polyline points="${pts}" fill="none" stroke="${up?'var(--bull)':'var(--bear)'}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/>
+  </svg>`;
+}
+
+/* ----------------------------- render: ribbon ----------------------------- */
+function renderRibbon(list){
+  document.getElementById('ribbon').innerHTML = list.map(f=>{
+    const up=f.chg>=0;
+    return `<div class="fut">
+      <div class="sym">${f.sym}<small>${f.name}</small></div>
+      <div class="px">${f.px}</div>
+      ${spark(f.series,up)}
+      <div class="chg ${up?'up':'down'}">${sign(f.chg)}${f.chg.toFixed(2)}%</div>
+    </div>`;
+  }).join('');
+}
+
+/* ----------------------------- render: news ----------------------------- */
+const dirMeta={bull:['▲','bull','Bullish'],bear:['▼','bear','Bearish'],neut:['◆','neut','Neutral']};
+const srcLabel=s=>({x:'X / SOCIAL',reddit:'REDDIT',wire:'NEWSWIRE'}[s]||s);
+function renderNews(list){
+  document.getElementById('feed').innerHTML = list.map(n=>{
+    const [arrow,cls,label]=dirMeta[n.dir];
+    const insts=n.inst.map(i=>`<span class="inst">${i}</span>`).join('');
+    return `<article class="item">
+      <div class="rail">
+        <div class="railtop"><span class="time">${n.time}</span><span class="impact ${n.impact}">${n.impact}</span></div>
+        <div class="accent ${n.impact}"></div>
+      </div>
+      <div class="body">
+        <div class="src"><span class="badge ${n.source}">${srcLabel(n.source)}</span></div>
+        <p class="headline">${n.headline}</p>
+        <p class="summary">${n.summary}</p>
+        <div class="metarow">
+          <span class="dir ${cls}">${arrow} ${label}</span>${insts}
+          <span class="conf">conf ${n.conf}%<span class="confbar"><i style="width:${n.conf}%"></i></span></span>
+        </div>
+      </div>
+    </article>`;
+  }).join('');
+  document.getElementById('feedMeta').textContent=list.length+' items';
+}
+
+/* ----------------------------- render: SMT ----------------------------- */
+function renderSMT(d){
+  const v=d.verdict;
+  const legs=d.legs.map(l=>{
+    const up=l.chg>=0,w=Math.min(48,Math.abs(l.chg/0.6)*48);
+    const fill=up?`left:50%;width:${w}%;background:linear-gradient(90deg,var(--bull-dim),var(--bull))`
+                 :`right:50%;width:${w}%;background:linear-gradient(90deg,var(--bear),var(--bear-dim))`;
+    return `<div class="crow">
+      <div class="csym">${l.sym}<small>via ${l.proxy}</small></div>
+      <div class="track"><i style="${fill}"></i></div>
+      <div><div class="cchg ${up?'up':'down'}">${sign(l.chg)}${l.chg.toFixed(2)}%</div><div class="swing">${l.swing}</div></div>
+    </div>`;
+  }).join('');
+  document.getElementById('smt').innerHTML=
+    `<div class="verdict ${v.state}"><b>${v.state==='warn'?'⚠':'✓'} ${v.title}</b>${v.note}</div>
+     <div class="corr">${legs}</div>`;
+}
+
+/* ----------------------------- render: watchlist ----------------------------- */
+function renderWatch(groups){
+  let total=0;
+  document.getElementById('watch').innerHTML = groups.map(g=>{
+    const rows=g.rows.map(r=>{total++;const up=r.chg>=0;
+      return `<div class="wrow"><span class="wsym">${r.sym}</span><span class="wname">${r.name}</span>
+        <span class="wpx">${r.px.toFixed(2)}</span><span class="wchg ${up?'up':'down'}">${sign(r.chg)}${r.chg.toFixed(2)}%</span></div>`;
+    }).join('');
+    return `<div class="grp">${g.group}</div>${rows}`;
+  }).join('');
+  document.getElementById('watchMeta').textContent=total+' symbols';
+}
+
+/* ----------------------------- members presence ----------------------------- */
+function renderMembers(){
+  const desks=[['JT','#f0b45a'],['AR','#5ad6e0'],['MK','#46d17f'],['DV','#c9b8ff']];
+  document.getElementById('avatars').innerHTML=desks.map(d=>`<b style="background:${d[1]}">${d[0]}</b>`).join('');
+  document.getElementById('memCount').textContent=desks.length+' on the desk';
+}
+
+/* ----------------------------- clock + session ----------------------------- */
+function tick(){
+  const now=new Date();
+  const et=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour12:true,hour:'numeric',minute:'2-digit',second:'2-digit'}).format(now);
+  document.getElementById('clock').textContent=et;
+  const p=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour12:false,weekday:'short',hour:'2-digit'}).formatToParts(now);
+  const wd=p.find(x=>x.type==='weekday').value, hr=+p.find(x=>x.type==='hour').value;
+  const closed=(wd==='Sat')||(wd==='Sun'&&hr<18)||(wd==='Fri'&&hr>=17)||(hr===17);
+  document.getElementById('sess').innerHTML=closed?'SESSION <b style="color:var(--bear)">CLOSED</b>':'SESSION <b>OPEN</b>';
+  document.getElementById('lastUpd').textContent='last update '+et+' ET';
+}
+
+/* ----------------------------- boot ----------------------------- */
+renderRibbon(SAMPLE_FUT);
+renderSMT(SAMPLE_SMT);
+renderWatch(SAMPLE_WATCH);
+renderMembers();
+tick();setInterval(tick,1000);
+
+/* ============================================================================
+   LIVE DATA  — pulls real scored items from the Korvus server (Phase 2).
+   When served via korvus_server.py, /api/news returns engine data.
+   If the server isn't running (e.g. you opened the file directly), it
+   gracefully falls back to the sample feed so the page still looks alive.
+   ============================================================================ */
+async function loadLiveNews(){
+  try{
+    const res = await fetch('/api/news', {cache:'no-store'});
+    if(!res.ok) throw new Error('no server');
+    const data = await res.json();
+    if(data.items && data.items.length){
+      renderNews(data.items);
+      markLive(true);
+      return;
+    }
+    // server up but engine hasn't scored anything yet
+    renderNews(SAMPLE_NEWS);
+    markLive(false, 'engine running — waiting for first scored items');
+  }catch(e){
+    // no server: this is the static/sample mode
+    renderNews(SAMPLE_NEWS);
+    markLive(false, 'sample data — start korvus_server.py for live feed');
+  }
+}
+
+async function loadHealth(){
+  try{
+    const res = await fetch('/api/health', {cache:'no-store'});
+    if(!res.ok) return;
+    const h = await res.json();
+    if(h.last_update){
+      document.getElementById('lastUpd').textContent = 'last update ' + h.last_update + ' ET';
+    }
+  }catch(e){/* ignore when offline */}
+}
+
+function markLive(isLive, note){
+  const hb = document.querySelector('.heartbeat');
+  if(isLive){
+    hb.innerHTML = '<span class="hb"></span>ENGINE LIVE · REAL-TIME';
+  }else{
+    hb.innerHTML = '<span class="hb" style="background:var(--gold);box-shadow:none;animation:none"></span>' +
+                   (note || 'SAMPLE DATA');
+  }
+}
+
+/* ============================================================================
+   PHASE 3 — LIVE QUOTES for the Futures Board, SMT panel, and Funds Watch.
+   Futures use ETF proxies for pricing context (QQQ=NQ, SPY=ES, DIA=YM, etc.)
+   since live futures data needs a paid exchange license. When markets are
+   closed, the server flags it and we label the panels "last close".
+   ============================================================================ */
+
+// maps the futures ribbon symbols to a tradeable proxy we CAN price
+const FUT_PROXY = { MNQ:'QQQ', MES:'SPY', MYM:'DIA', M2K:'IWM',
+                    CL:'USO', GC:'GLD', ZN:'IEF', '6E':'FXE', VX:'VIXY' };
+
+function collectWatchSymbols(groups){
+  const s = new Set();
+  groups.forEach(g => g.rows.forEach(r => s.add(r.sym)));
+  return [...s];
+}
+
+async function loadLiveQuotes(){
+  // gather every symbol we need: proxies for futures + SMT, plus watchlist
+  const futProxies = Object.values(FUT_PROXY);
+  const smtProxies = ['QQQ','SPY','DIA'];
+  const watchSyms  = collectWatchSymbols(SAMPLE_WATCH);
+  const all = [...new Set([...futProxies, ...smtProxies, ...watchSyms])];
+
+  try{
+    const res = await fetch('/api/quotes?symbols=' + all.join(','), {cache:'no-store'});
+    if(!res.ok) throw new Error('no quotes');
+    const data = await res.json();
+    const q = data.quotes || {};
+    if(Object.keys(q).length === 0) return; // provider 'off' or no key: keep samples
+    const open = data.meta && data.meta.market_open;
+
+    // 1) Futures Board — price via proxy, keep the futures label
+    SAMPLE_FUT.forEach(f => {
+      const px = q[FUT_PROXY[f.sym]];
+      if(px){ f.px = px.price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+              f.chg = px.chg_pct; }
+    });
+    renderRibbon(SAMPLE_FUT);
+
+    // 2) SMT panel — real % moves for the three index proxies
+    SAMPLE_SMT.legs.forEach(leg => {
+      const px = q[leg.proxy];
+      if(px) leg.chg = px.chg_pct;
+    });
+    renderSMT(SAMPLE_SMT);
+
+    // 3) Funds Watch — real prices + % for every symbol we have
+    SAMPLE_WATCH.forEach(g => g.rows.forEach(r => {
+      const px = q[r.sym];
+      if(px){ r.px = px.price; r.chg = px.chg_pct; }
+    }));
+    renderWatch(SAMPLE_WATCH);
+
+    // reflect market-open state in the footer
+    const tag = open ? '● REAL-TIME' : '● MARKET CLOSED · last close';
+    const rt = document.querySelector('footer .rt') || document.getElementById('rtTag');
+    if(rt) rt.textContent = tag;
+  }catch(e){ /* server/quotes offline: panels stay on sample numbers */ }
+}
+
+/* ----- personal watchlist import (falls back to default groups) ----- */
+async function loadWatchlist(){
+  try{
+    const res = await fetch('/api/watchlist', {cache:'no-store'});
+    if(!res.ok) return;
+    const data = await res.json();
+    if(data.custom && data.watchlist && data.watchlist.groups){
+      // replace the default board with the user's imported one
+      SAMPLE_WATCH.length = 0;
+      data.watchlist.groups.forEach(g => SAMPLE_WATCH.push(g));
+      renderWatch(SAMPLE_WATCH);
+    }
+  }catch(e){/* keep default groups */}
+}
+
+/* ----- watchlist import modal wiring ----- */
+function parseWatchlistText(text){
+  // Builds {groups:[{group, rows:[{sym,name}]}]} from pasted lines.
+  const lines = text.split(/[\n;]+/).map(l => l.trim()).filter(Boolean);
+  const groupsMap = {};
+  lines.forEach(line => {
+    const parts = line.split(',').map(p => p.trim());
+    const sym = (parts[0] || '').toUpperCase();
+    if(!sym) return;
+    const name = parts[1] || sym;
+    const group = parts[2] || 'My Watchlist';
+    if(!groupsMap[group]) groupsMap[group] = [];
+    groupsMap[group].push({ sym, name, px: 0, chg: 0 });
+  });
+  return { groups: Object.entries(groupsMap).map(([group, rows]) => ({ group, rows })) };
+}
+
+const modal = document.getElementById('importModal');
+document.getElementById('importBtn').onclick = () => modal.classList.add('show');
+document.getElementById('importCancel').onclick = () => modal.classList.remove('show');
+modal.onclick = (e) => { if(e.target === modal) modal.classList.remove('show'); };
+
+document.getElementById('importSave').onclick = async () => {
+  const text = document.getElementById('importText').value.trim();
+  if(!text){ modal.classList.remove('show'); return; }
+  const wl = parseWatchlistText(text);
+  try{
+    await fetch('/api/watchlist', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(wl)
+    });
+    // apply immediately
+    SAMPLE_WATCH.length = 0; wl.groups.forEach(g => SAMPLE_WATCH.push(g));
+    renderWatch(SAMPLE_WATCH);
+    loadLiveQuotes();
+  }catch(e){
+    // no server (static mode): still apply locally for this session
+    SAMPLE_WATCH.length = 0; wl.groups.forEach(g => SAMPLE_WATCH.push(g));
+    renderWatch(SAMPLE_WATCH);
+  }
+  modal.classList.remove('show');
+};
+
+document.getElementById('importReset').onclick = async () => {
+  try{ await fetch('/api/watchlist', {method:'POST', headers:{'Content-Type':'application/json'},
+       body: JSON.stringify({groups: null})}); }catch(e){}
+  location.reload();
+};
+
+// initial load + gentle polling
+loadWatchlist().then(loadLiveQuotes);
+loadLiveNews(); loadHealth();
+setInterval(loadLiveNews, 30000);   // news every 30s
+setInterval(loadHealth, 30000);
+setInterval(loadLiveQuotes, 30000); // quotes every 30s
+</script>

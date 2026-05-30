@@ -1,0 +1,29 @@
+# ============================================================
+#  Korvus web server (Gunicorn) — systemd service
+#  Serves the dashboard + API. Auto-starts on boot, auto-restarts on crash.
+#
+#  INSTALL (on the server):
+#    sudo cp deploy/korvus-server.service /etc/systemd/system/
+#    sudo systemctl daemon-reload
+#    sudo systemctl enable --now korvus-server
+#    sudo systemctl status korvus-server     # check it's running
+#
+#  EDIT the two paths below if you didn't use /home/ubuntu/korvus-engine.
+# ============================================================
+[Unit]
+Description=Korvus web server (dashboard + API)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/korvus-engine
+# venv path; create with:  python3 -m venv venv && venv/bin/pip install -r requirements.txt gunicorn
+ExecStart=/home/ubuntu/korvus-engine/venv/bin/gunicorn -c deploy/gunicorn_config.py korvus_server:app
+Restart=always
+RestartSec=5
+# load .env into the process environment
+EnvironmentFile=/home/ubuntu/korvus-engine/.env
+
+[Install]
+WantedBy=multi-user.target

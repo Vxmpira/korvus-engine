@@ -1,0 +1,33 @@
+# ============================================================
+#  Nginx site config for Korvus
+#  Puts the dashboard on the public web and forwards to Gunicorn.
+#
+#  INSTALL (on the server):
+#    sudo cp deploy/korvus.nginx /etc/nginx/sites-available/korvus
+#    sudo ln -s /etc/nginx/sites-available/korvus /etc/nginx/sites-enabled/
+#    sudo nginx -t           # test config
+#    sudo systemctl reload nginx
+#
+#  Then add HTTPS (free) with:
+#    sudo apt install certbot python3-certbot-nginx -y
+#    sudo certbot --nginx -d korvus.YOURDOMAIN.com
+#  Certbot edits this file automatically to add the SSL lines.
+#
+#  EDIT server_name below to your real domain (or the server IP for testing).
+# ============================================================
+server {
+    listen 80;
+    server_name korvus.YOURDOMAIN.com;   # <-- change to your domain or IP
+
+    # Forward all requests to the Korvus Gunicorn server
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # small uploads only (the API payloads are tiny)
+    client_max_body_size 1m;
+}
