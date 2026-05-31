@@ -1,4 +1,3 @@
-<!--
   ============================================================================
   MARKET DESK — 24/7 News & Impact Terminal   (v0.2 — refined)
   ============================================================================
@@ -128,7 +127,7 @@
   .econ.clear{border-color:rgba(70,209,127,.3);background:rgba(70,209,127,.07);color:var(--bull);}
 
   .spacer{flex:1;}
-  .sess{font-family:var(--mono);font-size:11px;padding:6px 11px;border:1px solid var(--line);border-radius:8px;color:var(--ink-dim);}
+  .sess{font-family:var(--mono);font-size:11px;padding:6px 11px;border:1px solid rgba(255,255,255,.7);border-radius:8px;color:var(--ink-dim);box-shadow:0 0 16px -2px rgba(255,255,255,.5);}
   .sess b{color:var(--bull);}
   .clock{font-family:var(--mono);font-size:14px;color:var(--ink);letter-spacing:.05em;text-align:right;}
   .clock small{display:block;color:var(--ink-faint);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;margin-top:2px;}
@@ -154,7 +153,7 @@
   main{flex:1;display:grid;grid-template-columns:1fr 384px;gap:16px;padding:16px;min-height:0;}
   .panel{
     background:var(--panel);
-    border:1px solid rgba(255,255,255,.62);
+    border:1px solid rgba(255,255,255,.85);
     border-radius:var(--r);
     box-shadow:
       inset 0 1px 0 rgba(255,255,255,.16),
@@ -293,6 +292,11 @@
   .discord:hover{background:rgba(88,101,242,.2);border-color:rgba(140,140,255,.7);box-shadow:0 0 22px -3px rgba(120,120,240,.85);color:#e6e8ff;}
   .discord svg{opacity:.9;}
 
+  .logoutbtn{margin-left:14px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-dim);text-decoration:none;padding:6px 13px;border-radius:999px;border:1px solid var(--line);
+    transition:all .2s;align-self:center;}
+  .logoutbtn:hover{color:var(--ink);border-color:rgba(255,255,255,.4);}
+
   .importbtn{margin-left:8px;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
     color:var(--gold);background:var(--gold-soft);border:1px solid var(--gold-line);border-radius:999px;
     padding:3px 10px;cursor:pointer;transition:background .2s;}
@@ -324,7 +328,7 @@
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
           <defs><linearGradient id="crwn" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stop-color="#ff6a5d"/><stop offset="1" stop-color="#c2160c"/></linearGradient></defs>
-          <path d="M2 19 L4 8 L8.5 12 L12 5 L15.5 12 L20 8 L22 19 Z" fill="url(#crwn)"/>
+          <path d="M2.6 17.6 L4.4 8.4 L8.7 12.4 L12 4.6 L15.3 12.4 L19.6 8.4 L21.4 17.6 Z" fill="url(#crwn)" stroke="#ff8a7e" stroke-width="0.5" stroke-linejoin="round"/>
           <rect x="3" y="18.4" width="18" height="2.5" rx="1.1" fill="url(#crwn)"/>
           <circle cx="4" cy="8" r="1.3" fill="#ff9a90"/><circle cx="12" cy="5" r="1.5" fill="#ff9a90"/><circle cx="20" cy="8" r="1.3" fill="#ff9a90"/>
         </svg>
@@ -346,6 +350,7 @@
     <div class="spacer"></div>
     <div class="sess" id="sess">SESSION <b>—</b></div>
     <div class="clock"><span id="clock">--:--:--</span><small>New York / ET</small></div>
+    <a class="logoutbtn" href="/logout" title="Log out" id="logoutBtn" style="display:none;">Log out</a>
   </header>
 
   <!-- FUTURES BOARD — more instruments -->
@@ -355,7 +360,6 @@
     <section class="panel news">
       <div class="phead">
         <h2>News &amp; Market Impact</h2>
-        <span class="tag">summarized by claude</span>
         <span class="meta" id="feedMeta">— items</span>
       </div>
       <div class="feed" id="feed"></div>
@@ -375,8 +379,8 @@
 
   <footer>
     <div class="frow">
-      <span class="pill">◆ SAMPLE DATA</span>
-      <span>Real feeds plug in at the <b>&gt;&gt;&gt; DATA SOURCE</b> markers (4).</span>
+      <span class="pill" id="feedPill">◆ LIVE FEED</span>
+      <span id="feedNote">News scored by the Korvus engine.</span>
       <span style="flex:1"></span>
       <span class="rt">● REAL-TIME</span>
       <span id="lastUpd">last update —</span>
@@ -384,7 +388,7 @@
     <div class="legal">
       <span class="cpy">© 2026 BlackCrownVxJ LLC</span>
       <span class="disc">Informational and educational use only. Nothing here is financial, investment, legal, or tax advice, or a recommendation to buy or sell any security, futures contract, or other instrument. Trading futures and leveraged products involves substantial risk of loss and is not suitable for everyone. You alone are responsible for your own trading decisions and outcomes; BlackCrownVxJ LLC and its owners, members, and affiliates accept no liability for any loss or damage arising from use of this platform or reliance on its content, which is provided "as is" without warranty of any kind. Use of this platform constitutes acceptance of the Terms of Service.</span>
-      <span class="links"><a href="#tos">Terms of Service</a> · <a href="#privacy">Privacy</a> · <a href="#risk">Risk Disclosure</a></span>
+      <span class="links"><a href="/legal#tos">Terms of Service</a> · <a href="/legal#privacy">Privacy</a> · <a href="/legal#risk">Risk Disclosure</a></span>
     </div>
   </footer>
 </div>
@@ -583,10 +587,21 @@ function renderWatch(groups){
 }
 
 /* ----------------------------- members presence ----------------------------- */
-function renderMembers(){
-  const desks=[['JT','#f0b45a'],['AR','#5ad6e0'],['MK','#46d17f'],['DV','#c9b8ff']];
-  document.getElementById('avatars').innerHTML=desks.map(d=>`<b style="background:${d[1]}">${d[0]}</b>`).join('');
-  document.getElementById('memCount').textContent=desks.length+' on the desk';
+async function renderMembers(){
+  // real count of members active in the last 5 min
+  let online = 1;
+  try{
+    const res = await fetch('/api/online', {cache:'no-store'});
+    if(res.ok){ const d = await res.json(); online = d.online || 1; }
+  }catch(e){}
+  const label = online === 1 ? '1 on the desk' : online + ' on the desk';
+  document.getElementById('memCount').textContent = label;
+  // show up to 4 generic avatar dots reflecting the count
+  const palette = ['#f0b45a','#5ad6e0','#46d17f','#c9b8ff'];
+  const n = Math.min(online, 4);
+  let dots = '';
+  for(let i=0;i<n;i++){ dots += `<b style="background:${palette[i]}">●</b>`; }
+  document.getElementById('avatars').innerHTML = dots;
 }
 
 /* ----------------------------- clock + session ----------------------------- */
@@ -648,7 +663,7 @@ async function loadHealth(){
 function markLive(isLive, note){
   const hb = document.querySelector('.heartbeat');
   if(isLive){
-    hb.innerHTML = '<span class="hb"></span>ENGINE LIVE · REAL-TIME';
+    setTierLabel();   // tier-aware: REAL-TIME for pro, DELAYED for free
   }else{
     hb.innerHTML = '<span class="hb" style="background:var(--gold);box-shadow:none;animation:none"></span>' +
                    (note || 'SAMPLE DATA');
@@ -709,8 +724,12 @@ async function loadLiveQuotes(){
     }));
     renderWatch(SAMPLE_WATCH);
 
-    // reflect market-open state in the footer
-    const tag = open ? '● REAL-TIME' : '● MARKET CLOSED · last close';
+    // reflect market + tier state in the footer (no redundant 'last close' —
+    // the timestamp lives in #lastUpd next to it)
+    let tag;
+    if(!open){ tag = '● MARKET CLOSED'; }
+    else if(USER_TIER === 'pro'){ tag = '● REAL-TIME'; }
+    else { tag = '● DELAYED 15 MIN'; }
     const rt = document.querySelector('footer .rt') || document.getElementById('rtTag');
     if(rt) rt.textContent = tag;
   }catch(e){ /* server/quotes offline: panels stay on sample numbers */ }
@@ -780,10 +799,38 @@ document.getElementById('importReset').onclick = async () => {
   location.reload();
 };
 
+// ---- who's logged in + their tier (drives the header label) ----
+let USER_TIER = 'free';   // default; loadMe() updates it
+async function loadMe(){
+  try{
+    const res = await fetch('/api/me', {cache:'no-store'});
+    const me = await res.json();
+    if(me.auth){
+      USER_TIER = me.tier || 'free';
+      const lo = document.getElementById('logoutBtn');
+      if(lo) lo.style.display = 'inline-block';
+      setTierLabel();
+    }
+  }catch(e){/* ignore */}
+}
+function setTierLabel(){
+  const hb = document.querySelector('.heartbeat');
+  if(!hb) return;
+  if(USER_TIER === 'pro'){
+    hb.innerHTML = '<span class="hb"></span>ENGINE LIVE · REAL-TIME';
+  }else{
+    hb.innerHTML = '<span class="hb" style="background:var(--gold);box-shadow:0 0 10px -2px var(--gold)"></span>'
+                 + 'ENGINE LIVE · DELAYED 15 MIN';
+  }
+}
+
 // initial load + gentle polling
+loadMe();
 loadWatchlist().then(loadLiveQuotes);
 loadLiveNews(); loadHealth();
 setInterval(loadLiveNews, 30000);   // news every 30s
 setInterval(loadHealth, 30000);
 setInterval(loadLiveQuotes, 30000); // quotes every 30s
+setInterval(renderMembers, 60000);  // refresh online count every 60s
+setInterval(loadMe, 120000);        // re-check tier/session every 2 min
 </script>
