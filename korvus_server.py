@@ -205,10 +205,33 @@ def verify():
 @app.route("/api/me")
 def api_me():
     """Lets the dashboard know who's logged in and their tier."""
+    # record a heartbeat for the online count (genuine, not faked)
+    if current_user.is_authenticated:
+        _online[current_user.id] = dt.datetime.now(dt.timezone.utc)
     if current_user.is_authenticated:
         return jsonify({"auth": True, "username": current_user.username,
                         "tier": current_user.tier, "verified": current_user.email_verified})
     return jsonify({"auth": False})
+
+
+# in-memory "currently online" tracker: user_id -> last-seen UTC.
+# Counts sessions seen in the last 5 minutes. Resets on server restart
+# (fine — it's a live gauge, not a stored stat).
+_online = {}
+
+@app.route("/api/online")
+def api_online():
+    """Real count of members active in the last 5 minutes."""
+    now = dt.datetime.now(dt.timezone.utc)
+    if current_user.is_authenticated:
+        _online[current_user.id] = now
+    cutoff = now - dt.timedelta(minutes=5)
+    active = [uid for uid, seen in list(_online.items()) if seen >= cutoff]
+    # tidy stale entries
+    for uid in list(_online.keys()):
+        if _online[uid] < cutoff:
+            del _online[uid]
+    return jsonify({"online": len(active)})
 
 
 @app.route("/legal")
