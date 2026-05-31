@@ -75,6 +75,8 @@ def create_user(username, email, password):
     """
     Returns (ok: bool, message: str, verify_token: str|None).
     Validates uniqueness, hashes the password, stores unverified, issues a token.
+    Usernames are matched case-insensitively (so 'Rob' and 'rob' are the same
+    account) to avoid login confusion, but the original casing is preserved.
     """
     username = (username or "").strip()
     email = (email or "").strip().lower()
@@ -86,8 +88,8 @@ def create_user(username, email, password):
         return False, "Please enter a valid email address.", None
 
     conn = get_db()
-    # uniqueness checks
-    if conn.execute("SELECT 1 FROM users WHERE username = ?", (username,)).fetchone():
+    # case-insensitive uniqueness checks
+    if conn.execute("SELECT 1 FROM users WHERE LOWER(username) = LOWER(?)", (username,)).fetchone():
         conn.close(); return False, "That username is taken.", None
     if conn.execute("SELECT 1 FROM users WHERE email = ?", (email,)).fetchone():
         conn.close(); return False, "An account with that email already exists.", None
@@ -105,9 +107,11 @@ def create_user(username, email, password):
 
 
 def verify_password(username, password):
-    """Returns the user row (dict) if credentials are valid, else None."""
+    """Returns the user row (dict) if credentials are valid, else None.
+    Username match is case-insensitive."""
     conn = get_db()
-    row = conn.execute("SELECT * FROM users WHERE username = ?", ((username or "").strip(),)).fetchone()
+    row = conn.execute("SELECT * FROM users WHERE LOWER(username) = LOWER(?)",
+                       ((username or "").strip(),)).fetchone()
     conn.close()
     if row and check_password_hash(row["password_hash"], password or ""):
         return dict(row)

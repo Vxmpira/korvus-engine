@@ -287,6 +287,19 @@ def api_watchlist():
     return jsonify({"custom": False, "watchlist": None})
 
 
+# ----------------------------------------------------------------------------
+# Catch-all: unknown paths go to the front page instead of a bare 404.
+# (Real API 404s above still return their own JSON; this only catches
+#  unmatched page-style routes.)
+# ----------------------------------------------------------------------------
+@app.errorhandler(404)
+def not_found(e):
+    # API calls should still get JSON 404s; everything else → home
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "not found"}), 404
+    return redirect("/")
+
+
 if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("  KORVUS server — open this in your browser:")
