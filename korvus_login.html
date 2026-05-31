@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Log in · Korvus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#050608;--panel:#0e1116;--ink:#eef1f6;--ink-dim:#9aa4b2;--ink-faint:#5a6470;
+    --line:rgba(255,255,255,.08);--line-bright:rgba(255,255,255,.16);
+    --gold:#f0b45a;--gold-deep:#c99a45;--crown:#ff3a2f;--down:#ff5d57;
+    --candle-bull:#ffffff;--candle-bear:#c2185b;
+    --mono:'IBM Plex Mono',monospace;--body:'Hanken Grotesk',system-ui,sans-serif;--disp:'Fraunces',Georgia,serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;overflow-x:hidden;}
+  #candles{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.45;}
+  .glow{position:fixed;top:-20vh;left:50%;transform:translateX(-50%);width:80vw;height:60vh;z-index:0;pointer-events:none;
+    background:radial-gradient(ellipse at center,rgba(240,180,90,.10),rgba(255,58,47,.05) 40%,transparent 70%);filter:blur(30px);}
+  .card{position:relative;z-index:2;width:100%;max-width:430px;background:rgba(14,17,22,.55);backdrop-filter:blur(16px);
+    border:1px solid var(--line-bright);border-radius:18px;padding:40px 36px;box-shadow:0 30px 80px -30px #000;}
+  .brand{display:flex;align-items:center;gap:11px;justify-content:center;margin-bottom:28px;}
+  .crown{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
+    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);border:1px solid rgba(255,58,47,.38);box-shadow:0 0 22px -6px var(--crown);}
+  .crown svg{filter:drop-shadow(0 0 5px rgba(255,58,47,.6));}
+  .brand-name{font-family:var(--disp);font-weight:600;font-size:23px;}
+  h1{font-family:var(--disp);font-weight:500;font-size:26px;text-align:center;margin-bottom:6px;letter-spacing:-.01em;}
+  .sub{text-align:center;color:var(--ink-dim);font-size:14px;margin-bottom:28px;}
+  label{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 7px 2px;}
+  input{width:100%;background:#0a0d12;border:1px solid var(--line-bright);border-radius:10px;color:var(--ink);
+    font-family:var(--body);font-size:15px;padding:13px 14px;margin-bottom:18px;transition:border-color .2s;}
+  input:focus{outline:none;border-color:var(--gold);}
+  .hint{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);margin:-12px 0 18px 2px;}
+  .btn{width:100%;background:var(--gold);color:#0a0d12;font-weight:700;font-size:15px;padding:14px;border:none;border-radius:10px;cursor:pointer;transition:background .2s;font-family:var(--body);}
+  .btn:hover{background:var(--gold-deep);}
+  .alt{text-align:center;margin-top:22px;font-size:14px;color:var(--ink-dim);}
+  .alt a{color:var(--gold);text-decoration:none;}
+  .alt a:hover{text-decoration:underline;}
+  .msg{padding:11px 14px;border-radius:9px;font-size:13.5px;margin-bottom:20px;line-height:1.5;}
+  .msg.err{background:rgba(255,93,87,.12);border:1px solid rgba(255,93,87,.3);color:#ffb3af;}
+  .msg.ok{background:rgba(70,209,127,.1);border:1px solid rgba(70,209,127,.3);color:#9fe9bd;}
+  .legal{text-align:center;font-size:11.5px;color:var(--ink-faint);margin-top:18px;line-height:1.5;}
+  .legal a{color:var(--gold-deep);text-decoration:none;}
+</style>
+</head>
+<body>
+  <canvas id="candles"></canvas>
+  <div class="glow"></div>
+  <div class="card">
+    <div class="brand">
+      <span class="crown">
+        <svg viewBox="0 0 48 48" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a6e"/><stop offset="1" stop-color="#c2160c"/></linearGradient></defs>
+          <path d="M5 35 L8.2 16.5 L17 23.5 L24 9 L31 23.5 L39.8 16.5 L43 35 Z" fill="url(#c)" stroke="#ff8a7e" stroke-width="0.7" stroke-linejoin="round"/>
+          <rect x="6" y="34.5" width="36" height="5" rx="1.2" fill="url(#c)"/>
+          <circle cx="8.2" cy="16.5" r="2" fill="#ffd0ca"/><circle cx="24" cy="9" r="2.4" fill="#ffe4df"/><circle cx="39.8" cy="16.5" r="2" fill="#ffd0ca"/>
+        </svg>
+      </span>
+      <span class="brand-name">Korvus</span>
+    </div>
+    <h1>Welcome back</h1>
+    <p class="sub">Log in to your Korvus terminal.</p>
+
+    <!--MESSAGE-->
+
+    <form method="POST" action="/login">
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text" autocomplete="username" required placeholder="your username" />
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="your password" />
+      <button class="btn" type="submit">Log in</button>
+    </form>
+
+    <p class="alt">New to Korvus? <a href="/signup">Create an account</a></p>
+  </div>
+
+<script>
+  // shared candle background (market structure, upper band)
+  (function(){
+    const cv=document.getElementById('candles'),ctx=cv.getContext('2d');
+    let W,H,candles=[],offset=0,price,momentum=0,runLeft=0,trendDir=1;
+    const BULL='#ffffff',BEAR='#c2185b',CW=9,GAP=8,STEP=CW+GAP;
+    function nextCandle(){
+      const vol=H*0.022;
+      if(runLeft<=0){trendDir=Math.random()<0.5?-1:1;runLeft=4+Math.floor(Math.random()*9);}
+      runLeft--; momentum=momentum*0.7+trendDir*vol*0.9+(Math.random()-0.5)*vol*1.1;
+      const open=price; let close=price+momentum;
+      const top=H*0.10,bot=H*0.92;
+      if(close<top){close=top+Math.random()*vol;momentum=Math.abs(momentum)*0.5;trendDir=1;}
+      if(close>bot){close=bot-Math.random()*vol;momentum=-Math.abs(momentum)*0.5;trendDir=-1;}
+      const hi=Math.max(open,close)+Math.random()*vol*0.8, lo=Math.min(open,close)-Math.random()*vol*0.8;
+      price=close; return {o:open,c:close,h:hi,l:lo,bull:close<=open};
+    }
+    function seed(){candles=[];price=H*0.4;momentum=0;runLeft=0;const need=Math.ceil(W/STEP)+4;for(let i=0;i<need;i++)candles.push(nextCandle());offset=0;}
+    function resize(){W=cv.width=innerWidth;H=cv.height=innerHeight;seed();}
+    function draw(){
+      ctx.clearRect(0,0,W,H);offset+=0.35;
+      if(offset>=STEP){offset-=STEP;candles.shift();candles.push(nextCandle());}
+      ctx.beginPath();
+      candles.forEach((c,i)=>{const x=i*STEP-offset+CW/2;i===0?ctx.moveTo(x,c.c):ctx.lineTo(x,c.c);});
+      ctx.strokeStyle='rgba(240,180,90,.10)';ctx.lineWidth=1.5;ctx.stroke();
+      candles.forEach((c,i)=>{
+        const x=i*STEP-offset+CW/2;if(x<-CW||x>W+CW)return;
+        const up=c.bull,color=up?BULL:BEAR;
+        ctx.globalAlpha=up?0.16:0.20;ctx.strokeStyle=color;ctx.lineWidth=1.2;
+        ctx.beginPath();ctx.moveTo(x,c.h);ctx.lineTo(x,c.l);ctx.stroke();
+        const top=Math.min(c.o,c.c),h=Math.max(2,Math.abs(c.c-c.o));
+        if(up){ctx.globalAlpha=0.10;ctx.fillStyle=color;ctx.fillRect(x-CW/2,top,CW,h);ctx.globalAlpha=0.22;ctx.strokeStyle=color;ctx.lineWidth=1;ctx.strokeRect(x-CW/2,top,CW,h);}
+        else{ctx.globalAlpha=0.22;ctx.fillStyle=color;ctx.fillRect(x-CW/2,top,CW,h);}
+      });
+      ctx.globalAlpha=1;requestAnimationFrame(draw);
+    }
+    addEventListener('resize',resize);resize();requestAnimationFrame(draw);
+  })();
+</script>
+</body>
+</html>

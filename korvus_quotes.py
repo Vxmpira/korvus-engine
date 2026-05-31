@@ -53,26 +53,34 @@ def market_is_open() -> bool:
     return (9 * 60 + 30) <= mins <= (16 * 60)
 
 
-def get_quotes(symbols: list[str]) -> dict:
+def get_quotes(symbols: list[str], force_delayed: bool = False) -> dict:
     """
     Returns { "SYM": {"price": float, "chg_pct": float}, ... } plus a
     "_meta" key with provider + market_open. Cached for ~25s.
+
+    force_delayed=True (used for free-tier users) ignores the configured
+    provider and uses the delayed feed (finnhub), so live data is never
+    served to non-paying users even if alphavantage is configured.
     """
     import time
     now = time.time()
-    key = ",".join(symbols)
-    if _cache["data"].get(key) and (now - _cache["at"] < _CACHE_SECONDS):
-        return _cache["data"][key]
+    cache_key = ("delayed:" if force_delayed else "live:") + ",".join(symbols)
+    if _cache["data"].get(cache_key) and (now - _cache["at"] < _CACHE_SECONDS):
+        return _cache["data"][cache_key]
 
-    if QUOTES_PROVIDER == "alphavantage":
+    if force_delayed:
+        # free tier: always delayed, never the premium live feed
+        out = _finnhub_quotes(symbols) if FINNHUB_KEY else {}
+    elif QUOTES_PROVIDER == "alphavantage":
         out = _alphavantage_quotes(symbols)
     elif QUOTES_PROVIDER == "finnhub":
         out = _finnhub_quotes(symbols)
     else:
         out = {}  # 'off' -> dashboard keeps its sample numbers
 
-    out["_meta"] = {"provider": QUOTES_PROVIDER, "market_open": market_is_open()}
-    _cache["data"][key] = out
+    out["_meta"] = {"provider": ("finnhub" if force_delayed else QUOTES_PROVIDER),
+                    "market_open": market_is_open()}
+    _cache["data"][cache_key] = out
     _cache["at"] = now
     return out
 
