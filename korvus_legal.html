@@ -15,7 +15,24 @@
     --body:'Hanken Grotesk',system-ui,sans-serif; --disp:'Bricolage Grotesque',var(--body); --mono:'IBM Plex Mono',monospace;
   }
   *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.62;font-size:15px;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.62;font-size:15px;position:relative;}
+
+  /* ambient red/gold aurora glow (option 2) */
+  .aurora{position:fixed;inset:-15%;z-index:-2;filter:blur(22px);opacity:.5;pointer-events:none;}
+  .aurora span{position:absolute;border-radius:50%;mix-blend-mode:screen;}
+  .ag1{width:50vw;height:50vw;left:-6vw;top:-12vw;
+    background:radial-gradient(circle,rgba(255,58,47,.22),transparent 62%);animation:agdrift 30s ease-in-out infinite;}
+  .ag2{width:46vw;height:46vw;right:-8vw;top:18vh;
+    background:radial-gradient(circle,rgba(240,180,90,.16),transparent 62%);animation:agdrift 36s ease-in-out infinite reverse;}
+  .ag3{width:40vw;height:40vw;left:34vw;bottom:-18vw;
+    background:radial-gradient(circle,rgba(255,58,47,.12),transparent 62%);animation:agdrift 42s ease-in-out infinite;}
+  @keyframes agdrift{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(3vw,3vh) scale(1.08);}}
+
+  /* faint watermark crown (option 1) — large, ghosted, fixed behind content */
+  .watermark{position:fixed;top:50%;left:50%;transform:translate(-50%,-48%);
+    width:min(58vw,600px);z-index:-1;opacity:.085;pointer-events:none;
+    filter:drop-shadow(0 0 38px rgba(255,40,30,.85)) drop-shadow(0 0 14px rgba(255,70,55,.6));}
+  .watermark svg{width:100%;height:auto;display:block;}
   .topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:14px;padding:16px 28px;
     border-bottom:1px solid var(--line);background:rgba(6,8,12,.85);backdrop-filter:blur(12px);}
   .glyph{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex:none;
@@ -25,7 +42,9 @@
   .home{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--gold);text-decoration:none;
     border:1px solid var(--line);border-radius:999px;padding:7px 15px;transition:background .2s;}
   .home:hover{background:rgba(240,180,90,.1);}
-  .wrap{max-width:860px;margin:0 auto;padding:42px 28px 90px;}
+  .wrap{max-width:860px;margin:0 auto;padding:42px 34px 90px;position:relative;z-index:1;
+    background:linear-gradient(180deg,rgba(4,5,8,.62),rgba(4,5,8,.74));
+    backdrop-filter:blur(2px);border-left:1px solid var(--line);border-right:1px solid var(--line);}
   .jump{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:36px;}
   .jump a{font-family:var(--mono);font-size:12px;color:var(--gold-deep);text-decoration:none;
     border:1px solid var(--line);border-radius:999px;padding:8px 16px;transition:all .2s;}
@@ -51,6 +70,29 @@
 </style>
 </head>
 <body>
+  <div class="aurora"><span class="ag1"></span><span class="ag2"></span><span class="ag3"></span></div>
+  <div class="watermark" aria-hidden="true">
+    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="wm" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ff7a6e"/><stop offset="1" stop-color="#c2160c"/></linearGradient>
+        <linearGradient id="wmHi" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ffc4bc"/><stop offset="1" stop-color="#ff5b4d"/></linearGradient>
+      </defs>
+      <!-- sharp crown body: crisp peaks, clean valleys -->
+      <path d="M5 35 L8.2 16.5 L17 23.5 L24 9 L31 23.5 L39.8 16.5 L43 35 Z"
+            fill="url(#wm)" stroke="url(#wmHi)" stroke-width="0.7" stroke-linejoin="round"/>
+      <!-- subtle inner facet lines for definition -->
+      <path d="M24 9 L24 35 M8.2 16.5 L17 35 M39.8 16.5 L31 35"
+            stroke="url(#wmHi)" stroke-width="0.4" opacity="0.5"/>
+      <!-- base band with crisp edges -->
+      <rect x="6" y="34.5" width="36" height="5" rx="1.2" fill="url(#wm)" stroke="url(#wmHi)" stroke-width="0.6"/>
+      <!-- crisp jewel points -->
+      <circle cx="8.2" cy="16.5" r="2" fill="#ffd0ca"/>
+      <circle cx="24" cy="9" r="2.4" fill="#ffe4df"/>
+      <circle cx="39.8" cy="16.5" r="2" fill="#ffd0ca"/>
+    </svg>
+  </div>
   <div class="topbar">
     <span class="glyph">
       <svg viewBox="0 0 24 24" width="17" height="17" fill="none" xmlns="http://www.w3.org/2000/svg">
