@@ -329,10 +329,14 @@ def fetch_x() -> list[dict]:
 # Toggle/extend via RSS_FEEDS below.
 # ----------------------------------------------------------------------------
 RSS_FEEDS = [
-    ("CNBC",          "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114"),
+    ("CNBC Markets",  "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114"),
+    ("CNBC Top",      "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100727362"),
     ("MarketWatch",   "https://feeds.content.dowjones.io/public/rss/mw_topstories"),
+    ("MW RealTime",   "https://feeds.content.dowjones.io/public/rss/mw_realtimeheadlines"),
     ("Yahoo Finance", "https://finance.yahoo.com/news/rssindex"),
     ("Investing.com", "https://www.investing.com/rss/news.rss"),
+    ("SeekingAlpha",  "https://seekingalpha.com/market_currents.xml"),
+    ("InvestingLive", "https://www.investinglive.com/feed"),
 ]
 
 def fetch_rss() -> list[dict]:
