@@ -150,6 +150,8 @@
   .fut .sym small{display:block;font-family:var(--mono);font-weight:400;font-size:8.5px;color:var(--ink-faint);letter-spacing:.1em;text-transform:uppercase;margin-top:2px;}
   .fut .px{font-family:var(--mono);font-size:13px;color:var(--ink-dim);}
   .fut .chg{font-family:var(--mono);font-size:12px;font-weight:600;}
+  .fut .chg.big{font-size:15px;font-weight:700;}
+  .fut .viaproxy{font-family:var(--mono);font-size:8px;color:var(--ink-faint);letter-spacing:.08em;text-transform:uppercase;opacity:.7;}
   .spk{display:block;}
   .up{color:var(--bull);}.down{color:var(--bear);}
 
@@ -428,15 +430,15 @@ QQQ"></textarea>
    { sym, name, px, chg(%), series[] (for the sparkline) }
    ============================================================================ */
 const SAMPLE_FUT = [
-  { sym:'MNQ', name:'Micro Nasdaq', px:'21,344.50', chg:+0.42, series:[3,4,3.5,5,4.6,6,5.4,7,6.6,8] },
-  { sym:'MES', name:'Micro S&P',    px:'5,982.25',  chg:+0.11, series:[5,5.2,4.8,5.4,5.1,5.6,5.3,5.7,5.5,5.8] },
-  { sym:'MYM', name:'Micro Dow',    px:'42,155',    chg:-0.06, series:[6,5.8,6.1,5.6,5.9,5.4,5.7,5.3,5.5,5.2] },
-  { sym:'M2K', name:'Micro Russell',px:'2,187.4',   chg:-0.22, series:[7,6.6,6.8,6.2,6.4,5.9,6.1,5.6,5.8,5.4] },
-  { sym:'CL',  name:'Crude Oil',    px:'74.20',     chg:-0.66, series:[8,7.6,7.8,7.2,7.4,6.9,7,6.5,6.7,6.3] },
-  { sym:'GC',  name:'Gold',         px:'2,438.8',   chg:+0.51, series:[4,4.3,4.1,4.6,4.4,4.9,4.7,5.1,5,5.3] },
-  { sym:'ZN',  name:'10Y T-Note',   px:'110.45',    chg:-0.12, series:[6,5.9,6,5.8,5.9,5.7,5.8,5.6,5.7,5.6] },
-  { sym:'6E',  name:'Euro FX',      px:'1.0842',    chg:+0.08, series:[5,5.1,5,5.2,5.1,5.3,5.2,5.3,5.25,5.35] },
-  { sym:'VX',  name:'VIX Futures',  px:'14.85',     chg:-1.74, series:[7,6.4,6.7,5.9,6.1,5.4,5.7,5,5.3,4.7] },
+  { sym:'MNQ', name:'Micro Nasdaq', proxy:'QQQ', chg:+0.42, series:[3,4,3.5,5,4.6,6,5.4,7,6.6,8] },
+  { sym:'MES', name:'Micro S&P',    proxy:'SPY', chg:+0.11, series:[5,5.2,4.8,5.4,5.1,5.6,5.3,5.7,5.5,5.8] },
+  { sym:'MYM', name:'Micro Dow',    proxy:'DIA', chg:-0.06, series:[6,5.8,6.1,5.6,5.9,5.4,5.7,5.3,5.5,5.2] },
+  { sym:'M2K', name:'Micro Russell',proxy:'IWM', chg:-0.22, series:[7,6.6,6.8,6.2,6.4,5.9,6.1,5.6,5.8,5.4] },
+  { sym:'CL',  name:'Crude Oil',    proxy:'USO', chg:-0.66, series:[8,7.6,7.8,7.2,7.4,6.9,7,6.5,6.7,6.3] },
+  { sym:'GC',  name:'Gold',         proxy:'GLD', chg:+0.51, series:[4,4.3,4.1,4.6,4.4,4.9,4.7,5.1,5,5.3] },
+  { sym:'ZN',  name:'10Y T-Note',   proxy:'IEF', chg:-0.12, series:[6,5.9,6,5.8,5.9,5.7,5.8,5.6,5.7,5.6] },
+  { sym:'6E',  name:'Euro FX',      proxy:'FXE', chg:+0.08, series:[5,5.1,5,5.2,5.1,5.3,5.2,5.3,5.25,5.35] },
+  { sym:'VX',  name:'VIX Futures',  proxy:'VIXY',chg:-1.74, series:[7,6.4,6.7,5.9,6.1,5.4,5.7,5,5.3,4.7] },
 ];
 
 /* ============================================================================
@@ -528,9 +530,9 @@ function renderRibbon(list){
     const up=f.chg>=0;
     return `<div class="fut">
       <div class="sym">${f.sym}<small>${f.name}</small></div>
-      <div class="px">${f.px}</div>
+      <div class="chg ${up?'up':'down'} big">${sign(f.chg)}${f.chg.toFixed(2)}%</div>
       ${spark(f.series,up)}
-      <div class="chg ${up?'up':'down'}">${sign(f.chg)}${f.chg.toFixed(2)}%</div>
+      <div class="viaproxy">via ${f.proxy}</div>
     </div>`;
   }).join('');
 }
@@ -708,11 +710,12 @@ async function loadLiveQuotes(){
     if(Object.keys(q).length === 0) return; // provider 'off' or no key: keep samples
     const open = data.meta && data.meta.market_open;
 
-    // 1) Futures Board — price via proxy, keep the futures label
+    // 1) Futures Board — show the proxy's % move (accurate for index direction).
+    //    We intentionally do NOT show the proxy's dollar price as a futures price:
+    //    MNQ (~21,000) and QQQ (~740) are different scales. The % is what transfers.
     SAMPLE_FUT.forEach(f => {
-      const px = q[FUT_PROXY[f.sym]];
-      if(px){ f.px = px.price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-              f.chg = px.chg_pct; }
+      const px = q[f.proxy];
+      if(px){ f.chg = px.chg_pct; }
     });
     renderRibbon(SAMPLE_FUT);
 
