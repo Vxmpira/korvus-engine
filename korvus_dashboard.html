@@ -730,12 +730,19 @@ async function loadLiveQuotes(){
     }));
     renderWatch(SAMPLE_WATCH);
 
-    // reflect market + tier state in the footer (no redundant 'last close' —
-    // the timestamp lives in #lastUpd next to it)
+    // reflect market + tier state in the footer.
+    // futures_session: 'rth' = stock hours (proxy prices live),
+    //                  'globex' = futures open but ETF proxies at last close,
+    //                  'closed' = futures closed (weekend / daily break).
+    const fs = (data.meta && data.meta.futures_session) || (open ? 'rth' : 'closed');
     let tag;
-    if(!open){ tag = '● MARKET CLOSED'; }
-    else if(USER_TIER === 'pro'){ tag = '● REAL-TIME'; }
-    else { tag = '● DELAYED 15 MIN'; }
+    if(fs === 'closed'){
+      tag = '● FUTURES CLOSED';
+    } else if(fs === 'globex'){
+      tag = '● GLOBEX · proxy at last close';
+    } else { // 'rth' — proxies trading live
+      tag = (USER_TIER === 'pro') ? '● REAL-TIME' : '● DELAYED 15 MIN';
+    }
     const rt = document.querySelector('footer .rt') || document.getElementById('rtTag');
     if(rt) rt.textContent = tag;
   }catch(e){ /* server/quotes offline: panels stay on sample numbers */ }

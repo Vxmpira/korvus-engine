@@ -41,7 +41,10 @@ _CACHE_SECONDS = 25
 
 
 def market_is_open() -> bool:
-    """Rough US equities RTH check in ET (Mon-Fri 9:30-16:00). Ignores holidays."""
+    """Stock RTH check in ET (Mon-Fri 9:30-16:00). Ignores holidays.
+    This reflects whether the ETF PROXIES (QQQ/SPY/DIA) are actively trading,
+    i.e. whether the price data is FRESH. See futures_session() for whether the
+    futures themselves (MNQ/MES on Globex) are tradable."""
     try:
         from zoneinfo import ZoneInfo
         now = dt.datetime.now(ZoneInfo("America/New_York"))
@@ -51,6 +54,40 @@ def market_is_open() -> bool:
         return False
     mins = now.hour * 60 + now.minute
     return (9 * 60 + 30) <= mins <= (16 * 60)
+
+
+def futures_session() -> str:
+    """CME index-futures (Globex) session state for MNQ/MES/etc., ET.
+    Globex runs Sun 6:00pm ET -> Fri 5:00pm ET, with a daily maintenance
+    halt 5:00pm-6:00pm ET (Mon-Thu). Returns one of:
+       "rth"     - stock regular hours: futures open AND proxy prices fresh
+       "globex"  - futures open, but ETF-proxy prices are at last close (stale)
+       "closed"  - futures closed (weekend gap / daily maintenance break)
+    Ignores holidays (good enough for a status label)."""
+    try:
+        from zoneinfo import ZoneInfo
+        now = dt.datetime.now(ZoneInfo("America/New_York"))
+    except Exception:
+        now = dt.datetime.now(dt.timezone(dt.timedelta(hours=-4)))
+    wd   = now.weekday()                 # Mon=0 .. Sun=6
+    mins = now.hour * 60 + now.minute
+
+    # Stock regular trading hours -> proxies are live
+    if wd < 5 and (9 * 60 + 30) <= mins <= (16 * 60):
+        return "rth"
+
+    # Daily maintenance break: 17:00-18:00 ET, Mon-Thu (and Fri close at 17:00)
+    # Weekend closed: Fri 17:00 -> Sun 18:00
+    if wd == 5:                          # Saturday: fully closed
+        return "closed"
+    if wd == 6:                          # Sunday: closed until 18:00 ET
+        return "globex" if mins >= 18 * 60 else "closed"
+    if wd == 4:                          # Friday: closes 17:00 ET
+        return "closed" if mins >= 17 * 60 else ("globex" if mins < (9*60+30) or mins > (16*60) else "rth")
+    # Mon-Thu: open except the 17:00-18:00 maintenance hour
+    if 17 * 60 <= mins < 18 * 60:
+        return "closed"
+    return "globex"
 
 
 def get_quotes(symbols: list[str], force_delayed: bool = False) -> dict:
@@ -79,7 +116,8 @@ def get_quotes(symbols: list[str], force_delayed: bool = False) -> dict:
         out = {}  # 'off' -> dashboard keeps its sample numbers
 
     out["_meta"] = {"provider": ("finnhub" if force_delayed else QUOTES_PROVIDER),
-                    "market_open": market_is_open()}
+                    "market_open": market_is_open(),
+                    "futures_session": futures_session()}
     _cache["data"][cache_key] = out
     _cache["at"] = now
     return out
