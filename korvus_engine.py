@@ -322,6 +322,57 @@ def fetch_x() -> list[dict]:
 
 
 # ----------------------------------------------------------------------------
+# SOURCE 4 — FREE RSS NEWS  (no API key needed)
+# Supplements Benzinga's free tier, which only serves a static recent window.
+# These public financial feeds publish frequently, so they fill the gaps and
+# keep the timeline advancing. Parsed with the stdlib (no extra dependency).
+# Toggle/extend via RSS_FEEDS below.
+# ----------------------------------------------------------------------------
+RSS_FEEDS = [
+    ("CNBC",          "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114"),
+    ("MarketWatch",   "https://feeds.content.dowjones.io/public/rss/mw_topstories"),
+    ("Yahoo Finance", "https://finance.yahoo.com/news/rssindex"),
+    ("Investing.com", "https://www.investing.com/rss/news.rss"),
+]
+
+def fetch_rss() -> list[dict]:
+    import xml.etree.ElementTree as ET
+    out = []
+    for name, url in RSS_FEEDS:
+        try:
+            r = requests.get(url, timeout=15, headers={"User-Agent": "korvus-engine/0.2"})
+            if r.status_code != 200:
+                print(f"  [rss] {name} returned {r.status_code} — skipping")
+                continue
+            root = ET.fromstring(r.content)
+            # RSS items live at channel/item; handle namespaces loosely
+            items = root.findall(".//item")
+            count = 0
+            for it in items[:25]:                       # cap per feed
+                title = (it.findtext("title") or "").strip()
+                if not title:
+                    continue
+                desc = (it.findtext("description") or "").strip()
+                desc = re.sub(r"<[^>]+>", " ", desc)    # strip any HTML
+                link = (it.findtext("link") or "").strip()
+                pub  = (it.findtext("pubDate") or "").strip()
+                out.append({
+                    "id": make_id("wire", title),       # same hash space → dedupes vs Benzinga dupes
+                    "source": "wire",
+                    "source_name": name,
+                    "url": link,
+                    "published_at": pub,
+                    "headline": title,
+                    "raw_text": desc[:1200],
+                })
+                count += 1
+            print(f"  [rss] {name} pulled {count} articles")
+        except Exception as e:
+            print(f"  [rss] {name} error: {e}")
+    return out
+
+
+# ----------------------------------------------------------------------------
 # THE BRAIN — Claude scores one item: summary + impact + direction + conf
 # ----------------------------------------------------------------------------
 SYSTEM_PROMPT = """You are the analyst engine for Korvus, a market-intelligence \
@@ -426,6 +477,7 @@ def run_once():
     # 1) gather from all sources
     pulled = []
     pulled += fetch_news()      # Benzinga Basic / premium / Alpha Vantage (per .env)
+    pulled += fetch_rss()       # free financial RSS feeds (no key) — fills the gaps
     pulled += fetch_reddit()
     pulled += fetch_x()
 
