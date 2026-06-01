@@ -35,6 +35,20 @@ QUOTES_PROVIDER  = os.getenv("QUOTES_PROVIDER", "finnhub").lower().strip()
 ALPHAVANTAGE_KEY = os.getenv("ALPHAVANTAGE_KEY", "")
 FINNHUB_KEY      = os.getenv("FINNHUB_KEY", "")
 
+# --- Tradovate (real CME futures; dormant until credentials are set) ---------
+# NOTE: Tradovate does NOT use a single paste-in API key. Auth is:
+#   POST auth/accessTokenRequest  with {name, password, appId, appVersion, cid, sec}
+#   -> returns a Bearer accessToken that EXPIRES (~80 min) and must be renewed.
+# Real-time quotes then stream over a WebSocket (md/subscribequote), and require
+# a PAID Tradovate market-data subscription on the account (live data is not free
+# just because the API works — see the gotcha in fetch notes below).
+TRADOVATE_ENV       = os.getenv("TRADOVATE_ENV", "demo").lower().strip()   # 'demo' | 'live'
+TRADOVATE_USERNAME  = os.getenv("TRADOVATE_USERNAME", "")
+TRADOVATE_PASSWORD  = os.getenv("TRADOVATE_PASSWORD", "")
+TRADOVATE_APP_ID    = os.getenv("TRADOVATE_APP_ID", "")     # "appId" from your Tradovate API app
+TRADOVATE_CID       = os.getenv("TRADOVATE_CID", "")        # API "cid"
+TRADOVATE_SECRET    = os.getenv("TRADOVATE_SECRET", "")     # API "sec" (personal secret key)
+
 # simple in-memory cache so we don't hammer the API (quotes refresh every ~30s)
 _cache = {"at": 0, "data": {}}
 _CACHE_SECONDS = 25
@@ -112,6 +126,8 @@ def get_quotes(symbols: list[str], force_delayed: bool = False) -> dict:
         out = _alphavantage_quotes(symbols)
     elif QUOTES_PROVIDER == "finnhub":
         out = _finnhub_quotes(symbols)
+    elif QUOTES_PROVIDER == "tradovate":
+        out = _tradovate_quotes(symbols)
     else:
         out = {}  # 'off' -> dashboard keeps its sample numbers
 
@@ -168,6 +184,115 @@ def _finnhub_quotes(symbols: list[str]) -> dict:
         except Exception as e:
             print(f"  [quotes] Finnhub error on {sym}: {e}")
     return out
+
+
+# --- Tradovate (real CME futures) -------------------------------------------
+# Activation: set in .env ->
+#   QUOTES_PROVIDER=tradovate
+#   TRADOVATE_ENV=live            (use 'demo' to test against the demo system)
+#   TRADOVATE_USERNAME=...        your Tradovate login
+#   TRADOVATE_PASSWORD=...        your Tradovate password
+#   TRADOVATE_APP_ID=...          from your Tradovate API application
+#   TRADOVATE_CID=...             API "cid"
+#   TRADOVATE_SECRET=...          API "sec" (personal secret key)
+#
+# IMPORTANT — two things beyond credentials:
+#   1) LIVE real-time CME data requires a PAID market-data subscription on your
+#      Tradovate account. The API can authenticate and the WebSocket can connect,
+#      yet quotes come back EMPTY if the data subscription isn't active. That is
+#      a Tradovate/CME entitlement, not a bug in this code.
+#   2) REDISTRIBUTION: showing YOUR live CME quotes to other members is exchange
+#      "redistribution" and needs a separate CME license. For members, keep this
+#      as YOUR personal panel only; do not re-serve live ticks to other users
+#      until that licensing is sorted with an attorney. (See module header.)
+# ----------------------------------------------------------------------------
+_TV_BASE = {
+    "demo": "https://demo.tradovateapi.com/v1",
+    "live": "https://live.tradovateapi.com/v1",
+}
+_tv_token = {"token": None, "expires": 0}
+
+# MNQ/MES etc. -> Tradovate front-month contract symbols look like "MNQM6".
+# The active month rolls quarterly (Mar=H, Jun=M, Sep=U, Dec=Z), so in
+# production you resolve the front month via contract/find or contract/list
+# rather than hardcoding. Left as a TODO so this stays a scaffold, not a
+# half-working hardcode that silently goes stale at the next contract roll.
+TRADOVATE_FUT = {"MNQ": "MNQ", "MES": "MES", "MYM": "MYM", "M2K": "M2K",
+                 "CL": "CL", "GC": "GC", "ZN": "ZN", "6E": "6E"}
+
+
+def _tradovate_token() -> str:
+    """Acquire/cache a Tradovate Bearer access token via REST.
+    Tokens expire (~80 min); we refresh a few minutes early. Returns '' if not
+    configured or on failure (so the dashboard falls back to samples)."""
+    import time
+    if not (TRADOVATE_USERNAME and TRADOVATE_PASSWORD and TRADOVATE_SECRET):
+        print("  [quotes] Tradovate not configured — set TRADOVATE_* in .env")
+        return ""
+    now = time.time()
+    if _tv_token["token"] and now < _tv_token["expires"]:
+        return _tv_token["token"]
+    base = _TV_BASE.get(TRADOVATE_ENV, _TV_BASE["demo"])
+    try:
+        r = requests.post(f"{base}/auth/accessTokenRequest", json={
+            "name": TRADOVATE_USERNAME,
+            "password": TRADOVATE_PASSWORD,
+            "appId": TRADOVATE_APP_ID,
+            "appVersion": "1.0",
+            "cid": TRADOVATE_CID,
+            "sec": TRADOVATE_SECRET,
+        }, timeout=20)
+        data = r.json()
+        # Tradovate may return a p-ticket time penalty instead of a token; if so,
+        # it must be retried after p-time. Surface it rather than hammering.
+        if data.get("p-ticket"):
+            print(f"  [quotes] Tradovate time-penalty (p-ticket); retry after {data.get('p-time')}s")
+            return ""
+        tok = data.get("accessToken")
+        if not tok:
+            print(f"  [quotes] Tradovate auth failed: {data.get('errorText') or data}")
+            return ""
+        _tv_token["token"] = tok
+        _tv_token["expires"] = now + 75 * 60      # refresh ~5 min before expiry
+        return tok
+    except Exception as e:
+        print(f"  [quotes] Tradovate auth error: {e}")
+        return ""
+
+
+def _tradovate_quotes(symbols: list[str]) -> dict:
+    """Live CME futures via the Tradovate WebSocket client (korvus_tradovate.py).
+
+    On first call this starts a background WebSocket that authorizes and
+    subscribes to the futures roots, then maintains a latest-quote cache. Each
+    call here just reads that cache (non-blocking) and returns {root: {...}}.
+
+    Returns {} when unconfigured, when websocket-client isn't installed, or
+    before the first ticks arrive — in all cases the dashboard keeps its
+    previous numbers, so nothing breaks.
+
+    Caveats (see korvus_tradovate.py header): needs a PAID Tradovate market-data
+    subscription for live ticks, and re-serving these to members is exchange
+    redistribution requiring a separate CME license.
+    """
+    try:
+        from korvus_tradovate import get_client
+    except Exception as e:
+        print(f"  [quotes] Tradovate client unavailable: {e}")
+        return {}
+
+    # which of the requested symbols are futures roots we know how to stream
+    roots = [s for s in symbols if s in TRADOVATE_FUT]
+    if not roots:
+        return {}
+
+    client = get_client()
+    client.start(roots)          # idempotent: only starts the socket once
+    quotes = client.get(roots)   # latest cached values (may be empty until ticks arrive)
+    if not quotes:
+        print("  [quotes] Tradovate: connected/starting — no ticks cached yet "
+              "(check data subscription if this persists during RTH)")
+    return quotes
 
 
 if __name__ == "__main__":
