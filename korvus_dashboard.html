@@ -339,7 +339,8 @@
   .ndtitle{font-family:var(--disp);font-weight:700;font-size:19px;line-height:1.3;color:var(--ink);margin:0 0 12px;}
   .ndbadges{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}
   .ndlabel{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin:14px 0 5px;}
-  .ndsummary{font-size:13.5px;line-height:1.55;color:var(--ink);margin:0;}
+  .ndsummary{font-size:12.5px;line-height:1.5;color:var(--ink-dim);margin:0 0 4px;font-style:italic;}
+  .nddetail{font-size:13.5px;line-height:1.6;color:var(--ink);margin:0;}
   .ndorig{font-size:12.5px;line-height:1.55;color:var(--ink-dim);margin:0;padding-left:11px;border-left:2px solid var(--line);}
   .ndinsts{display:flex;gap:6px;flex-wrap:wrap;}
   .ndim{font-size:11.5px;color:var(--ink-faint);font-style:italic;}
@@ -607,6 +608,9 @@ function openNewsDetail(idx){
     : '<span class="ndim">no source link available</span>';
   const origBlurb = (n.raw && n.raw.trim() && n.raw.trim() !== (n.summary||'').trim())
     ? `<div class="ndlabel">Original report</div><p class="ndorig">${n.raw}</p>` : '';
+  const detail = (n.impact_desc && n.impact_desc.trim()) ? n.impact_desc : (n.summary || '—');
+  const quickTake = (n.impact_desc && n.impact_desc.trim() && n.summary && n.summary.trim())
+    ? `<p class="ndsummary">${n.summary}</p>` : '';
   document.getElementById('newsDetailBody').innerHTML = `
     <div class="ndhead">
       <span class="badge ${n.source}">${srcLabel(n.source)}</span>
@@ -619,8 +623,9 @@ function openNewsDetail(idx){
       <span class="dir ${cls}">${arrow} ${label}</span>
       <span class="conf">conf ${n.conf}%</span>
     </div>
-    <div class="ndlabel">Korvus read</div>
-    <p class="ndsummary">${n.summary || '—'}</p>
+    ${quickTake}
+    <div class="ndlabel">Korvus analysis</div>
+    <p class="nddetail">${detail}</p>
     ${origBlurb}
     <div class="ndlabel">Instruments in focus</div>
     <div class="ndinsts">${insts}</div>

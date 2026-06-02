@@ -105,6 +105,7 @@ def api_news():
             "source_name": r["source_name"] if "source_name" in r.keys() else "",
             "headline": r["headline"],
             "summary": r["summary"] or "",
+            "impact_desc": (r["impact_desc"] if "impact_desc" in r.keys() else "") or "",
             "raw": r["raw_text"] or "",      # original blurb, for the detail view
             "impact": r["impact"] or "low",
             "dir": r["direction"] or "neut",

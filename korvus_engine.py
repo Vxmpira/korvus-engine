@@ -60,33 +60,64 @@ CLAUDE_MODEL = "claude-haiku-4-5"
 POLL_MINUTES = int(os.getenv("POLL_MINUTES", "5"))
 
 # The instruments Korvus tracks — Claude maps each news item onto THESE.
-# Expanded to cover every market shown on the dashboard so stories get tagged
-# with the RIGHT instrument (a crude-oil headline -> CL, gold -> GC, bonds ->
-# ZN, EUR -> 6E), not just the index futures. Grouped for readability.
+# Comprehensive cross-market universe so ANY story gets tagged with the right
+# market(s) it affects, not just index futures. Grouped for readability.
 WATCHED_INSTRUMENTS = [
-    # US index futures (+ their cash/ETF equivalents)
-    "MNQ", "MES", "MYM", "M2K", "NQ", "ES", "YM", "RTY", "QQQ", "SPY", "DIA", "IWM",
-    # Commodities
-    "CL",   # crude oil
+    # --- US equity index futures (+ cash index / ETF equivalents) ---
+    "MNQ", "NQ", "QQQ",        # Nasdaq-100
+    "MES", "ES", "SPY",        # S&P 500
+    "MYM", "YM", "DIA",        # Dow
+    "M2K", "RTY", "IWM",       # Russell 2000
+    "NKD",                     # Nikkei 225 future
+    "VX", "VIX",               # volatility
+
+    # --- Energy ---
+    "CL",   # WTI crude oil
+    "BZ",   # Brent crude
+    "NG",   # natural gas
+    "RB",   # gasoline
+    "HO",   # heating oil
+
+    # --- Metals ---
     "GC",   # gold
     "SI",   # silver
-    "NG",   # natural gas
+    "PL",   # platinum
+    "PA",   # palladium
     "HG",   # copper
-    # Rates / bonds
+
+    # --- Agriculture ---
+    "ZC",   # corn
+    "ZW",   # wheat
+    "ZS",   # soybeans
+    "KC",   # coffee
+    "SB",   # sugar
+    "CT",   # cotton
+    "LE",   # live cattle
+
+    # --- Rates / bonds ---
+    "ZT",   # 2Y
+    "ZF",   # 5Y
     "ZN",   # 10Y T-note
     "ZB",   # 30Y T-bond
-    "ZF",   # 5Y
-    # FX futures
+    "GE",   # eurodollar / SOFR (short rates)
+
+    # --- FX futures / currency ---
+    "DXY",  # US dollar index
     "6E",   # euro
     "6J",   # yen
-    "6B",   # pound
-    "DXY",  # dollar index
-    # Volatility
-    "VX",   # VIX futures
-    # Megacap equities that move the indices
+    "6B",   # british pound
+    "6C",   # canadian dollar
+    "6A",   # aussie dollar
+    "6S",   # swiss franc
+    "6M",   # mexican peso
+
+    # --- Crypto ---
+    "BTC",  # bitcoin
+    "ETH",  # ethereum
+
+    # --- Megacap / index-moving equities ---
     "NVDA", "AAPL", "MSFT", "AMZN", "META", "GOOGL", "TSLA",
-    # Crypto (only if relevant)
-    "BTC", "ETH",
+    "AVGO", "AMD", "NFLX", "JPM", "XOM",
 ]
 
 # Alpha Vantage news "topics"/tickers to track. Index futures move on big tech,
@@ -121,6 +152,7 @@ def db_init():
             headline     TEXT NOT NULL,
             raw_text     TEXT,               -- original blurb we fed to Claude
             summary      TEXT,               -- Claude's plain-English summary
+            impact_desc  TEXT,               -- Claude's richer analysis (detail view)
             impact       TEXT,               -- 'high' | 'med' | 'low'
             direction    TEXT,               -- 'bull' | 'bear' | 'neut'
             instruments  TEXT,               -- JSON list e.g. ["MNQ","MES"]
@@ -128,6 +160,11 @@ def db_init():
             processed    INTEGER DEFAULT 0   -- 1 once Claude has scored it
         )
     """)
+    # Migration: add impact_desc to pre-existing DBs that don't have it yet.
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
+    if "impact_desc" not in cols:
+        conn.execute("ALTER TABLE items ADD COLUMN impact_desc TEXT")
+        print("  [db] migrated: added impact_desc column")
     conn.commit()
     conn.close()
 
@@ -412,7 +449,8 @@ impact on US index futures and return STRICT JSON only — no prose, no markdown
 
 Return exactly this shape:
 {
-  "summary": "<=2 sentences, plain English, what it means for an index trader>",
+  "summary": "<=2 sentences, plain English, the quick take shown on the feed card>",
+  "impact_desc": "<3-5 sentences: a richer analysis for the detail view. Explain WHY this matters, the transmission mechanism (HOW it could move the tagged instruments), what a trader should WATCH for next, and any important caveat or condition. Be concrete and specific to THIS story.>",
   "impact": "high" | "med" | "low",
   "direction": "bull" | "bear" | "neut",
   "instruments": ["MNQ", ...],   // subset of the watched list, [] if none
@@ -423,10 +461,14 @@ Guidance:
 - "high" impact = likely to move markets now (Fed, CPI, megacap shock, geopolitics, OPEC, major data).
 - Social/rumor with no confirmation = usually "low" and lower confidence.
 - Be calibrated and sober. Do NOT give trading advice or tell the user to buy/sell.
+  Explain mechanisms and what to watch — never "buy"/"sell"/"go long".
+- summary = the fast headline take. impact_desc = the deeper "why it matters /
+  how it transmits / what to watch" analysis. Both grounded in THIS story only.
 - Tag the instruments MOST DIRECTLY affected by THIS story, across all markets —
   not just index futures. A crude-oil story -> CL; gold -> GC; a Treasury/yield
   story -> ZN/ZB; a EUR/ECB story -> 6E; a single megacap -> that ticker (+ NQ/QQQ
-  if it's big enough to move the index). Use [] if nothing on the list fits.
+  if it's big enough to move the index). Tag EVERY instrument genuinely affected,
+  not just one. Use [] if nothing on the list fits.
 - Only use instruments from this watched list: {INSTRUMENTS}.
 """
 
@@ -458,6 +500,8 @@ def score_with_claude(client, item: dict) -> Optional[dict]:
         data["confidence"] = max(0, min(100, int(data.get("confidence", 0))))
         if not isinstance(data.get("instruments"), list):
             data["instruments"] = []
+        data["summary"] = (data.get("summary") or "").strip()
+        data["impact_desc"] = (data.get("impact_desc") or "").strip()
         return data
     except Exception as e:
         print(f"    [claude] error: {e}")
@@ -480,10 +524,11 @@ def process_unscored(conn, client, limit: int = 40):
             continue
         conn.execute("""
             UPDATE items
-            SET summary=?, impact=?, direction=?, instruments=?, confidence=?, processed=1
+            SET summary=?, impact_desc=?, impact=?, direction=?, instruments=?, confidence=?, processed=1
             WHERE id=?
         """, (
             result["summary"],
+            result.get("impact_desc", ""),
             result["impact"],
             result["direction"],
             json.dumps(result["instruments"]),
