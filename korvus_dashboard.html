@@ -323,6 +323,30 @@
   .modal button.primary{background:var(--gold);border-color:var(--gold);color:#0a0d12;font-weight:600;}
   .modal button.primary:hover{background:var(--gold-deep);}
   .modal .hint{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);margin-top:8px;}
+
+  /* news cards are clickable -> detail modal */
+  .item{cursor:pointer;transition:background .12s,border-color .12s;}
+  .item:hover{background:rgba(150,170,200,.05);}
+  .srcname{font-family:var(--mono);font-size:9.5px;color:var(--ink-faint);margin-left:7px;letter-spacing:.04em;text-transform:uppercase;}
+
+  /* news detail modal */
+  .modal.newsdetail{width:min(620px,94vw);position:relative;text-align:left;max-height:88vh;overflow-y:auto;}
+  .ndclose{position:absolute;top:12px;right:12px;background:transparent;border:1px solid var(--line);color:var(--ink-dim);
+    width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:13px;line-height:1;padding:0;}
+  .ndclose:hover{border-color:var(--gold-line);color:var(--ink);}
+  .ndhead{display:flex;align-items:center;gap:4px;margin:2px 36px 12px 0;flex-wrap:wrap;}
+  .ndtime{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);margin-left:auto;}
+  .ndtitle{font-family:var(--disp);font-weight:700;font-size:19px;line-height:1.3;color:var(--ink);margin:0 0 12px;}
+  .ndbadges{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}
+  .ndlabel{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin:14px 0 5px;}
+  .ndsummary{font-size:13.5px;line-height:1.55;color:var(--ink);margin:0;}
+  .ndorig{font-size:12.5px;line-height:1.55;color:var(--ink-dim);margin:0;padding-left:11px;border-left:2px solid var(--line);}
+  .ndinsts{display:flex;gap:6px;flex-wrap:wrap;}
+  .ndim{font-size:11.5px;color:var(--ink-faint);font-style:italic;}
+  .ndfoot{margin-top:20px;padding-top:14px;border-top:1px solid var(--line);}
+  .readfull{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+    padding:9px 16px;border-radius:8px;background:var(--gold);color:#0a0d12;font-weight:600;text-decoration:none;}
+  .readfull:hover{background:var(--gold-deep);}
 </style>
 </head>
 <body>
@@ -419,6 +443,13 @@ QQQ"></textarea>
       <button id="importReset">Reset to default</button>
       <button class="primary" id="importSave">Save watchlist</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="newsDetailModal">
+  <div class="modal newsdetail">
+    <button class="ndclose" onclick="closeNewsDetail()" aria-label="Close">✕</button>
+    <div id="newsDetailBody"></div>
   </div>
 </div>
 
@@ -540,17 +571,19 @@ function renderRibbon(list){
 /* ----------------------------- render: news ----------------------------- */
 const dirMeta={bull:['▲','bull','Bullish'],bear:['▼','bear','Bearish'],neut:['◆','neut','Neutral']};
 const srcLabel=s=>({x:'X / SOCIAL',reddit:'REDDIT',wire:'NEWSWIRE'}[s]||s);
+let _newsCache = [];
 function renderNews(list){
-  document.getElementById('feed').innerHTML = list.map(n=>{
+  _newsCache = list;
+  document.getElementById('feed').innerHTML = list.map((n,idx)=>{
     const [arrow,cls,label]=dirMeta[n.dir];
     const insts=n.inst.map(i=>`<span class="inst">${i}</span>`).join('');
-    return `<article class="item">
+    return `<article class="item" data-idx="${idx}" onclick="openNewsDetail(${idx})" title="Click for detail">
       <div class="rail">
         <div class="railtop"><span class="time">${n.time}</span><span class="impact ${n.impact}">${n.impact}</span></div>
         <div class="accent ${n.impact}"></div>
       </div>
       <div class="body">
-        <div class="src"><span class="badge ${n.source}">${srcLabel(n.source)}</span></div>
+        <div class="src"><span class="badge ${n.source}">${srcLabel(n.source)}</span>${n.source_name?`<span class="srcname">${n.source_name}</span>`:''}</div>
         <p class="headline">${n.headline}</p>
         <p class="summary">${n.summary}</p>
         <div class="metarow">
@@ -562,6 +595,45 @@ function renderNews(list){
   }).join('');
   document.getElementById('feedMeta').textContent=list.length+' items';
 }
+
+/* ----- news detail modal (click-in) ----- */
+function openNewsDetail(idx){
+  const n = _newsCache[idx];
+  if(!n) return;
+  const [arrow,cls,label]=dirMeta[n.dir];
+  const insts = n.inst.length ? n.inst.map(i=>`<span class="inst">${i}</span>`).join('') : '<span class="ndim">none flagged</span>';
+  const linkBtn = n.url
+    ? `<a class="readfull" href="${n.url}" target="_blank" rel="noopener noreferrer">Read full article ↗</a>`
+    : '<span class="ndim">no source link available</span>';
+  const origBlurb = (n.raw && n.raw.trim() && n.raw.trim() !== (n.summary||'').trim())
+    ? `<div class="ndlabel">Original report</div><p class="ndorig">${n.raw}</p>` : '';
+  document.getElementById('newsDetailBody').innerHTML = `
+    <div class="ndhead">
+      <span class="badge ${n.source}">${srcLabel(n.source)}</span>
+      ${n.source_name?`<span class="srcname">${n.source_name}</span>`:''}
+      <span class="ndtime">${n.time} ET</span>
+    </div>
+    <h2 class="ndtitle">${n.headline}</h2>
+    <div class="ndbadges">
+      <span class="impact ${n.impact}">${n.impact} impact</span>
+      <span class="dir ${cls}">${arrow} ${label}</span>
+      <span class="conf">conf ${n.conf}%</span>
+    </div>
+    <div class="ndlabel">Korvus read</div>
+    <p class="ndsummary">${n.summary || '—'}</p>
+    ${origBlurb}
+    <div class="ndlabel">Instruments in focus</div>
+    <div class="ndinsts">${insts}</div>
+    <div class="ndfoot">${linkBtn}</div>
+  `;
+  document.getElementById('newsDetailModal').classList.add('show');
+}
+function closeNewsDetail(){ document.getElementById('newsDetailModal').classList.remove('show'); }
+// close detail modal when clicking the dark backdrop (not the card itself)
+document.addEventListener('click', function(e){
+  const m = document.getElementById('newsDetailModal');
+  if(m && e.target === m) closeNewsDetail();
+});
 
 /* ----------------------------- render: SMT ----------------------------- */
 function renderSMT(d){

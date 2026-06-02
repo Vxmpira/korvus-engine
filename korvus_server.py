@@ -102,8 +102,10 @@ def api_news():
         items.append({
             "time": to_et(r["created_at"]),
             "source": r["source"],          # 'wire' | 'reddit' | 'x'
+            "source_name": r["source_name"] if "source_name" in r.keys() else "",
             "headline": r["headline"],
             "summary": r["summary"] or "",
+            "raw": r["raw_text"] or "",      # original blurb, for the detail view
             "impact": r["impact"] or "low",
             "dir": r["direction"] or "neut",
             "inst": json.loads(r["instruments"] or "[]"),

@@ -59,9 +59,35 @@ CLAUDE_MODEL = "claude-haiku-4-5"
 # How often the --loop mode runs (minutes)
 POLL_MINUTES = int(os.getenv("POLL_MINUTES", "5"))
 
-# The instruments you care about — Claude is told to map news onto THESE.
-# Edit this list freely; it shapes the "instruments" tags in the feed.
-WATCHED_INSTRUMENTS = ["MNQ", "MES", "MYM", "M2K", "NQ", "ES", "QQQ", "SPY", "TAN"]
+# The instruments Korvus tracks — Claude maps each news item onto THESE.
+# Expanded to cover every market shown on the dashboard so stories get tagged
+# with the RIGHT instrument (a crude-oil headline -> CL, gold -> GC, bonds ->
+# ZN, EUR -> 6E), not just the index futures. Grouped for readability.
+WATCHED_INSTRUMENTS = [
+    # US index futures (+ their cash/ETF equivalents)
+    "MNQ", "MES", "MYM", "M2K", "NQ", "ES", "YM", "RTY", "QQQ", "SPY", "DIA", "IWM",
+    # Commodities
+    "CL",   # crude oil
+    "GC",   # gold
+    "SI",   # silver
+    "NG",   # natural gas
+    "HG",   # copper
+    # Rates / bonds
+    "ZN",   # 10Y T-note
+    "ZB",   # 30Y T-bond
+    "ZF",   # 5Y
+    # FX futures
+    "6E",   # euro
+    "6J",   # yen
+    "6B",   # pound
+    "DXY",  # dollar index
+    # Volatility
+    "VX",   # VIX futures
+    # Megacap equities that move the indices
+    "NVDA", "AAPL", "MSFT", "AMZN", "META", "GOOGL", "TSLA",
+    # Crypto (only if relevant)
+    "BTC", "ETH",
+]
 
 # Alpha Vantage news "topics"/tickers to track. Index futures move on big tech,
 # the broad market, and macro — so we pull those tickers' news.
@@ -394,9 +420,13 @@ Return exactly this shape:
 }
 
 Guidance:
-- "high" impact = likely to move index futures now (Fed, CPI, megacap shock, geopolitics).
+- "high" impact = likely to move markets now (Fed, CPI, megacap shock, geopolitics, OPEC, major data).
 - Social/rumor with no confirmation = usually "low" and lower confidence.
 - Be calibrated and sober. Do NOT give trading advice or tell the user to buy/sell.
+- Tag the instruments MOST DIRECTLY affected by THIS story, across all markets —
+  not just index futures. A crude-oil story -> CL; gold -> GC; a Treasury/yield
+  story -> ZN/ZB; a EUR/ECB story -> 6E; a single megacap -> that ticker (+ NQ/QQQ
+  if it's big enough to move the index). Use [] if nothing on the list fits.
 - Only use instruments from this watched list: {INSTRUMENTS}.
 """
 
