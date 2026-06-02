@@ -69,23 +69,54 @@ _REST = {"demo": "https://demo.tradovateapi.com/v1",
 _WSMD = {"demo": "wss://md-demo.tradovateapi.com/v1/websocket",
          "live": "wss://md.tradovateapi.com/v1/websocket"}
 
-# Quarterly contract month codes (front-month resolution).
+# Quarterly contract month codes (used only as a last-resort fallback).
 _MONTH_CODE = {3: "H", 6: "M", 9: "U", 12: "Z"}
 
+_REST_DATA = {  # contract lookup lives on the data REST host
+    "demo": "https://demo.tradovateapi.com/v1",
+    "live": "https://live.tradovateapi.com/v1",
+}
 
-def _front_month_symbol(root: str) -> str:
-    """Best-effort front-month contract symbol, e.g. 'MNQ' -> 'MNQM6'.
-    Picks the next quarterly expiry (Mar/Jun/Sep/Dec) and a 1-digit year.
-    NOTE: this is a heuristic. The robust way is GET contract/find?name=... via
-    REST and use the returned active contract; left simple here on purpose.
-    Rolls are not handled precisely near expiry — refine if you rely on it."""
+
+def _heuristic_front_month(root: str) -> str:
+    """Last-resort guess if the live lookup fails. e.g. 'MNQ' -> 'MNQU6'."""
     now = dt.datetime.now(dt.timezone.utc)
     y, m = now.year, now.month
     q_months = [3, 6, 9, 12]
-    nxt = next((q for q in q_months if q >= m), None)
+    # bias to NEXT quarter when within ~2 weeks of a roll month
+    nxt = next((q for q in q_months if q > m), None)
     if nxt is None:
         nxt, y = 3, y + 1
     return f"{root}{_MONTH_CODE[nxt]}{y % 10}"
+
+
+def resolve_front_contract(root: str, token: str, env: str) -> str:
+    """Ask Tradovate for the ACTIVE front-month contract name for a root
+    (e.g. 'MNQ' -> 'MNQU6'), instead of guessing. Uses contract/suggest, which
+    returns currently-tradeable contracts. Falls back to the heuristic on any
+    failure so we always return *something*."""
+    base = _REST_DATA.get(env, _REST_DATA["demo"])
+    hdr = {"Authorization": f"Bearer {token}"}
+    try:
+        # contract/suggest returns matching tradeable contracts, soonest first
+        r = requests.get(f"{base}/contract/suggest",
+                         params={"t": root, "l": 10}, headers=hdr, timeout=15)
+        items = r.json()
+        # keep only names that start with the root + a month code (front-month
+        # style), pick the soonest-expiring tradeable one
+        names = [it.get("name", "") for it in items if isinstance(it, dict)]
+        cands = [n for n in names if n.startswith(root) and len(n) >= len(root) + 2]
+        if cands:
+            # contract/suggest is ordered with the active contract first
+            chosen = cands[0]
+            print(f"  [tv] resolved {root} -> {chosen} (via contract/suggest)")
+            return chosen
+        print(f"  [tv] contract/suggest returned no match for {root}; raw={names[:5]}")
+    except Exception as e:
+        print(f"  [tv] contract lookup error for {root}: {e}")
+    fallback = _heuristic_front_month(root)
+    print(f"  [tv] falling back to heuristic for {root} -> {fallback}")
+    return fallback
 
 
 class TradovateMD:
@@ -262,8 +293,15 @@ class TradovateMD:
         if not (TRADOVATE_USERNAME and TRADOVATE_PASSWORD and TRADOVATE_SECRET):
             print("  [tv] not configured — set TRADOVATE_* in .env")
             return
-        # map roots -> front-month contracts
-        self._root_to_contract = {r: _front_month_symbol(r) for r in roots}
+        # Resolve real, currently-active contract names via Tradovate (needs a
+        # token). Falls back to a heuristic per-root if the lookup fails.
+        token = self._get_token()
+        if not token:
+            print("  [tv] could not get token to resolve contracts")
+            return
+        self._root_to_contract = {
+            r: resolve_front_contract(r, token, TRADOVATE_ENV) for r in roots
+        }
         self._want = set(self._root_to_contract.values())
         if self._running:
             return
