@@ -176,25 +176,40 @@ class TradovateMD:
     def _handle_data(self, ws, msg):
         # Auth/response envelopes carry s (status) + i (req id); quote pushes
         # arrive as {"e":"md","d":{"quotes":[...]}}.
+        if os.getenv("TV_DEBUG"):
+            print(f"  [tv:debug] frame: {json.dumps(msg)[:400]}")
         if msg.get("s") == 200 and msg.get("i") == 0:
             # authorize succeeded -> (re)subscribe to everything we want
             self._after_auth(ws)
             return
-        if msg.get("s") and msg.get("s") != 200:
-            print(f"  [tv] error frame: {msg.get('d')}")
+        # response to a subscribe request (has our req id, not 0)
+        if msg.get("s") and msg.get("i"):
+            if msg.get("s") != 200:
+                print(f"  [tv] subscribe rejected (req {msg.get('i')}): {msg.get('d')}")
+            else:
+                # success envelope often carries the initial quote snapshot in d
+                d = msg.get("d")
+                if os.getenv("TV_DEBUG"):
+                    print(f"  [tv:debug] subscribe OK (req {msg.get('i')}) d={json.dumps(d)[:400]}")
+                # some responses include the first quote directly
+                if isinstance(d, dict) and ("entries" in d or "quotes" in d):
+                    quotes = d.get("quotes", [d]) if "entries" not in d else [d]
+                    for q in quotes:
+                        self._ingest_quote(q)
             return
         if msg.get("e") == "md":
             for q in msg.get("d", {}).get("quotes", []):
                 self._ingest_quote(q)
 
     def _after_auth(self, ws):
-        print("  [tv] authorized; subscribing to quotes")
+        print(f"  [tv] authorized; subscribing to: {sorted(self._want)}")
         for contract in list(self._want):
             self._subscribe(contract)
 
     def _subscribe(self, contract: str):
         if contract in self._subscribed:
             return
+        print(f"  [tv] subscribing to contract symbol: {contract!r}")
         # md/subscribequote body is a JSON object: {"symbol":"MNQM6"}
         self._send("md/subscribequote", json.dumps({"symbol": contract}))
         self._subscribed.add(contract)
