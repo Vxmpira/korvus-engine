@@ -41,6 +41,15 @@ from typing import Optional
 
 import requests
 
+# Load .env so the standalone smoke test (and any direct import) picks up the
+# TRADOVATE_* credentials. Without this, os.getenv returns empty when run
+# outside the main app and the client reports "not configured".
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
+
 try:
     import websocket  # websocket-client
 except Exception:
