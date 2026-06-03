@@ -69,11 +69,7 @@ def init_auth_db():
     for col, ddl in (("stripe_customer_id", "TEXT"),
                      ("stripe_subscription_id", "TEXT"),
                      ("subscription_status", "TEXT"),
-                     ("current_period_end", "TEXT"),
-                     ("display_name", "TEXT"),
-                     ("company", "TEXT"),
-                     ("contact_email", "TEXT"),
-                     ("phone", "TEXT")):
+                     ("current_period_end", "TEXT")):
         if col not in existing:
             conn.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
     conn.commit()
@@ -242,22 +238,6 @@ def change_password(user_id, current_pw, new_pw):
                  (generate_password_hash(new_pw), user_id))
     conn.commit(); conn.close()
     return True, "Password changed."
-
-
-def update_profile(user_id, display_name=None, company=None, contact_email=None, phone=None):
-    """Update editable company / contact fields. Only provided fields change."""
-    fields, vals = [], []
-    for col, val in (("display_name", display_name), ("company", company),
-                     ("contact_email", contact_email), ("phone", phone)):
-        if val is not None:
-            fields.append(f"{col} = ?"); vals.append((val or "").strip())
-    if not fields:
-        return True, "Nothing to update."
-    vals.append(user_id)
-    conn = get_db()
-    conn.execute(f"UPDATE users SET {', '.join(fields)} WHERE id = ?", vals)
-    conn.commit(); conn.close()
-    return True, "Profile saved."
 
 
 # ----------------------------------------------------------------------------

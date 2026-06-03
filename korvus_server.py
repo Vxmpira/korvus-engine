@@ -254,10 +254,6 @@ def api_me():
                         "verified": bool(u.get("email_verified")),
                         "subscription_status": u.get("subscription_status"),
                         "current_period_end": u.get("current_period_end"),
-                        "display_name": u.get("display_name") or "",
-                        "company": u.get("company") or "",
-                        "contact_email": u.get("contact_email") or "",
-                        "phone": u.get("phone") or "",
                         "billing_enabled": billing.billing_enabled(),
                         "price_display": billing.price_display(),
                         "yearly_enabled": billing.yearly_enabled(),
@@ -310,17 +306,6 @@ def account_username():
 def account_password():
     data = request.get_json(silent=True) or {}
     ok, msg = auth.change_password(current_user.id, data.get("current"), data.get("new"))
-    return (jsonify({"ok": ok, "message": msg}), 200 if ok else 400)
-
-
-@app.route("/api/account/profile", methods=["POST"])
-@login_required
-def account_profile():
-    data = request.get_json(silent=True) or {}
-    ok, msg = auth.update_profile(
-        current_user.id,
-        display_name=data.get("display_name"), company=data.get("company"),
-        contact_email=data.get("contact_email"), phone=data.get("phone"))
     return (jsonify({"ok": ok, "message": msg}), 200 if ok else 400)
 
 
