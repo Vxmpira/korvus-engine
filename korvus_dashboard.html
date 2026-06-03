@@ -420,6 +420,13 @@
 
     /* footer always flows at the bottom of the document */
     footer{position:static;}
+
+    /* SPEED: tabs swap by showing/hiding already-loaded content. Kill the
+       entrance animations that otherwise REPLAY on every switch (the 0.7s
+       panel rise + per-card slide-in), which is what made tabs feel slow.
+       Panels appear instantly; the ambient glow is kept but not the reveal. */
+    .panel{animation:panelGlow 4.5s ease-in-out infinite !important;}
+    .item{animation:none !important;}
   }
 
   /* tablets / small laptops: start shedding non-essential header chips so it
