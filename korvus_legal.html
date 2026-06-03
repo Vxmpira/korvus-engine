@@ -9,64 +9,100 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#000; --ink:#eef2f8; --ink-dim:#9aa6b8; --ink-faint:#5c6677;
-    --gold:#ff1f44; --gold-deep:#d4112f; --line:rgba(255,255,255,.10);
-    --crown:#ff1f44; --panel:rgba(17,19,24,.6); --crimson:#ff1f44; --crimson-deep:#d4112f; --crimson-bright:#ff3355; --crimson-glow:rgba(255,31,68,.6);
+    --bg:#000000; --bg-2:#040406; --ink:#f6f8ff; --ink-dim:#aab0c0; --ink-faint:#646b7d;
+    --line:rgba(255,255,255,.10); --line-soft:rgba(255,255,255,.05);
+    --gold:#ff1f44; --gold-deep:#d4112f; --crown:#ff1f44;
+    --crimson:#ff1f44; --crimson-deep:#d4112f; --crimson-bright:#ff3355;
+    --crimson-glow:rgba(255,31,68,.6); --crown-glow:rgba(255,31,68,.65);
+    --panel:rgba(13,14,18,.62);
     --body:'Hanken Grotesk',system-ui,sans-serif; --disp:'Bricolage Grotesque',var(--body); --mono:'IBM Plex Mono',monospace;
+    --r:14px;
   }
   *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.62;font-size:15px;position:relative;}
+  html,body{margin:0;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.62;font-size:15px;position:relative;-webkit-font-smoothing:antialiased;}
 
-  /* ambient red/gold aurora glow (option 2) */
-  .aurora{position:fixed;inset:-15%;z-index:-2;filter:blur(22px);opacity:.5;pointer-events:none;}
+  /* ---------- atmosphere (matched to the terminal) ---------- */
+  .aurora{position:fixed;inset:-20%;z-index:-3;filter:blur(22px);opacity:.42;pointer-events:none;}
   .aurora span{position:absolute;border-radius:50%;mix-blend-mode:screen;}
-  .ag1{width:50vw;height:50vw;left:-6vw;top:-12vw;
-    background:radial-gradient(circle,rgba(255,31,68,.22),transparent 62%);animation:agdrift 30s ease-in-out infinite;}
-  .ag2{width:46vw;height:46vw;right:-8vw;top:18vh;
-    background:radial-gradient(circle,rgba(255,31,68,.16),transparent 62%);animation:agdrift 36s ease-in-out infinite reverse;}
-  .ag3{width:40vw;height:40vw;left:34vw;bottom:-18vw;
-    background:radial-gradient(circle,rgba(255,31,68,.12),transparent 62%);animation:agdrift 42s ease-in-out infinite;}
-  @keyframes agdrift{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(3vw,3vh) scale(1.08);}}
+  .ag1{width:55vw;height:55vw;left:-8vw;top:-18vw;background:radial-gradient(circle,rgba(255,31,68,.16),transparent 62%);animation:agdrift 28s ease-in-out infinite;}
+  .ag2{width:50vw;height:50vw;right:-6vw;top:10vh;background:radial-gradient(circle,rgba(255,51,85,.16),transparent 62%);animation:agdrift2 34s ease-in-out infinite;}
+  .ag3{width:42vw;height:42vw;left:32vw;bottom:-20vw;background:radial-gradient(circle,rgba(212,17,47,.12),transparent 62%);animation:agdrift 40s ease-in-out infinite reverse;}
+  @keyframes agdrift{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(4vw,3vh) scale(1.08);}}
+  @keyframes agdrift2{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(-3vw,4vh) scale(1.1);}}
 
-  /* faint watermark crown (option 1) — large, ghosted, fixed behind content */
-  .watermark{position:fixed;top:50%;left:50%;transform:translate(-50%,-48%);
-    width:min(58vw,600px);z-index:-1;opacity:.085;pointer-events:none;
-    filter:drop-shadow(0 0 38px rgba(255,40,30,.85)) drop-shadow(0 0 14px rgba(255,70,55,.6));}
+  /* fine grid + grain — the "terminal soul" the other pages have */
+  body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+    background:
+      linear-gradient(rgba(120,140,170,.04) 1px,transparent 1px) 0 0/100% 46px,
+      linear-gradient(90deg,rgba(120,140,170,.04) 1px,transparent 1px) 0 0/46px 100%,
+      radial-gradient(circle at 50% -5%,rgba(255,31,68,.05),transparent 55%);
+    -webkit-mask-image:radial-gradient(circle at 50% 28%,#000,transparent 92%);
+            mask-image:radial-gradient(circle at 50% 28%,#000,transparent 92%);}
+
+  .watermark{position:fixed;top:50%;left:50%;transform:translate(-50%,-48%);width:min(58vw,600px);z-index:-1;opacity:.06;pointer-events:none;
+    filter:drop-shadow(0 0 40px rgba(255,31,68,.85)) drop-shadow(0 0 14px rgba(255,60,80,.6));}
   .watermark svg{width:100%;height:auto;display:block;}
-  .topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:14px;padding:16px 28px;
-    border-bottom:1px solid var(--line);background:rgba(6,8,12,.85);backdrop-filter:blur(12px);}
-  .glyph{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex:none;
-    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);border:1px solid rgba(255,31,68,.4);
-    box-shadow:0 0 22px -6px var(--crown);}
-  .mark{font-family:var(--disp);font-weight:800;font-size:18px;letter-spacing:-.01em;}
-  .home{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--gold);text-decoration:none;
-    border:1px solid var(--line);border-radius:999px;padding:7px 15px;transition:background .2s;}
-  .home:hover{background:rgba(255,31,68,.1);}
-  .wrap{max-width:860px;margin:0 auto;padding:42px 34px 90px;position:relative;z-index:1;
-    background:linear-gradient(180deg,rgba(4,5,8,.62),rgba(4,5,8,.74));
-    backdrop-filter:blur(2px);border-left:1px solid var(--line);border-right:1px solid var(--line);}
-  .jump{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:36px;}
-  .jump a{font-family:var(--mono);font-size:12px;color:var(--gold-deep);text-decoration:none;
-    border:1px solid var(--line);border-radius:999px;padding:8px 16px;transition:all .2s;}
-  .jump a:hover{background:rgba(255,31,68,.1);color:var(--gold);border-color:rgba(255,31,68,.4);}
-  h1{font-family:var(--disp);font-weight:800;font-size:30px;letter-spacing:-.02em;margin:54px 0 14px;
-    scroll-margin-top:80px;padding-top:16px;border-top:1px solid var(--line);}
-  h1:first-of-type{border-top:none;padding-top:0;margin-top:0;}
-  h2{font-family:var(--disp);font-weight:700;font-size:20px;margin:30px 0 10px;color:var(--ink);}
+
+  /* ---------- header (matched to the terminal) ---------- */
+  .topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:13px;padding:13px 26px;
+    border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(10,13,18,.88),rgba(6,8,12,.62));backdrop-filter:blur(14px);}
+  .glyph{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex:none;
+    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);border:1px solid rgba(255,31,68,.42);
+    box-shadow:0 0 28px -5px var(--crown-glow),inset 0 1px 0 rgba(255,255,255,.05);}
+  .glyph svg{animation:crownPulse 3.2s ease-in-out infinite;}
+  @keyframes crownPulse{0%,100%{filter:drop-shadow(0 0 7px var(--crown-glow));}50%{filter:drop-shadow(0 0 15px rgba(255,31,68,.98));}}
+  .brandtxt{line-height:1;}
+  .brandtxt .mark{display:block;font-family:var(--disp);font-weight:800;font-size:18px;letter-spacing:-.01em;color:var(--ink);}
+  .brandtxt .tagline{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);margin-top:5px;}
+  .brandtxt .tagline b{color:var(--gold);font-weight:600;}
+  .home{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+    color:#ff465e;text-decoration:none;border:1px solid rgba(232,35,63,.38);border-radius:999px;padding:7px 13px;background:rgba(232,35,63,.06);
+    box-shadow:0 0 16px -6px var(--crimson-glow);transition:background .18s,border-color .18s,color .18s;}
+  .home:hover{background:rgba(232,35,63,.14);border-color:#e8233f;color:#fff;}
+  .home svg{width:13px;height:13px;}
+
+  /* ---------- content panel ---------- */
+  .wrap{max-width:880px;margin:34px auto 72px;padding:36px 40px 56px;position:relative;z-index:1;
+    background:var(--panel);backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:var(--r);
+    box-shadow:0 36px 90px -38px #000,0 0 0 1px rgba(255,31,68,.05),0 0 70px -34px var(--crimson-glow);
+    animation:rise .7s ease both;}
+  @keyframes rise{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:none;}}
+
+  /* jump nav as crimson chips */
+  .jump{display:flex;gap:9px;flex-wrap:wrap;margin:0 0 30px;padding-bottom:26px;border-bottom:1px solid var(--line-soft);}
+  .jump a{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-dim);text-decoration:none;
+    border:1px solid var(--line);border-radius:999px;padding:8px 16px;transition:all .18s;}
+  .jump a:hover{background:rgba(255,31,68,.12);color:#fff;border-color:rgba(255,31,68,.5);box-shadow:0 0 16px -5px var(--crimson-glow);}
+
+  /* ---------- content typography ---------- */
+  h1{font-family:var(--disp);font-weight:800;font-size:25px;letter-spacing:-.01em;margin:52px 0 14px;
+    scroll-margin-top:84px;padding-top:20px;border-top:1px solid var(--line);color:var(--ink);}
+  h1:first-of-type{border-top:none;padding-top:0;margin-top:4px;font-size:clamp(28px,4.5vw,40px);letter-spacing:-.02em;text-shadow:0 0 26px rgba(246,248,255,.14);}
+  h2{font-family:var(--disp);font-weight:700;font-size:19px;margin:30px 0 10px;color:var(--ink);}
   h3{font-family:var(--disp);font-weight:600;font-size:16px;margin:22px 0 8px;color:var(--gold);}
   p,li{color:var(--ink-dim);}
+  ul{padding-left:22px;margin:10px 0;}
+  li{margin:5px 0;}
   strong{color:var(--ink);font-weight:600;}
-  a{color:var(--gold-deep);}
-  blockquote{border-left:3px solid var(--gold);background:rgba(255,31,68,.06);margin:18px 0;
-    padding:14px 18px;border-radius:0 8px 8px 0;font-size:14px;}
+  em{color:var(--ink-dim);}
+  a{color:var(--gold-deep);text-decoration:none;}
+  a:hover{color:var(--gold);text-decoration:underline;}
+  blockquote{border-left:3px solid var(--gold);background:rgba(255,31,68,.07);margin:18px 0;
+    padding:14px 18px;border-radius:0 10px 10px 0;font-size:14px;box-shadow:0 0 30px -16px var(--crimson-glow);}
   blockquote p{color:var(--ink-dim);margin:6px 0;}
-  hr{border:none;border-top:1px solid var(--line);margin:34px 0;}
+  hr{border:none;border-top:1px solid var(--line);margin:36px 0;}
   code{font-family:var(--mono);font-size:.9em;background:rgba(255,255,255,.06);padding:1px 6px;border-radius:4px;color:var(--gold);}
   table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px;}
   th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;}
-  th{color:var(--ink);font-family:var(--disp);}
-  .footer{text-align:center;font-family:var(--mono);font-size:11px;color:var(--ink-faint);
-    padding:24px;border-top:1px solid var(--line);}
+  th{color:var(--ink);font-family:var(--disp);background:rgba(255,255,255,.03);}
+  .footer{text-align:center;font-family:var(--mono);font-size:11px;color:var(--ink-faint);padding:26px;}
+
+  @media(max-width:640px){
+    .wrap{margin:16px 12px 48px;padding:26px 20px 44px;}
+    .topbar{padding:12px 16px;gap:11px;}
+    .brandtxt .tagline{display:none;}
+  }
 </style>
 </head>
 <body>
@@ -95,14 +131,20 @@
   </div>
   <div class="topbar">
     <span class="glyph">
-      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs><linearGradient id="c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff6b5e"/><stop offset="1" stop-color="#d4271c"/></linearGradient></defs>
         <path d="M3 18.5 L3 8.2 L7.2 11.4 L12 4.5 L16.8 11.4 L21 8.2 L21 18.5 Z" fill="url(#c)" stroke="#ff8a7e" stroke-width="0.5" stroke-linejoin="round"/>
         <rect x="3" y="18.2" width="18" height="2.6" rx="0.6" fill="url(#c)"/>
       </svg>
     </span>
-    <span class="mark">KORVUS</span>
-    <a class="home" href="/">← Back to terminal</a>
+    <span class="brandtxt">
+      <span class="mark">KORVUS</span>
+      <span class="tagline">by <b>BlackCrownVxJ.LLC</b> · legal &amp; disclosures</span>
+    </span>
+    <a class="home" href="/">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      Terminal
+    </a>
   </div>
   <div class="wrap">
     <div class="jump">
