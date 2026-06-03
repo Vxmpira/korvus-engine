@@ -27,6 +27,7 @@ from flask import Flask, jsonify, send_from_directory, request, redirect, sessio
 from flask_login import (LoginManager, UserMixin, login_user, logout_user,
                          login_required, current_user)
 import korvus_auth as auth
+import korvus_billing as billing
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "korvus.db")
@@ -50,6 +51,10 @@ class KorvusUser(UserMixin):
         self.email = row["email"]
         self.tier = row["tier"]
         self.email_verified = bool(row["email_verified"])
+        keys = row.keys()
+        self.subscription_status = row["subscription_status"] if "subscription_status" in keys else None
+        self.current_period_end = row["current_period_end"] if "current_period_end" in keys else None
+        self.stripe_customer_id = row["stripe_customer_id"] if "stripe_customer_id" in keys else None
 
 
 @login_manager.user_loader
@@ -237,14 +242,50 @@ def verify():
 
 @app.route("/api/me")
 def api_me():
-    """Lets the dashboard know who's logged in and their tier."""
-    # record a heartbeat for the online count (genuine, not faked)
+    """Lets the dashboard know who's logged in, their tier, and billing state."""
     if current_user.is_authenticated:
         _online[current_user.id] = dt.datetime.now(dt.timezone.utc)
-    if current_user.is_authenticated:
         return jsonify({"auth": True, "username": current_user.username,
-                        "tier": current_user.tier, "verified": current_user.email_verified})
-    return jsonify({"auth": False})
+                        "tier": current_user.tier, "verified": current_user.email_verified,
+                        "subscription_status": getattr(current_user, "subscription_status", None),
+                        "current_period_end": getattr(current_user, "current_period_end", None),
+                        "billing_enabled": billing.billing_enabled(),
+                        "price_display": billing.price_display()})
+    return jsonify({"auth": False, "billing_enabled": billing.billing_enabled(),
+                    "price_display": billing.price_display()})
+
+
+# ----------------------------------------------------------------------------
+# BILLING (Stripe subscriptions) — see korvus_billing.py
+# ----------------------------------------------------------------------------
+@app.route("/upgrade")
+@login_required
+def upgrade_page():
+    return send_from_directory(HERE, "korvus_upgrade.html")
+
+
+@app.route("/api/billing/checkout", methods=["POST"])
+@login_required
+def billing_checkout():
+    user = auth.get_user_by_id(current_user.id)
+    url, err = billing.create_checkout_url(user)
+    return (jsonify({"url": url}) if url else (jsonify({"error": err}), 400))
+
+
+@app.route("/api/billing/portal", methods=["POST"])
+@login_required
+def billing_portal():
+    user = auth.get_user_by_id(current_user.id)
+    url, err = billing.create_portal_url(user)
+    return (jsonify({"url": url}) if url else (jsonify({"error": err}), 400))
+
+
+@app.route("/api/billing/webhook", methods=["POST"])
+def billing_webhook():
+    # raw body + signature header are required for verification
+    status, msg = billing.handle_webhook(request.get_data(),
+                                          request.headers.get("Stripe-Signature", ""))
+    return (msg, status)
 
 
 # in-memory "currently online" tracker: user_id -> last-seen UTC.

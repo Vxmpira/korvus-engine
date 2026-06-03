@@ -64,6 +64,14 @@ def init_auth_db():
             created_at    TEXT NOT NULL
         )
     """)
+    # --- billing columns (added in the Stripe phase; safe to run repeatedly) ---
+    existing = {r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
+    for col, ddl in (("stripe_customer_id", "TEXT"),
+                     ("stripe_subscription_id", "TEXT"),
+                     ("subscription_status", "TEXT"),
+                     ("current_period_end", "TEXT")):
+        if col not in existing:
+            conn.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
     conn.commit()
     conn.close()
 
@@ -145,6 +153,57 @@ def set_tier(username, tier):
     conn.execute("UPDATE users SET tier = ? WHERE username = ?", (tier, (username or "").strip()))
     conn.commit()
     conn.close()
+
+
+# ----------------------------------------------------------------------------
+# BILLING HELPERS  (used by korvus_billing.py / the Stripe webhook)
+# ----------------------------------------------------------------------------
+def get_user_by_username(username):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM users WHERE username = ?",
+                       ((username or "").strip(),)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_user_by_customer_id(customer_id):
+    if not customer_id:
+        return None
+    conn = get_db()
+    row = conn.execute("SELECT * FROM users WHERE stripe_customer_id = ?",
+                       (customer_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def set_stripe_customer(username, customer_id):
+    """Link a Stripe customer id to a user (stored once, at first checkout)."""
+    conn = get_db()
+    conn.execute("UPDATE users SET stripe_customer_id = ? WHERE username = ?",
+                 (customer_id, (username or "").strip()))
+    conn.commit()
+    conn.close()
+
+
+# subscription statuses that grant Pro access
+PRO_STATUSES = {"active", "trialing"}
+
+def apply_subscription(customer_id, status, subscription_id=None, current_period_end=None):
+    """Sync a user's tier + subscription fields from a Stripe event, matched by
+    stripe_customer_id. Tier becomes 'pro' while active/trialing, else 'free'.
+    Returns the affected username, or None if no user matched that customer."""
+    user = get_user_by_customer_id(customer_id)
+    if not user:
+        return None
+    tier = "pro" if (status in PRO_STATUSES) else "free"
+    conn = get_db()
+    conn.execute(
+        "UPDATE users SET tier = ?, subscription_status = ?, stripe_subscription_id = ?, "
+        "current_period_end = ? WHERE stripe_customer_id = ?",
+        (tier, status, subscription_id, current_period_end, customer_id))
+    conn.commit()
+    conn.close()
+    return user["username"]
 
 
 # ----------------------------------------------------------------------------

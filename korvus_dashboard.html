@@ -229,6 +229,13 @@
   .ctxnote{display:flex;align-items:center;padding:0 14px;font-family:var(--mono);font-size:8px;color:var(--ink-faint);letter-spacing:.05em;white-space:nowrap;}
   @media(max-width:760px){ .ctxlabel .s{display:none;} .mverdict .read{display:none;} }
 
+  /* free-tier upgrade CTA in the header */
+  .gopro{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;
+    letter-spacing:.06em;text-transform:uppercase;font-weight:700;color:#0a0d12;background:var(--crimson);
+    border:none;border-radius:8px;padding:7px 12px;text-decoration:none;cursor:pointer;
+    box-shadow:0 0 16px -4px var(--crimson-glow);transition:background .2s,transform .15s;}
+  .gopro:hover{background:var(--crimson-bright);transform:translateY(-1px);}
+
   /* ---------- layout ---------- */
   main{flex:1;display:grid;grid-template-columns:1fr 384px;gap:16px;padding:16px;min-height:0;}
   .panel{
@@ -651,6 +658,7 @@
     <span class="econ clear" id="econChip">● NO HIGH-IMPACT PRINTS TODAY</span>
     <div class="sess" id="sess">SESSION <b>—</b></div>
     <div class="clock"><span id="clock">--:--:--</span><small>New York / ET</small></div>
+    <a class="gopro" href="/upgrade" id="goProBtn" style="display:none;">⬆ Go Pro</a>
     <a class="logoutbtn" href="/logout" title="Log out" id="logoutBtn" style="display:none;">Log out</a>
   </header>
 
@@ -1279,6 +1287,8 @@ async function loadMe(){
       USER_TIER = me.tier || 'free';
       const lo = document.getElementById('logoutBtn');
       if(lo) lo.style.display = 'inline-block';
+      const gp = document.getElementById('goProBtn');
+      if(gp) gp.style.display = (USER_TIER === 'pro') ? 'none' : 'inline-flex';
       setTierLabel();
     }
   }catch(e){/* ignore */}

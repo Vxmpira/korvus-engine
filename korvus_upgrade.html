@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Go Pro · Korvus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000000;--panel:#0c0d11;--ink:#f6f8ff;--ink-dim:#aab0c0;--ink-faint:#646b7d;
+    --line:rgba(255,255,255,.09);--line-bright:rgba(255,255,255,.18);
+    --gold:#ff1f44;--gold-deep:#d4112f;--crimson:#ff1f44;--crimson-bright:#ff3355;
+    --crimson-glow:rgba(255,31,68,.55);--up:#3ce594;
+    --mono:'IBM Plex Mono',monospace;--body:'Hanken Grotesk',system-ui,sans-serif;--disp:'Fraunces',Georgia,serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);min-height:100vh;
+    display:flex;flex-direction:column;align-items:center;padding:40px 24px 56px;overflow-x:hidden;}
+  .glow{position:fixed;top:-22vh;left:50%;transform:translateX(-50%);width:90vw;height:60vh;z-index:0;pointer-events:none;
+    background:radial-gradient(ellipse at center,rgba(255,31,68,.14),rgba(255,31,68,.05) 42%,transparent 72%);filter:blur(30px);}
+  .wrap{position:relative;z-index:2;width:100%;max-width:760px;}
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:34px;}
+  .brand{display:flex;align-items:center;gap:11px;}
+  .crown{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
+    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);border:1px solid rgba(255,31,68,.42);box-shadow:0 0 22px -6px var(--crimson);}
+  .brand-name{font-family:var(--disp);font-weight:600;font-size:22px;}
+  .back{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);text-decoration:none;
+    border:1px solid var(--line-bright);border-radius:8px;padding:8px 13px;transition:border-color .2s,color .2s;}
+  .back:hover{border-color:var(--crimson);color:var(--ink);}
+  h1{font-family:var(--disp);font-weight:500;font-size:34px;line-height:1.1;letter-spacing:-.01em;margin-bottom:10px;}
+  .lede{color:var(--ink-dim);font-size:15.5px;line-height:1.55;max-width:560px;margin-bottom:28px;}
+  .banner{display:none;padding:12px 16px;border-radius:11px;font-size:14px;line-height:1.5;margin-bottom:24px;}
+  .banner.ok{display:block;background:rgba(60,229,148,.1);border:1px solid rgba(60,229,148,.32);color:#9fe9bd;}
+  .banner.info{display:block;background:rgba(255,255,255,.05);border:1px solid var(--line-bright);color:var(--ink-dim);}
+  .banner.err{display:block;background:rgba(255,46,77,.12);border:1px solid rgba(255,46,77,.34);color:#ffb3af;}
+  .grid{display:grid;grid-template-columns:1fr 1.25fr;gap:18px;}
+  @media(max-width:680px){ .grid{grid-template-columns:1fr;} h1{font-size:28px;} }
+  .plan{background:rgba(14,17,22,.55);backdrop-filter:blur(14px);border:1px solid var(--line-bright);
+    border-radius:18px;padding:26px 24px;display:flex;flex-direction:column;}
+  .plan.pro{border-color:rgba(255,31,68,.5);box-shadow:0 0 40px -14px var(--crimson-glow),0 30px 80px -34px #000;position:relative;}
+  .plan.pro::before{content:"RECOMMENDED";position:absolute;top:-10px;right:18px;font-family:var(--mono);font-size:9px;
+    letter-spacing:.16em;color:#0a0d12;background:var(--crimson);padding:4px 9px;border-radius:6px;font-weight:700;}
+  .ptier{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:10px;}
+  .plan.pro .ptier{color:var(--crimson-bright);}
+  .pprice{font-family:var(--disp);font-weight:600;font-size:30px;margin-bottom:4px;}
+  .pprice small{font-family:var(--mono);font-size:12px;color:var(--ink-faint);font-weight:400;}
+  .pwhat{font-size:13px;color:var(--ink-dim);margin-bottom:18px;}
+  ul{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:22px;}
+  li{font-size:13.5px;color:var(--ink-dim);display:flex;align-items:flex-start;gap:9px;line-height:1.4;}
+  li .ck{color:var(--up);font-weight:700;flex:none;}
+  li .dot{color:var(--ink-faint);flex:none;}
+  .plan.pro li{color:var(--ink);}
+  .btn{margin-top:auto;width:100%;background:var(--crimson);color:#0a0d12;font-weight:700;font-size:15px;padding:14px;
+    border:none;border-radius:11px;cursor:pointer;font-family:var(--body);transition:background .2s,transform .15s;
+    box-shadow:0 0 22px -6px var(--crimson-glow);}
+  .btn:hover:not(:disabled){background:var(--crimson-bright);transform:translateY(-1px);}
+  .btn:disabled{opacity:.55;cursor:not-allowed;box-shadow:none;}
+  .ctanote{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);text-align:center;margin-top:11px;line-height:1.5;}
+  .prostate{display:none;background:rgba(60,229,148,.07);border:1px solid rgba(60,229,148,.28);border-radius:11px;
+    padding:13px 16px;font-size:13.5px;color:#9fe9bd;margin-bottom:18px;line-height:1.5;}
+  .foot{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);margin-top:26px;line-height:1.6;text-align:center;}
+  .foot a{color:var(--gold-deep);text-decoration:none;}
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <span class="crown">
+          <svg viewBox="0 0 48 48" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a6e"/><stop offset="1" stop-color="#c2160c"/></linearGradient></defs>
+            <path d="M5 35 L8.2 16.5 L17 23.5 L24 9 L31 23.5 L39.8 16.5 L43 35 Z" fill="url(#c)" stroke="#ff8a7e" stroke-width="0.7" stroke-linejoin="round"/>
+            <rect x="6" y="34.5" width="36" height="5" rx="1.2" fill="url(#c)"/>
+            <circle cx="8.2" cy="16.5" r="2" fill="#ffd0ca"/><circle cx="24" cy="9" r="2.4" fill="#ffe4df"/><circle cx="39.8" cy="16.5" r="2" fill="#ffd0ca"/>
+          </svg>
+        </span>
+        <span class="brand-name">Korvus</span>
+      </div>
+      <a class="back" href="/terminal">← Terminal</a>
+    </div>
+
+    <h1>Trade on live data, not a 15-minute echo.</h1>
+    <p class="lede">The free terminal runs the full Korvus engine — scored news, the futures board,
+      SMT divergence, macro confluence, the session map — on a feed delayed about 15 minutes.
+      Pro removes the delay, so what you see is what the market is doing right now.</p>
+
+    <div class="banner" id="banner"></div>
+    <div class="prostate" id="proState"></div>
+
+    <div class="grid">
+      <div class="plan">
+        <div class="ptier">Free</div>
+        <div class="pprice">$0</div>
+        <div class="pwhat">Everything, on a delayed feed.</div>
+        <ul>
+          <li><span class="ck">✓</span>Korvus-scored news &amp; impact engine</li>
+          <li><span class="ck">✓</span>Futures board, SMT, macro &amp; session bands</li>
+          <li><span class="ck">✓</span>Forex / gov-news calendar</li>
+          <li><span class="dot">•</span>Quotes delayed ~15 minutes</li>
+        </ul>
+        <button class="btn" disabled style="background:transparent;border:1px solid var(--line-bright);color:var(--ink-faint);box-shadow:none;">Your current plan</button>
+      </div>
+
+      <div class="plan pro">
+        <div class="ptier">Pro</div>
+        <div class="pprice" id="price">—<small> / month</small></div>
+        <div class="pwhat">The same terminal, in real time.</div>
+        <ul>
+          <li><span class="ck">✓</span>Real-time quotes — no 15-minute delay</li>
+          <li><span class="ck">✓</span>Live futures board, SMT &amp; macro confluence on fresh prints</li>
+          <li><span class="ck">✓</span>Session map &amp; levels updating live</li>
+          <li><span class="ck">✓</span>Everything in Free, the moment it happens</li>
+          <li><span class="ck">✓</span>Cancel anytime from your billing portal</li>
+        </ul>
+        <button class="btn" id="cta">Go Pro</button>
+        <div class="ctanote" id="ctaNote">Secure checkout by Stripe · cancel anytime</div>
+      </div>
+    </div>
+
+    <p class="foot">Payments are processed by Stripe — your card details never touch Korvus servers.<br>
+      Informational and educational use only · not financial advice. <a href="/legal#tos">Terms</a> · <a href="/legal#risk">Risk Disclosure</a></p>
+  </div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const bannerEl = document.getElementById('banner');
+const cta = document.getElementById('cta');
+const ctaNote = document.getElementById('ctaNote');
+
+function banner(kind, msg){ bannerEl.className = 'banner ' + kind; bannerEl.textContent = msg; }
+
+const st = params.get('status');
+if(st === 'success') banner('ok', 'Welcome to Pro — your terminal is now on live data. It may take a few seconds to reflect.');
+else if(st === 'cancel') banner('info', "Checkout canceled — you weren't charged.");
+
+function fmtDate(iso){
+  try{ return new Date(iso).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}); }
+  catch(e){ return ''; }
+}
+
+async function init(){
+  let me = {};
+  try{ me = await (await fetch('/api/me',{cache:'no-store'})).json(); }catch(e){}
+  if(me && me.auth === false){ location.href = '/login'; return; }
+
+  document.getElementById('price').innerHTML =
+    (me.price_display ? me.price_display : '—') + '<small> / month</small>';
+
+  const isPro = me.tier === 'pro';
+  if(isPro){
+    const ps = document.getElementById('proState');
+    const renew = me.current_period_end ? (' · renews ' + fmtDate(me.current_period_end)) : '';
+    ps.style.display = 'block';
+    ps.textContent = 'You\u2019re on Pro' + renew + '. Manage or cancel your plan below.';
+    cta.textContent = 'Manage billing';
+    cta.dataset.action = 'portal';
+    ctaNote.textContent = 'Update your card or cancel anytime';
+  } else if(!me.billing_enabled){
+    cta.textContent = 'Memberships open soon';
+    cta.disabled = true;
+    cta.dataset.action = '';
+    ctaNote.textContent = 'Card checkout is being finalized.';
+  } else {
+    cta.textContent = 'Go Pro';
+    cta.dataset.action = 'checkout';
+    ctaNote.textContent = 'Secure checkout by Stripe · cancel anytime';
+  }
+}
+
+cta.addEventListener('click', async () => {
+  const action = cta.dataset.action;
+  if(!action || cta.disabled) return;
+  const url = action === 'portal' ? '/api/billing/portal' : '/api/billing/checkout';
+  const label = cta.textContent;
+  cta.disabled = true; cta.textContent = 'One moment\u2026';
+  try{
+    const res = await fetch(url, {method:'POST'});
+    const data = await res.json().catch(() => ({}));
+    if(res.ok && data.url){ location.href = data.url; return; }
+    banner('err', data.error || 'Something went wrong. Please try again.');
+  }catch(e){
+    banner('err', 'Network error — please try again.');
+  }
+  cta.disabled = false; cta.textContent = label;
+});
+
+init();
+</script>
+</body>
+</html>
