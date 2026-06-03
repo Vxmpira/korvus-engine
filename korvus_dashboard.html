@@ -391,7 +391,7 @@
   @media (max-width: 1100px){
     .app{height:auto;min-height:100vh;}
     /* single column; tabs decide which panel shows */
-    main{grid-template-columns:1fr;gap:0;padding:14px;}
+    main{grid-template-columns:1fr;gap:0;padding:14px;flex:0 0 auto;min-height:auto;overflow:visible;}
     .right{display:block;}
 
     /* show the tab bar */
@@ -402,12 +402,14 @@
     .ptab.active{background:var(--panel-solid);color:var(--ink);border-color:rgba(255,255,255,.4);}
     .ptab:hover{color:var(--ink);}
 
-    /* only the active panel shows; give its scroll body a real height bound
-       so overflow-y:auto actually scrolls (instead of the panel growing
-       unbounded and clipping content with no scrollbar) */
+    /* only the active panel shows. Let the WHOLE PAGE scroll naturally (not a
+       scroll trapped inside the panel) so content flows and the footer with
+       legal terms stays reachable at the bottom. Cap panel height generously
+       so a long list still scrolls within the panel if needed, but never so
+       tall it hides the footer. */
     [data-panel].tabhidden,.right.tabhidden{display:none !important;}
-    .panel{min-height:0;height:auto;}
-    .feed,.watchbody,.smtbody{max-height:calc(100vh - 230px);overflow-y:auto;}
+    .panel{min-height:0;height:auto;overflow:visible;}
+    .feed,.watchbody,.smtbody{max-height:none;overflow-y:visible;}
     .right .panel{margin-bottom:14px;}
   }
 
