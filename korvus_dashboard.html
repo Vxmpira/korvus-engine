@@ -276,8 +276,18 @@
   .dir.bull{color:var(--bull);border-color:var(--bull-dim);background:rgba(70,209,127,.06);}
   .dir.bear{color:var(--bear);border-color:var(--bear-dim);background:rgba(255,46,77,.07);}
   .dir.neut{color:var(--neutral);border-color:var(--line);}
-  .inst{font-family:var(--mono);font-size:10px;color:var(--ink-dim);border:1px solid rgba(255,255,255,.16);padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.03);transition:border-color .2s,color .2s;}
+  .inst{position:relative;font-family:var(--mono);font-size:10px;color:var(--ink-dim);border:1px solid rgba(255,255,255,.16);padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.03);transition:border-color .2s,color .2s;cursor:default;}
   .item:hover .inst{border-color:rgba(255,31,68,.3);color:var(--ink);}
+  .inst:hover{border-color:rgba(255,255,255,.4);color:var(--ink);z-index:5;}
+  /* styled tooltip showing the instrument's full name */
+  .inst[data-name]:hover::after{content:attr(data-name);position:absolute;bottom:calc(100% + 7px);left:50%;
+    transform:translateX(-50%);white-space:nowrap;font-family:var(--body);font-size:11px;letter-spacing:0;
+    color:var(--ink);background:var(--panel-solid);border:1px solid rgba(255,255,255,.18);
+    padding:5px 10px;border-radius:7px;box-shadow:0 6px 20px -6px rgba(0,0,0,.9),0 0 16px -6px var(--crimson-glow);
+    pointer-events:none;z-index:50;}
+  .inst[data-name]:hover::before{content:"";position:absolute;bottom:calc(100% + 2px);left:50%;
+    transform:translateX(-50%);border:5px solid transparent;border-top-color:rgba(255,255,255,.18);
+    pointer-events:none;z-index:50;}
   .conf{margin-left:auto;display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10px;color:var(--ink-faint);}
   .confbar{width:42px;height:4px;border-radius:3px;background:rgba(120,140,170,.18);overflow:hidden;}
   .confbar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-deep),var(--gold));border-radius:3px;}
@@ -367,20 +377,29 @@
   .ndclose{position:absolute;top:12px;right:12px;background:transparent;border:1px solid var(--line);color:var(--ink-dim);
     width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:13px;line-height:1;padding:0;}
   .ndclose:hover{border-color:var(--gold-line);color:var(--ink);}
-  .ndhead{display:flex;align-items:center;gap:4px;margin:2px 36px 12px 0;flex-wrap:wrap;}
+  .ndhead{display:flex;align-items:center;gap:6px;margin:2px 40px 14px 0;flex-wrap:wrap;}
   .ndtime{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);margin-left:auto;}
-  .ndtitle{font-family:var(--disp);font-weight:700;font-size:19px;line-height:1.3;color:var(--ink);margin:0 0 12px;}
-  .ndbadges{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}
-  .ndlabel{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin:14px 0 5px;}
-  .ndsummary{font-size:12.5px;line-height:1.5;color:var(--ink-dim);margin:0 0 4px;font-style:italic;}
-  .nddetail{font-size:13.5px;line-height:1.6;color:var(--ink);margin:0;}
-  .ndorig{font-size:12.5px;line-height:1.55;color:var(--ink-dim);margin:0;padding-left:11px;border-left:2px solid var(--line);}
-  .ndinsts{display:flex;gap:6px;flex-wrap:wrap;}
+  .ndtitle{font-family:var(--disp);font-weight:700;font-size:20px;line-height:1.32;color:var(--ink);margin:0 0 14px;
+    letter-spacing:-.01em;text-shadow:0 0 24px rgba(246,248,255,.12);}
+  .ndbadges{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:20px;
+    padding-bottom:16px;border-bottom:1px solid var(--line-soft);}
+  /* section labels with a small crimson accent tick */
+  .ndlabel{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--ink-faint);margin:20px 0 8px;}
+  .ndlabel::before{content:"";width:10px;height:2px;border-radius:2px;background:var(--crimson);
+    box-shadow:0 0 8px var(--crimson-glow);}
+  .ndsummary{font-size:13px;line-height:1.55;color:var(--ink-dim);margin:0 0 4px;font-style:italic;
+    padding-left:12px;border-left:2px solid var(--crimson-deep);}
+  .nddetail{font-size:13.5px;line-height:1.7;color:var(--ink);margin:0;max-width:62ch;}
+  .ndorig{font-size:12.5px;line-height:1.6;color:var(--ink-dim);margin:0;padding:8px 0 8px 13px;
+    border-left:2px solid var(--line);font-style:italic;}
+  .ndinsts{display:flex;gap:7px;flex-wrap:wrap;}
   .ndim{font-size:11.5px;color:var(--ink-faint);font-style:italic;}
-  .ndfoot{margin-top:20px;padding-top:14px;border-top:1px solid var(--line);}
-  .readfull{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;
-    padding:9px 16px;border-radius:8px;background:var(--gold);color:#0a0d12;font-weight:600;text-decoration:none;}
-  .readfull:hover{background:var(--gold-deep);}
+  .ndfoot{margin-top:24px;padding-top:16px;border-top:1px solid var(--line);}
+  .readfull{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+    padding:10px 18px;border-radius:8px;background:var(--crimson);color:#fff;font-weight:600;text-decoration:none;
+    box-shadow:0 0 22px -6px var(--crimson-glow);transition:background .2s,box-shadow .2s;}
+  .readfull:hover{background:var(--crimson-bright);box-shadow:0 0 28px -4px var(--crimson-glow);}
 
   /* ============================================================
      SCALE UP — fill big screens gracefully instead of leaving the
@@ -757,12 +776,35 @@ function renderRibbon(list){
 /* ----------------------------- render: news ----------------------------- */
 const dirMeta={bull:['▲','bull','Bullish'],bear:['▼','bear','Bearish'],neut:['◆','neut','Neutral']};
 const srcLabel=s=>({x:'X / SOCIAL',reddit:'REDDIT',wire:'NEWSWIRE'}[s]||s);
+/* full names for instrument tags — shown on hover so users know what each is */
+const INST_NAMES = {
+  MNQ:'Micro E-mini Nasdaq-100', NQ:'E-mini Nasdaq-100', QQQ:'Invesco QQQ (Nasdaq-100 ETF)',
+  MES:'Micro E-mini S&P 500', ES:'E-mini S&P 500', SPY:'SPDR S&P 500 ETF',
+  MYM:'Micro E-mini Dow', YM:'E-mini Dow', DIA:'SPDR Dow Jones ETF',
+  M2K:'Micro E-mini Russell 2000', RTY:'E-mini Russell 2000', IWM:'iShares Russell 2000 ETF',
+  NKD:'Nikkei 225 Futures', VX:'VIX Futures', VIX:'CBOE Volatility Index',
+  CL:'WTI Crude Oil', BZ:'Brent Crude Oil', NG:'Natural Gas', RB:'RBOB Gasoline', HO:'Heating Oil',
+  GC:'Gold', SI:'Silver', PL:'Platinum', PA:'Palladium', HG:'Copper',
+  ZC:'Corn', ZW:'Wheat', ZS:'Soybeans', KC:'Coffee', SB:'Sugar', CT:'Cotton', LE:'Live Cattle',
+  ZT:'2-Year T-Note', ZF:'5-Year T-Note', ZN:'10-Year T-Note', ZB:'30-Year T-Bond', GE:'SOFR / Short Rates',
+  DXY:'US Dollar Index', '6E':'Euro FX', '6J':'Japanese Yen', '6B':'British Pound',
+  '6C':'Canadian Dollar', '6A':'Australian Dollar', '6S':'Swiss Franc', '6M':'Mexican Peso',
+  BTC:'Bitcoin', ETH:'Ethereum',
+  NVDA:'NVIDIA', AAPL:'Apple', MSFT:'Microsoft', AMZN:'Amazon', META:'Meta Platforms',
+  GOOGL:'Alphabet (Google)', TSLA:'Tesla', AVGO:'Broadcom', AMD:'AMD', NFLX:'Netflix',
+  JPM:'JPMorgan Chase', XOM:'ExxonMobil'
+};
+function instTag(sym){
+  const name = INST_NAMES[sym] || sym;
+  return `<span class="inst" data-name="${name}">${sym}</span>`;
+}
+
 let _newsCache = [];
 function renderNews(list){
   _newsCache = list;
   document.getElementById('feed').innerHTML = list.map((n,idx)=>{
     const [arrow,cls,label]=dirMeta[n.dir];
-    const insts=n.inst.map(i=>`<span class="inst">${i}</span>`).join('');
+    const insts=n.inst.map(instTag).join('');
     return `<article class="item" data-idx="${idx}" onclick="openNewsDetail(${idx})" title="Click for detail">
       <div class="rail">
         <div class="railtop"><span class="time">${n.time}</span><span class="impact ${n.impact}">${n.impact}</span></div>
@@ -787,7 +829,7 @@ function openNewsDetail(idx){
   const n = _newsCache[idx];
   if(!n) return;
   const [arrow,cls,label]=dirMeta[n.dir];
-  const insts = n.inst.length ? n.inst.map(i=>`<span class="inst">${i}</span>`).join('') : '<span class="ndim">none flagged</span>';
+  const insts = n.inst.length ? n.inst.map(instTag).join('') : '<span class="ndim">none flagged</span>';
   const linkBtn = n.url
     ? `<a class="readfull" href="${n.url}" target="_blank" rel="noopener noreferrer">Read full article ↗</a>`
     : '<span class="ndim">no source link available</span>';
