@@ -178,9 +178,16 @@ def _finnhub_quotes(symbols: list[str]) -> dict:
             r = requests.get("https://finnhub.io/api/v1/quote",
                              params={"symbol": sym, "token": FINNHUB_KEY}, timeout=15)
             q = r.json()
-            # c=current, dp=percent change
+            # c=current, dp=percent change, h=day high, l=day low, o=open, pc=prev close
             if q.get("c"):
-                out[sym] = {"price": float(q["c"]), "chg_pct": float(q.get("dp") or 0)}
+                out[sym] = {
+                    "price": float(q["c"]),
+                    "chg_pct": float(q.get("dp") or 0),
+                    "high": float(q.get("h") or 0),
+                    "low": float(q.get("l") or 0),
+                    "open": float(q.get("o") or 0),
+                    "prev_close": float(q.get("pc") or 0),
+                }
         except Exception as e:
             print(f"  [quotes] Finnhub error on {sym}: {e}")
     return out

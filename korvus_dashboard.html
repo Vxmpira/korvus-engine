@@ -688,12 +688,12 @@ const SAMPLE_NEWS = [
    SMT stays on your Tradovate chart. verdict.state: 'warn' | 'ok'
    ============================================================================ */
 const SAMPLE_SMT = {
-  verdict:{ state:'warn', title:'Bearish SMT — non-confirmation',
-    note:'NQ printed a higher high while ES failed to confirm (lower high). Classic distribution tell — favor caution on index longs until they realign.' },
+  verdict:{ state:'ok', title:'Loading divergence…',
+    note:'Fetching live index-range data to compute real intraday divergence between NQ, ES and YM.' },
   legs:[
-    { sym:'NQ', proxy:'QQQ', chg:+0.42, swing:'HH' },
-    { sym:'ES', proxy:'SPY', chg:+0.11, swing:'LH' },
-    { sym:'YM', proxy:'DIA', chg:-0.05, swing:'LH' },
+    { sym:'NQ', proxy:'QQQ', chg:0, pos:null, swing:'—', has_data:false },
+    { sym:'ES', proxy:'SPY', chg:0, pos:null, swing:'—', has_data:false },
+    { sym:'YM', proxy:'DIA', chg:0, pos:null, swing:'—', has_data:false },
   ]
 };
 
@@ -849,20 +849,34 @@ document.addEventListener('click', function(e){
 });
 
 /* ----------------------------- render: SMT ----------------------------- */
+async function loadSMT(){
+  try{
+    const res = await fetch('/api/smt', {cache:'no-store'});
+    if(res.ok){ const d = await res.json(); if(d && d.verdict) renderSMT(d); }
+  }catch(e){ /* keep last good render */ }
+}
 function renderSMT(d){
   const v=d.verdict;
   const legs=d.legs.map(l=>{
-    const up=l.chg>=0,w=Math.min(48,Math.abs(l.chg/0.6)*48);
-    const fill=up?`left:50%;width:${w}%;background:linear-gradient(90deg,var(--bull-dim),var(--bull))`
-                 :`right:50%;width:${w}%;background:linear-gradient(90deg,var(--bear),var(--bear-dim))`;
+    const up=l.chg>=0;
+    // bar reflects POSITION IN TODAY'S RANGE (0..1) when we have it, centered at 50%
+    let fill;
+    if(l.pos!=null){
+      const w=Math.round(l.pos*100);
+      const col = l.pos>=0.66 ? 'var(--bull)' : l.pos<=0.33 ? 'var(--bear)' : 'var(--med)';
+      fill=`left:0;width:${w}%;background:linear-gradient(90deg,transparent,${col})`;
+    } else {
+      fill=`left:0;width:0`;
+    }
     return `<div class="crow">
       <div class="csym">${l.sym}<small>via ${l.proxy}</small></div>
       <div class="track"><i style="${fill}"></i></div>
       <div><div class="cchg ${up?'up':'down'}">${sign(l.chg)}${l.chg.toFixed(2)}%</div><div class="swing">${l.swing}</div></div>
     </div>`;
   }).join('');
+  const icon = v.state==='warn' ? '⚠' : '✓';
   document.getElementById('smt').innerHTML=
-    `<div class="verdict ${v.state}"><b>${v.state==='warn'?'⚠':'✓'} ${v.title}</b>${v.note}</div>
+    `<div class="verdict ${v.state}"><b>${icon} ${v.title}</b>${v.note}</div>
      <div class="corr">${legs}</div>`;
 }
 
@@ -906,6 +920,7 @@ function tick(){
 /* ----------------------------- boot ----------------------------- */
 renderRibbon(SAMPLE_FUT);
 renderSMT(SAMPLE_SMT);
+loadSMT();
 renderWatch(SAMPLE_WATCH);
 renderMembers();
 tick();setInterval(tick,1000);
@@ -998,12 +1013,8 @@ async function loadLiveQuotes(){
     });
     renderRibbon(SAMPLE_FUT);
 
-    // 2) SMT panel — real % moves for the three index proxies
-    SAMPLE_SMT.legs.forEach(leg => {
-      const px = q[leg.proxy];
-      if(px) leg.chg = px.chg_pct;
-    });
-    renderSMT(SAMPLE_SMT);
+    // 2) SMT panel — REAL intraday divergence from /api/smt (honest verdict)
+    loadSMT();
 
     // 3) Funds Watch — real prices + % for every symbol we have
     SAMPLE_WATCH.forEach(g => g.rows.forEach(r => {

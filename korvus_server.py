@@ -277,6 +277,93 @@ def api_quotes():
     return jsonify({"quotes": data, "meta": meta})
 
 
+# Index proxies for the SMT panel: NQ->QQQ, ES->SPY, YM->DIA
+_SMT_LEGS = [("NQ", "QQQ"), ("ES", "SPY"), ("YM", "DIA")]
+
+@app.route("/api/smt")
+def api_smt():
+    """
+    REAL intraday divergence between the three index proxies, computed from
+    live data (no faked verdict). For each index we measure where price sits
+    in TODAY's range: rangePos = (price - low) / (high - low), 0..1.
+      ~1.0  -> trading at/near session highs   (confirming strength, 'HH')
+      ~0.0  -> trading at/near session lows     (weakness, 'LL')
+    Divergence = the indices disagree (one near highs while another lags).
+    Honest labels only; if data is missing we say so rather than guess.
+    """
+    try:
+        from korvus_quotes import get_quotes
+    except Exception as e:
+        return jsonify({"error": str(e), "legs": [], "verdict": None})
+
+    is_pro = current_user.is_authenticated and current_user.tier == "pro"
+    proxies = [p for _, p in _SMT_LEGS]
+    data = get_quotes(proxies, force_delayed=not is_pro)
+    data.pop("_meta", None)
+
+    legs = []
+    for sym, proxy in _SMT_LEGS:
+        q = data.get(proxy) or {}
+        price = q.get("price") or 0
+        hi = q.get("high") or 0
+        lo = q.get("low") or 0
+        chg = q.get("chg_pct") or 0
+        rng = hi - lo
+        if price and rng > 0:
+            pos = max(0.0, min(1.0, (price - lo) / rng))   # 0..1 in today's range
+            # honest swing tag from range position
+            if pos >= 0.80:   tag = "HH"   # holding session highs
+            elif pos >= 0.55: tag = "MID+"
+            elif pos >= 0.45: tag = "MID"
+            elif pos >= 0.20: tag = "MID-"
+            else:             tag = "LL"    # near session lows
+            has_data = True
+        else:
+            pos, tag, has_data = None, "—", False
+        legs.append({"sym": sym, "proxy": proxy, "chg": round(chg, 2),
+                     "pos": (round(pos, 2) if pos is not None else None),
+                     "swing": tag, "has_data": has_data})
+
+    # ---- verdict, computed honestly from the leg positions ----
+    valid = [l for l in legs if l["has_data"]]
+    if len(valid) < 2:
+        verdict = {"state": "ok", "title": "Awaiting data",
+                   "note": "Index-range data isn't available right now "
+                           "(markets may be closed — proxies only trade during "
+                           "regular US hours). Divergence resumes when they reopen."}
+    else:
+        positions = [l["pos"] for l in valid]
+        spread = max(positions) - min(positions)   # how far apart the indices are in their ranges
+        leader = max(valid, key=lambda l: l["pos"])
+        laggard = min(valid, key=lambda l: l["pos"])
+        avg = sum(positions) / len(positions)
+        if spread >= 0.45:
+            # genuine non-confirmation: one index strong, another clearly lagging
+            bias = "bearish" if avg < 0.55 else "watch"
+            verdict = {
+                "state": "warn",
+                "title": f"Divergence — {leader['sym']} leading, {laggard['sym']} lagging",
+                "note": (f"{leader['sym']} is holding near its session highs while "
+                         f"{laggard['sym']} is lagging in its range — the indices are "
+                         f"NOT confirming each other. Classic non-confirmation; favor "
+                         f"caution until they realign.")
+            }
+        elif avg >= 0.70:
+            verdict = {"state": "ok", "title": "Confirming — aligned strength",
+                       "note": "All three indices are holding near session highs and "
+                               "confirming each other. No divergence — trend in agreement."}
+        elif avg <= 0.30:
+            verdict = {"state": "ok", "title": "Confirming — aligned weakness",
+                       "note": "All three indices are near session lows together and "
+                               "confirming each other to the downside. No divergence."}
+        else:
+            verdict = {"state": "ok", "title": "In line — no divergence",
+                       "note": "The indices are moving together in mid-range. No "
+                               "meaningful non-confirmation to flag right now."}
+
+    return jsonify({"legs": legs, "verdict": verdict})
+
+
 @app.route("/api/watchlist", methods=["GET", "POST"])
 @login_required
 def api_watchlist():
