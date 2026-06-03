@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+  ============================================================================
+  KORVUS — Forex / Gov News · Economic Calendar     (by BlackCrownVxJ.LLC)
+  ============================================================================
+  A sibling page to korvus_dashboard.html — same vanta / neon-white / crimson
+  design system, same crown, same header + footer chrome. Served at /forex.
+
+  DATA:
+    Renders THIS-WEEK sample events instantly (computed relative to today, so
+    the table is never empty and even works opened as a bare file). Then it
+    silently upgrades to LIVE by fetching /api/ff-calendar (see korvus_calendar.py).
+    The Forex Factory free feed is CORS-blocked + rate-limited, so it is fetched
+    SERVER-SIDE and cached — never from the browser.
+  ============================================================================
+-->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Korvus — Forex / Gov News · Economic Calendar · BlackCrownVxJ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    /* ===== VANTA BLACK · NEON WHITE · NEON CRIMSON (mirrors the terminal) ===== */
+    --bg:#000000; --bg-2:#040406;
+    --panel:rgba(14,15,19,.74); --panel-solid:#0c0d11;
+    --line:rgba(255,255,255,.10); --line-soft:rgba(255,255,255,.05);
+    --ink:#f6f8ff; --ink-dim:#aab0c0; --ink-faint:#646b7d;
+    --white-glow:rgba(246,248,255,.55);
+    --bull:#3ce594; --bull-dim:#176b40; --bear:#ff2e4d; --bear-dim:#7a1622;
+    --gold:#ff1f44; --gold-deep:#d4112f; --gold-soft:rgba(255,31,68,.10); --gold-line:rgba(255,31,68,.34);
+    --crimson:#ff1f44; --crimson-deep:#d4112f; --crimson-bright:#ff3355; --crimson-glow:rgba(255,31,68,.6);
+    --crown-glow:rgba(255,31,68,.65);
+    --brand-yellow:#f5c542;
+    --hi:#ff2e4d; --med:#ff9d2e; --lo:#646b7d;
+    --med-glow:rgba(255,157,46,.55); --med-line:rgba(255,157,46,.34); --med-soft:rgba(255,157,46,.10);
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+    --body:'Hanken Grotesk',system-ui,sans-serif;
+    --disp:'Bricolage Grotesque',var(--body);
+    --r:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;-webkit-font-smoothing:antialiased;}
+
+  /* ---------- atmosphere (same as terminal) ---------- */
+  .aurora{position:fixed;inset:-20%;z-index:-2;filter:blur(22px);opacity:.42;}
+  .aurora span{position:absolute;border-radius:50%;mix-blend-mode:screen;}
+  .a1{width:55vw;height:55vw;left:-8vw;top:-18vw;background:radial-gradient(circle,rgba(255,31,68,.14),transparent 62%);animation:drift1 26s ease-in-out infinite;}
+  .a2{width:50vw;height:50vw;right:-6vw;top:8vh;background:radial-gradient(circle,rgba(255,51,85,.16),transparent 62%);animation:drift2 32s ease-in-out infinite;}
+  .a3{width:42vw;height:42vw;left:30vw;bottom:-22vw;background:radial-gradient(circle,rgba(212,17,47,.12),transparent 62%);animation:drift1 38s ease-in-out infinite reverse;}
+  @keyframes drift1{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(4vw,3vh) scale(1.08);}}
+  @keyframes drift2{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(-3vw,4vh) scale(1.1);}}
+  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      linear-gradient(rgba(120,140,170,.035) 1px,transparent 1px) 0 0/100% 46px,
+      linear-gradient(90deg,rgba(120,140,170,.035) 1px,transparent 1px) 0 0/46px 100%,
+      radial-gradient(circle at 50% 0%,rgba(255,255,255,.02),transparent 55%);
+    -webkit-mask-image:radial-gradient(circle at 50% 35%,#000,transparent 95%);
+            mask-image:radial-gradient(circle at 50% 35%,#000,transparent 95%);}
+
+  .app{display:flex;flex-direction:column;min-height:100vh;max-width:1500px;margin:0 auto;}
+
+  /* ---------- header (mirrors the terminal) ---------- */
+  header{display:flex;align-items:center;gap:16px;padding:13px 22px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(10,13,18,.86),rgba(6,8,12,.6));backdrop-filter:blur(14px);
+    z-index:30;animation:fadeDown .7s ease both;}
+  @keyframes fadeDown{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:none;}}
+  .brand{display:flex;align-items:center;gap:13px;}
+  .glyph{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex:none;
+    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);
+    border:1px solid rgba(255,31,68,.42);box-shadow:0 0 28px -5px var(--crown-glow),inset 0 1px 0 rgba(255,255,255,.05);}
+  .glyph svg{animation:crownPulse 3.2s ease-in-out infinite;}
+  @keyframes crownPulse{0%,100%{filter:drop-shadow(0 0 7px var(--crown-glow));}50%{filter:drop-shadow(0 0 15px rgba(255,31,68,.98));}}
+  .brand .txt{line-height:1;}
+  .brand .mark{font-family:var(--disp);font-weight:800;font-size:18px;letter-spacing:-.01em;color:var(--ink);display:flex;align-items:baseline;}
+  .brand .mark b{color:var(--ink);font-weight:800;}
+  .brand .mark .llc{font-family:var(--mono);font-weight:500;font-size:9px;color:var(--gold-deep);letter-spacing:.14em;margin-left:5px;align-self:flex-start;}
+  .brand .tagline{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);margin-top:5px;}
+  .brand .tagline b{color:var(--gold);font-weight:600;}
+  .spacer{flex:1;}
+
+  /* back-to-terminal link */
+  .backterm{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10.5px;font-weight:600;
+    letter-spacing:.12em;text-transform:uppercase;text-decoration:none;color:#ff465e;cursor:pointer;
+    border:1px solid rgba(232,35,63,.38);border-radius:999px;padding:7px 13px;background:rgba(232,35,63,.06);transition:.14s;}
+  .backterm:hover{background:rgba(232,35,63,.13);border-color:#e8233f;color:#fff;}
+  .backterm svg{width:13px;height:13px;}
+
+  .livebadge{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--ink-dim);
+    letter-spacing:.04em;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:rgba(70,209,127,.05);}
+  .livebadge .dot{width:8px;height:8px;border-radius:50%;background:var(--bull);box-shadow:0 0 0 0 rgba(70,209,127,.6);animation:pulse 2.4s infinite;}
+  .livebadge.sample{background:rgba(255,157,46,.06);border-color:var(--med-line);color:var(--med);}
+  .livebadge.sample .dot{background:var(--med);animation:none;box-shadow:none;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(70,209,127,.55);}70%{box-shadow:0 0 0 8px rgba(70,209,127,0);}100%{box-shadow:0 0 0 0 rgba(70,209,127,0);}}
+  .clock{font-family:var(--mono);font-size:14px;color:var(--ink);letter-spacing:.05em;text-align:right;}
+  .clock small{display:block;color:var(--ink-faint);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;margin-top:2px;}
+
+  /* ---------- title strip ---------- */
+  .titlestrip{display:flex;align-items:baseline;gap:14px;padding:18px 24px 6px;flex-wrap:wrap;}
+  .titlestrip h1{font-family:var(--disp);font-weight:800;font-size:24px;letter-spacing:-.01em;margin:0;color:var(--ink);
+    text-shadow:0 0 22px rgba(246,248,255,.18);}
+  .titlestrip h1 b{color:var(--crimson);}
+  .titlestrip .sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);}
+
+  /* ---------- controls (filters) ---------- */
+  .controls{display:flex;align-items:center;gap:14px;padding:8px 24px 16px;flex-wrap:wrap;}
+  .ctlgrp{display:flex;align-items:center;gap:8px;}
+  .ctllabel{font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);}
+  .chips{display:flex;gap:4px;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:9px;padding:3px;flex-wrap:wrap;}
+  .chip{font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    padding:5px 11px;border-radius:6px;border:none;background:transparent;color:var(--ink-faint);cursor:pointer;transition:all .15s;}
+  .chip:hover{color:var(--ink-dim);}
+  .chip.active{background:var(--crimson);color:#fff;box-shadow:0 0 14px -4px var(--crimson-glow);}
+  .chip.imp-high.active{background:var(--hi);box-shadow:0 0 14px -4px rgba(255,46,77,.7);}
+  .chip.imp-med.active{background:var(--med);color:#1a1206;box-shadow:0 0 14px -4px var(--med-glow);}
+  .chip.imp-low.active{background:var(--ink-faint);color:#fff;}
+
+  /* ---------- calendar ---------- */
+  main{padding:0 24px 26px;}
+  .cal{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--panel);backdrop-filter:blur(10px);
+    box-shadow:0 22px 55px -26px rgba(0,0,0,.92),0 0 0 1px rgba(255,31,68,.05);animation:rise .7s ease both;}
+  @keyframes rise{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
+  .colhead{display:grid;grid-template-columns:84px 64px 92px 1fr 96px 96px 96px;gap:10px;
+    padding:11px 18px;border-bottom:1px solid var(--line);
+    font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);position:sticky;top:0;
+    background:linear-gradient(180deg,rgba(12,14,19,.96),rgba(10,12,17,.9));backdrop-filter:blur(8px);z-index:5;}
+  .colhead .num{text-align:right;}
+
+  .daygrp{border-bottom:1px solid var(--line-soft);}
+  .dayhdr{display:flex;align-items:center;gap:10px;padding:9px 18px;background:rgba(255,255,255,.018);}
+  .dayhdr .dname{font-family:var(--disp);font-weight:700;font-size:13px;color:var(--ink);}
+  .dayhdr .ddate{font-family:var(--mono);font-size:10px;color:var(--ink-faint);letter-spacing:.06em;}
+  .dayhdr.today{background:linear-gradient(90deg,rgba(255,31,68,.12),transparent 60%);}
+  .dayhdr.today .dname{color:var(--crimson);}
+  .dayhdr .todaytag{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:#fff;
+    background:var(--crimson);padding:2px 7px;border-radius:999px;box-shadow:0 0 12px -3px var(--crimson-glow);}
+
+  .erow{display:grid;grid-template-columns:84px 64px 92px 1fr 96px 96px 96px;gap:10px;align-items:center;
+    padding:11px 18px;border-top:1px solid var(--line-soft);transition:background .14s;font-size:13px;}
+  .erow:hover{background:rgba(255,255,255,.025);}
+  .erow.next{background:linear-gradient(90deg,rgba(255,157,46,.10),transparent 55%);box-shadow:inset 3px 0 0 var(--med);}
+  .erow.passed{opacity:.5;}
+  .etime{font-family:var(--mono);font-size:12px;color:var(--ink-dim);letter-spacing:.02em;}
+  .etime .allday{color:var(--ink-faint);font-size:10px;letter-spacing:.1em;text-transform:uppercase;}
+  .eccy{font-family:var(--mono);font-weight:600;font-size:12px;color:var(--ink);letter-spacing:.04em;}
+  .eimp{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;}
+  .eimp .d{width:8px;height:8px;border-radius:50%;flex:none;}
+  .eimp.high{color:var(--hi);} .eimp.high .d{background:var(--hi);box-shadow:0 0 8px var(--hi);}
+  .eimp.medium{color:var(--med);} .eimp.medium .d{background:var(--med);box-shadow:0 0 7px var(--med-glow);}
+  .eimp.low{color:var(--lo);} .eimp.low .d{background:var(--lo);}
+  .eimp.holiday{color:var(--ink-faint);} .eimp.holiday .d{background:var(--ink-faint);}
+  .etitle{color:var(--ink);font-weight:500;line-height:1.3;}
+  .enum{font-family:var(--mono);font-size:12px;text-align:right;letter-spacing:.02em;}
+  .enum .lbl{display:none;}
+  .eactual{font-weight:600;}
+  .eactual.beat{color:var(--bull);} .eactual.miss{color:var(--bear);} .eactual.flat{color:var(--ink);}
+  .eforecast{color:var(--ink-dim);} .eprevious{color:var(--ink-faint);}
+  .empty{padding:40px 18px;text-align:center;color:var(--ink-faint);font-family:var(--mono);font-size:12px;letter-spacing:.04em;}
+
+  /* ---------- footer (mirrors the terminal) ---------- */
+  footer{display:flex;flex-direction:column;gap:8px;padding:10px 24px 14px;border-top:1px solid var(--line);
+    background:rgba(8,11,16,.62);backdrop-filter:blur(10px);font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);letter-spacing:.03em;margin-top:auto;}
+  .frow{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+  .frow .pill{color:var(--gold);}
+  .frow .rt{color:var(--bull);}
+  .legal{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;padding-top:9px;border-top:1px solid var(--line-soft);}
+  .legal .cpy{font-family:var(--disp);font-weight:600;font-size:11px;color:var(--ink-dim);letter-spacing:.01em;flex:none;}
+  .legal .disc{flex:1;min-width:300px;font-family:var(--body);font-size:9.5px;line-height:1.55;color:var(--ink-faint);}
+  .legal .links{flex:none;font-size:10px;}
+  .legal .links a{color:var(--gold-deep);text-decoration:none;}
+  .legal .links a:hover{color:var(--gold);text-decoration:underline;}
+
+  /* ---------- responsive ---------- */
+  @media(max-width:820px){
+    .colhead{display:none;}
+    .erow{grid-template-columns:62px 1fr;grid-auto-rows:auto;gap:4px 10px;padding:13px 16px;}
+    .etime{grid-row:1;grid-column:1;}
+    .eccy{grid-row:1;grid-column:2;}
+    .eimp{grid-row:2;grid-column:1 / span 2;}
+    .etitle{grid-row:3;grid-column:1 / span 2;font-size:14px;}
+    .enum{grid-row:4;text-align:left;display:flex;align-items:baseline;gap:6px;}
+    .enum .lbl{display:inline;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);}
+    .enum.eactual{grid-column:1;} .enum.eforecast{grid-column:2;} .enum.eprevious{grid-column:1;}
+    header{flex-wrap:wrap;gap:10px;}
+    .clock{display:none;}
+    .titlestrip h1{font-size:20px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="aurora"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
+
+<div class="app">
+  <header>
+    <div class="brand">
+      <span class="glyph" aria-label="BlackCrownVxJ">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="crwn" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#ff6a5d"/><stop offset="1" stop-color="#c2160c"/></linearGradient></defs>
+          <path d="M2.6 17.6 L4.4 8.4 L8.7 12.4 L12 4.6 L15.3 12.4 L19.6 8.4 L21.4 17.6 Z" fill="url(#crwn)" stroke="#ff8a7e" stroke-width="0.5" stroke-linejoin="round"/>
+          <rect x="3" y="18.4" width="18" height="2.5" rx="1.1" fill="url(#crwn)"/>
+          <circle cx="4" cy="8" r="1.3" fill="#ff9a90"/><circle cx="12" cy="5" r="1.5" fill="#ff9a90"/><circle cx="20" cy="8" r="1.3" fill="#ff9a90"/>
+        </svg>
+      </span>
+      <span class="txt">
+        <div class="mark">KOR<b>VUS</b></div>
+        <div class="tagline">by <b class="llc">BlackCrownVxJ.LLC</b> · your edge while the world sleeps</div>
+      </span>
+    </div>
+    <div class="spacer"></div>
+    <a class="backterm" href="/terminal" title="Back to the terminal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      Terminal
+    </a>
+    <div class="livebadge sample" id="liveBadge"><span class="dot"></span><span id="liveText">SAMPLE DATA</span></div>
+    <div class="clock"><span id="clock">--:--:--</span><small>New York / ET</small></div>
+  </header>
+
+  <div class="titlestrip">
+    <h1>Forex <b>/</b> Gov News</h1>
+    <span class="sub">Economic Calendar · this week · all times ET</span>
+  </div>
+
+  <div class="controls">
+    <div class="ctlgrp">
+      <span class="ctllabel">Impact</span>
+      <div class="chips" id="impChips">
+        <button class="chip active" data-imp="all" onclick="setImp('all')">All</button>
+        <button class="chip imp-high" data-imp="High" onclick="setImp('High')">High</button>
+        <button class="chip imp-med" data-imp="Medium" onclick="setImp('Medium')">Med</button>
+        <button class="chip imp-low" data-imp="Low" onclick="setImp('Low')">Low</button>
+      </div>
+    </div>
+    <div class="ctlgrp">
+      <span class="ctllabel">Currency</span>
+      <div class="chips" id="ccyChips"></div>
+    </div>
+  </div>
+
+  <main>
+    <div class="cal">
+      <div class="colhead">
+        <span>Time</span><span>CCY</span><span>Impact</span><span>Event</span>
+        <span class="num">Actual</span><span class="num">Forecast</span><span class="num">Previous</span>
+      </div>
+      <div id="calBody"></div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="frow">
+      <span class="pill" id="srcPill">◆ ECONOMIC CALENDAR</span>
+      <span id="srcNote">Government data releases — fetched and cached by the Korvus server.</span>
+      <span style="flex:1"></span>
+      <span class="rt">● THIS WEEK</span>
+      <span id="lastUpd">last update —</span>
+    </div>
+    <div class="legal">
+      <span class="cpy">© 2026 BlackCrownVxJ LLC</span>
+      <span class="disc">Informational and educational use only. Nothing here is financial, investment, legal, or tax advice, or a recommendation to buy or sell any security, futures contract, or other instrument. Trading futures and leveraged products involves substantial risk of loss and is not suitable for everyone. You alone are responsible for your own trading decisions and outcomes; BlackCrownVxJ LLC and its owners, members, and affiliates accept no liability for any loss or damage arising from use of this platform or reliance on its content, which is provided "as is" without warranty of any kind. Use of this platform constitutes acceptance of the Terms of Service.</span>
+      <span class="links"><a href="/legal#tos">Terms of Service</a> · <a href="/legal#privacy">Privacy</a> · <a href="/legal#risk">Risk Disclosure</a></span>
+    </div>
+  </footer>
+</div>
+
+<script>
+/* ============================================================================
+   STATE
+   ============================================================================ */
+let _events = [];          // current dataset (sample or live)
+let _impFilter = 'all';
+let _ccyFilter = 'all';
+
+/* ============================================================================
+   SAMPLE DATA — built relative to THIS week so the page is never empty and
+   always looks current. Replaced by live data from /api/ff-calendar when the
+   server is running. dayOffset is days from Monday (0=Mon … 4=Fri).
+   ============================================================================ */
+function buildSampleEvents(){
+  // Monday of the current week, at local midnight
+  const now = new Date();
+  const dow = (now.getDay()+6)%7;            // 0=Mon … 6=Sun
+  const monday = new Date(now); monday.setDate(now.getDate()-dow); monday.setHours(0,0,0,0);
+  const at = (dayOffset, h, m)=>{ const d=new Date(monday); d.setDate(monday.getDate()+dayOffset); d.setHours(h,m,0,0); return d.toISOString(); };
+  const allday = (dayOffset)=>{ const d=new Date(monday); d.setDate(monday.getDate()+dayOffset); d.setHours(0,0,0,0); return d.toISOString(); };
+
+  return [
+    {date:at(0,10,0),  country:'USD', impact:'Medium', title:'ISM Manufacturing PMI',            forecast:'48.4', previous:'48.7', actual:''},
+    {date:at(0, 8,30), country:'CAD', impact:'Low',    title:'Building Permits m/m',             forecast:'1.2%', previous:'-3.1%', actual:''},
+    {date:at(1, 8,30), country:'USD', impact:'High',   title:'JOLTS Job Openings',               forecast:'7.74M',previous:'7.69M', actual:''},
+    {date:at(1, 5,0),  country:'EUR', impact:'Medium', title:'Core CPI Flash Estimate y/y',      forecast:'2.6%', previous:'2.7%',  actual:''},
+    {date:at(1,19,30), country:'AUD', impact:'High',   title:'RBA Cash Rate Decision',           forecast:'4.35%',previous:'4.35%', actual:''},
+    {date:at(2, 8,15), country:'USD', impact:'Medium', title:'ADP Non-Farm Employment Change',   forecast:'130K', previous:'99K',   actual:''},
+    {date:at(2,10,0),  country:'USD', impact:'High',   title:'ISM Services PMI',                 forecast:'51.7', previous:'51.5',  actual:''},
+    {date:at(2, 4,30), country:'GBP', impact:'Medium', title:'Services PMI',                     forecast:'52.0', previous:'52.1',  actual:''},
+    {date:at(3, 8,30), country:'USD', impact:'Medium', title:'Unemployment Claims',              forecast:'225K', previous:'219K',  actual:''},
+    {date:at(3, 7,15), country:'EUR', impact:'High',   title:'Main Refinancing Rate (ECB)',      forecast:'3.40%',previous:'3.65%', actual:''},
+    {date:at(3, 7,45), country:'EUR', impact:'High',   title:'ECB Press Conference',             forecast:'',     previous:'',      actual:''},
+    {date:at(3,23,50), country:'JPY', impact:'Low',    title:'Bank Lending y/y',                 forecast:'',     previous:'3.0%',  actual:''},
+    {date:at(4, 8,30), country:'USD', impact:'High',   title:'Non-Farm Payrolls',                forecast:'160K', previous:'142K',  actual:''},
+    {date:at(4, 8,30), country:'USD', impact:'High',   title:'Unemployment Rate',                forecast:'4.2%', previous:'4.2%',  actual:''},
+    {date:at(4, 8,30), country:'USD', impact:'High',   title:'Average Hourly Earnings m/m',      forecast:'0.3%', previous:'0.4%',  actual:''},
+    {date:at(4, 8,30), country:'CAD', impact:'High',   title:'Employment Change',                forecast:'27.5K',previous:'22.1K', actual:''},
+    {date:allday(4),   country:'CNY', impact:'Holiday',title:'Bank Holiday',                     forecast:'',     previous:'',      actual:''},
+  ];
+}
+
+/* ============================================================================
+   RENDER
+   ============================================================================ */
+const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function etParts(iso){
+  // returns {key:'YYYY-MM-DD', dow, dname, ddate, time, isAllDay, ts}
+  const d = new Date(iso);
+  const ts = d.getTime();
+  // format in ET regardless of viewer tz
+  const f = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'long',month:'short',day:'numeric',
+                                             hour:'numeric',minute:'2-digit',hour12:true});
+  const parts = f.formatToParts(d);
+  const get = t => (parts.find(p=>p.type===t)||{}).value || '';
+  const dname = get('weekday'), mon = get('month'), day = get('day');
+  let hour = get('hour'), min = get('minute'), ap = get('dayPeriod');
+  // day key in ET
+  const keyFmt = new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'});
+  const key = keyFmt.format(d);
+  const isAllDay = (new Date(iso).getUTCHours()===0 && new Date(iso).getUTCMinutes()===0) ||
+                   (hour==='12' && min==='00' && ap==='AM');
+  return {key, dname, ddate:`${mon} ${day}`, time:`${hour}:${min} ${ap}`, isAllDay, ts};
+}
+
+function impClass(imp){ return (imp||'Low').toLowerCase(); }
+
+function actualClass(actual, forecast){
+  const a = parseFloat(String(actual).replace(/[^0-9.\-]/g,''));
+  const f = parseFloat(String(forecast).replace(/[^0-9.\-]/g,''));
+  if(isNaN(a)||isNaN(f)) return 'flat';
+  if(a>f) return 'beat'; if(a<f) return 'miss'; return 'flat';
+}
+
+function render(){
+  const body = document.getElementById('calBody');
+  // filter
+  let evs = _events.filter(e=>{
+    if(_impFilter!=='all' && e.impact!==_impFilter) return false;
+    if(_ccyFilter!=='all' && e.country!==_ccyFilter) return false;
+    return true;
+  });
+  // sort by time, group by ET day
+  evs = evs.map(e=>({...e, _p:etParts(e.date)})).sort((a,b)=>a._p.ts-b._p.ts);
+
+  if(!evs.length){ body.innerHTML = '<div class="empty">No events match these filters this week.</div>'; return; }
+
+  // todays key + next upcoming event
+  const todayKey = new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const nowTs = Date.now();
+  const nextEv = evs.find(e=>e._p.ts>=nowTs);
+
+  const groups = {};
+  evs.forEach(e=>{ (groups[e._p.key] ||= []).push(e); });
+
+  let html = '';
+  Object.keys(groups).forEach(key=>{
+    const list = groups[key];
+    const p0 = list[0]._p;
+    const isToday = key===todayKey;
+    html += `<div class="daygrp">
+      <div class="dayhdr ${isToday?'today':''}">
+        <span class="dname">${p0.dname}</span><span class="ddate">${p0.ddate}</span>
+        ${isToday?'<span class="todaytag">Today</span>':''}
+      </div>`;
+    list.forEach(e=>{
+      const p = e._p;
+      const passed = p.ts < nowTs && !(nextEv && nextEv._p.ts===p.ts && nextEv.title===e.title);
+      const isNext = nextEv && nextEv._p.ts===p.ts && nextEv.title===e.title && nextEv.country===e.country;
+      const ic = impClass(e.impact);
+      const timeCell = p.isAllDay ? '<span class="allday">All&nbsp;Day</span>' : p.time;
+      const aCls = actualClass(e.actual, e.forecast);
+      html += `<div class="erow ${isNext?'next':''} ${passed?'passed':''}">
+        <span class="etime">${timeCell}</span>
+        <span class="eccy">${e.country||'—'}</span>
+        <span class="eimp ${ic}"><span class="d"></span>${e.impact||'Low'}</span>
+        <span class="etitle">${e.title||''}</span>
+        <span class="enum eactual ${aCls}"><span class="lbl">Act</span>${e.actual||'—'}</span>
+        <span class="enum eforecast"><span class="lbl">Fcst</span>${e.forecast||'—'}</span>
+        <span class="enum eprevious"><span class="lbl">Prev</span>${e.previous||'—'}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  body.innerHTML = html;
+}
+
+function buildCcyChips(){
+  const ccys = [...new Set(_events.map(e=>e.country).filter(Boolean))].sort();
+  const wrap = document.getElementById('ccyChips');
+  wrap.innerHTML = `<button class="chip active" data-ccy="all" onclick="setCcy('all')">All</button>` +
+    ccys.map(c=>`<button class="chip" data-ccy="${c}" onclick="setCcy('${c}')">${c}</button>`).join('');
+}
+
+function setImp(v){ _impFilter=v; document.querySelectorAll('#impChips .chip').forEach(b=>b.classList.toggle('active', b.dataset.imp===v)); render(); }
+function setCcy(v){ _ccyFilter=v; document.querySelectorAll('#ccyChips .chip').forEach(b=>b.classList.toggle('active', b.dataset.ccy===v)); render(); }
+
+function setBadge(isLive){
+  const b = document.getElementById('liveBadge'), t = document.getElementById('liveText');
+  if(isLive){ b.classList.remove('sample'); t.textContent='LIVE'; }
+  else { b.classList.add('sample'); t.textContent='SAMPLE DATA'; }
+}
+
+/* ============================================================================
+   CLOCK
+   ============================================================================ */
+function tick(){
+  const et = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour12:true,hour:'numeric',minute:'2-digit',second:'2-digit'}).format(new Date());
+  document.getElementById('clock').textContent = et;
+}
+
+/* ============================================================================
+   LIVE DATA — pulls the cached calendar from the Korvus server. Accepts either
+   a bare array or {events:[...]}. Falls back to sample data when offline.
+   ============================================================================ */
+async function loadLive(){
+  try{
+    const res = await fetch('/api/ff-calendar', {cache:'no-store'});
+    if(!res.ok) throw new Error('no server');
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : (data.events || []);
+    if(list && list.length){
+      _events = list;
+      buildCcyChips();
+      render();
+      setBadge(true);
+      document.getElementById('lastUpd').textContent = 'last update ' + new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true}).format(new Date()) + ' ET';
+      document.getElementById('srcNote').textContent = 'Government data releases — fetched and cached by the Korvus server.';
+      return;
+    }
+    throw new Error('empty');
+  }catch(e){
+    // keep sample data (already rendered) and label it
+    setBadge(false);
+    document.getElementById('srcNote').textContent = 'Sample week — start korvus_server.py for the live calendar feed.';
+  }
+}
+
+/* ============================================================================
+   BOOT
+   ============================================================================ */
+_events = buildSampleEvents();
+buildCcyChips();
+render();
+setBadge(false);
+tick(); setInterval(tick,1000);
+loadLive();
+setInterval(loadLive, 5*60*1000);   // refresh the calendar every 5 minutes
+</script>
+</body>
+</html>

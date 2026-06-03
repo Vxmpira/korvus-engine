@@ -137,6 +137,24 @@ def api_health():
     return jsonify({"db": exists, "total": total, "scored": scored, "last_update": last})
 
 
+@app.route("/api/ff-calendar")
+def api_ff_calendar():
+    """This-week economic calendar for the Forex / Gov News page.
+    The provider module (korvus_calendar.py) fetches Forex Factory / FMP
+    server-side and caches it, so the browser never trips the feed's CORS
+    block or rate limit. Degrades gracefully — a missing module or failed
+    fetch just returns an empty list and the page shows its sample week."""
+    try:
+        from korvus_calendar import get_calendar
+    except Exception as e:
+        return jsonify({"error": f"calendar module not available: {e}", "events": []})
+    try:
+        events = get_calendar()
+        return jsonify(events)          # page reads a bare array (or {events:[...]})
+    except Exception as e:
+        return jsonify({"error": str(e), "events": []})
+
+
 @app.route("/")
 def home():
     # logged-out visitors see the public landing page; members see the terminal
@@ -150,6 +168,13 @@ def home():
 def terminal():
     # explicit terminal route (always gated)
     return send_from_directory(HERE, "korvus_dashboard.html")
+
+
+@app.route("/forex")
+@login_required
+def forex():
+    # Forex / Gov News economic calendar — a sibling of the terminal (gated)
+    return send_from_directory(HERE, "korvus_forex_calendar.html")
 
 
 # ----------------------------------------------------------------------------
