@@ -242,17 +242,31 @@ def verify():
 
 @app.route("/api/me")
 def api_me():
-    """Lets the dashboard know who's logged in, their tier, and billing state."""
+    """Lets the dashboard / account page know who's logged in, their tier,
+    profile fields, and billing state."""
     if current_user.is_authenticated:
         _online[current_user.id] = dt.datetime.now(dt.timezone.utc)
-        return jsonify({"auth": True, "username": current_user.username,
-                        "tier": current_user.tier, "verified": current_user.email_verified,
-                        "subscription_status": getattr(current_user, "subscription_status", None),
-                        "current_period_end": getattr(current_user, "current_period_end", None),
+        u = auth.get_user_by_id(current_user.id) or {}
+        return jsonify({"auth": True,
+                        "username": u.get("username"),
+                        "email": u.get("email"),
+                        "tier": u.get("tier"),
+                        "verified": bool(u.get("email_verified")),
+                        "subscription_status": u.get("subscription_status"),
+                        "current_period_end": u.get("current_period_end"),
+                        "display_name": u.get("display_name") or "",
+                        "company": u.get("company") or "",
+                        "contact_email": u.get("contact_email") or "",
+                        "phone": u.get("phone") or "",
                         "billing_enabled": billing.billing_enabled(),
-                        "price_display": billing.price_display()})
-    return jsonify({"auth": False, "billing_enabled": billing.billing_enabled(),
-                    "price_display": billing.price_display()})
+                        "price_display": billing.price_display(),
+                        "yearly_enabled": billing.yearly_enabled(),
+                        "price_display_yearly": billing.price_display_yearly()})
+    return jsonify({"auth": False,
+                    "billing_enabled": billing.billing_enabled(),
+                    "price_display": billing.price_display(),
+                    "yearly_enabled": billing.yearly_enabled(),
+                    "price_display_yearly": billing.price_display_yearly()})
 
 
 # ----------------------------------------------------------------------------
@@ -267,9 +281,47 @@ def upgrade_page():
 @app.route("/api/billing/checkout", methods=["POST"])
 @login_required
 def billing_checkout():
+    data = request.get_json(silent=True) or {}
+    interval = "year" if data.get("interval") == "year" else "month"
     user = auth.get_user_by_id(current_user.id)
-    url, err = billing.create_checkout_url(user)
+    url, err = billing.create_checkout_url(user, interval=interval)
     return (jsonify({"url": url}) if url else (jsonify({"error": err}), 400))
+
+
+# ----------------------------------------------------------------------------
+# ACCOUNT / PROFILE
+# ----------------------------------------------------------------------------
+@app.route("/account")
+@login_required
+def account_page():
+    return send_from_directory(HERE, "korvus_account.html")
+
+
+@app.route("/api/account/username", methods=["POST"])
+@login_required
+def account_username():
+    data = request.get_json(silent=True) or {}
+    ok, msg = auth.update_username(current_user.id, data.get("username"))
+    return (jsonify({"ok": ok, "message": msg}), 200 if ok else 400)
+
+
+@app.route("/api/account/password", methods=["POST"])
+@login_required
+def account_password():
+    data = request.get_json(silent=True) or {}
+    ok, msg = auth.change_password(current_user.id, data.get("current"), data.get("new"))
+    return (jsonify({"ok": ok, "message": msg}), 200 if ok else 400)
+
+
+@app.route("/api/account/profile", methods=["POST"])
+@login_required
+def account_profile():
+    data = request.get_json(silent=True) or {}
+    ok, msg = auth.update_profile(
+        current_user.id,
+        display_name=data.get("display_name"), company=data.get("company"),
+        contact_email=data.get("contact_email"), phone=data.get("phone"))
+    return (jsonify({"ok": ok, "message": msg}), 200 if ok else 400)
 
 
 @app.route("/api/billing/portal", methods=["POST"])

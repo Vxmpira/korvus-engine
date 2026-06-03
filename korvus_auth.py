@@ -69,7 +69,11 @@ def init_auth_db():
     for col, ddl in (("stripe_customer_id", "TEXT"),
                      ("stripe_subscription_id", "TEXT"),
                      ("subscription_status", "TEXT"),
-                     ("current_period_end", "TEXT")):
+                     ("current_period_end", "TEXT"),
+                     ("display_name", "TEXT"),
+                     ("company", "TEXT"),
+                     ("contact_email", "TEXT"),
+                     ("phone", "TEXT")):
         if col not in existing:
             conn.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
     conn.commit()
@@ -204,6 +208,56 @@ def apply_subscription(customer_id, status, subscription_id=None, current_period
     conn.commit()
     conn.close()
     return user["username"]
+
+
+# ----------------------------------------------------------------------------
+# PROFILE / ACCOUNT EDITS  (used by the /account page)
+# ----------------------------------------------------------------------------
+def update_username(user_id, new_username):
+    """Change a username after a uniqueness check. Returns (ok, message).
+    Safe for billing: the Stripe link is keyed by customer id, not username."""
+    new_username = (new_username or "").strip()
+    if len(new_username) < 3:
+        return False, "Username must be at least 3 characters."
+    conn = get_db()
+    row = conn.execute("SELECT id FROM users WHERE username = ?", (new_username,)).fetchone()
+    if row and str(row["id"]) != str(user_id):
+        conn.close(); return False, "That username is taken."
+    conn.execute("UPDATE users SET username = ? WHERE id = ?", (new_username, user_id))
+    conn.commit(); conn.close()
+    return True, "Username updated."
+
+
+def change_password(user_id, current_pw, new_pw):
+    """Verify the current password, then store a new hash. Returns (ok, message)."""
+    conn = get_db()
+    row = conn.execute("SELECT password_hash FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not row:
+        conn.close(); return False, "Account not found."
+    if not check_password_hash(row["password_hash"], current_pw or ""):
+        conn.close(); return False, "Current password is incorrect."
+    if len(new_pw or "") < 8:
+        conn.close(); return False, "New password must be at least 8 characters."
+    conn.execute("UPDATE users SET password_hash = ? WHERE id = ?",
+                 (generate_password_hash(new_pw), user_id))
+    conn.commit(); conn.close()
+    return True, "Password changed."
+
+
+def update_profile(user_id, display_name=None, company=None, contact_email=None, phone=None):
+    """Update editable company / contact fields. Only provided fields change."""
+    fields, vals = [], []
+    for col, val in (("display_name", display_name), ("company", company),
+                     ("contact_email", contact_email), ("phone", phone)):
+        if val is not None:
+            fields.append(f"{col} = ?"); vals.append((val or "").strip())
+    if not fields:
+        return True, "Nothing to update."
+    vals.append(user_id)
+    conn = get_db()
+    conn.execute(f"UPDATE users SET {', '.join(fields)} WHERE id = ?", vals)
+    conn.commit(); conn.close()
+    return True, "Profile saved."
 
 
 # ----------------------------------------------------------------------------

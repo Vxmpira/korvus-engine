@@ -45,8 +45,10 @@ load_dotenv()
 
 STRIPE_SECRET_KEY     = os.getenv("STRIPE_SECRET_KEY", "").strip()
 STRIPE_PRICE_ID       = os.getenv("STRIPE_PRICE_ID", "").strip()
+STRIPE_PRICE_ID_YEARLY = os.getenv("STRIPE_PRICE_ID_YEARLY", "").strip()
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "").strip()
 STRIPE_PRICE_DISPLAY  = os.getenv("STRIPE_PRICE_DISPLAY", "").strip()
+STRIPE_PRICE_DISPLAY_YEARLY = os.getenv("STRIPE_PRICE_DISPLAY_YEARLY", "").strip()
 SITE_URL              = os.getenv("SITE_URL", "https://korvus.industries").rstrip("/")
 
 
@@ -68,8 +70,17 @@ def billing_enabled() -> bool:
     return bool(STRIPE_SECRET_KEY and STRIPE_PRICE_ID and _stripe())
 
 
+def yearly_enabled() -> bool:
+    """True when an annual price is configured (and billing is otherwise live)."""
+    return bool(STRIPE_SECRET_KEY and STRIPE_PRICE_ID_YEARLY and _stripe())
+
+
 def price_display() -> str:
     return STRIPE_PRICE_DISPLAY or ""
+
+
+def price_display_yearly() -> str:
+    return STRIPE_PRICE_DISPLAY_YEARLY or ""
 
 
 def _ensure_customer(stripe, user) -> str:
@@ -85,19 +96,27 @@ def _ensure_customer(stripe, user) -> str:
     return cust.id
 
 
-def create_checkout_url(user):
-    """Create a subscription Checkout Session for this user.
+def create_checkout_url(user, interval="month"):
+    """Create a subscription Checkout Session for this user, monthly or yearly.
     Returns (url, error); url is None on failure."""
     stripe = _stripe()
-    if not stripe or not STRIPE_PRICE_ID:
+    if not stripe:
         return None, "Memberships aren't open yet."
+    if interval == "year":
+        if not STRIPE_PRICE_ID_YEARLY:
+            return None, "The annual plan isn't available yet."
+        price_id = STRIPE_PRICE_ID_YEARLY
+    else:
+        if not STRIPE_PRICE_ID:
+            return None, "Memberships aren't open yet."
+        price_id = STRIPE_PRICE_ID
     try:
         cid = _ensure_customer(stripe, user)
         sess = stripe.checkout.Session.create(
             mode="subscription",
             customer=cid,
             client_reference_id=user.get("username"),
-            line_items=[{"price": STRIPE_PRICE_ID, "quantity": 1}],
+            line_items=[{"price": price_id, "quantity": 1}],
             allow_promotion_codes=True,
             success_url=f"{SITE_URL}/upgrade?status=success",
             cancel_url=f"{SITE_URL}/upgrade?status=cancel",

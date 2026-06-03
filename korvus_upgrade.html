@@ -58,6 +58,13 @@
   .btn:hover:not(:disabled){background:var(--crimson-bright);transform:translateY(-1px);}
   .btn:disabled{opacity:.55;cursor:not-allowed;box-shadow:none;}
   .ctanote{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);text-align:center;margin-top:11px;line-height:1.5;}
+  .cycle{display:none;align-items:center;gap:6px;margin-bottom:22px;background:rgba(255,255,255,.04);
+    border:1px solid var(--line-bright);border-radius:11px;padding:4px;width:max-content;}
+  .cyc{font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--ink-dim);background:transparent;
+    border:none;border-radius:8px;padding:8px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:background .2s,color .2s;}
+  .cyc.active{background:var(--crimson);color:#0a0d12;font-weight:700;}
+  .cyc .save{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:var(--up);color:#04130c;border-radius:5px;padding:2px 6px;font-weight:700;}
+  .cyc.active .save{background:#04130c;color:var(--up);}
   .prostate{display:none;background:rgba(60,229,148,.07);border:1px solid rgba(60,229,148,.28);border-radius:11px;
     padding:13px 16px;font-size:13.5px;color:#9fe9bd;margin-bottom:18px;line-height:1.5;}
   .foot{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);margin-top:26px;line-height:1.6;text-align:center;}
@@ -90,6 +97,10 @@
     <div class="banner" id="banner"></div>
     <div class="prostate" id="proState"></div>
 
+    <div class="cycle" id="cycle">
+      <button class="cyc active" data-int="month">Monthly</button>
+      <button class="cyc" data-int="year">Yearly <span class="save" id="saveBadge"></span></button>
+    </div>
     <div class="grid">
       <div class="plan">
         <div class="ptier">Free</div>
@@ -141,13 +152,35 @@ function fmtDate(iso){
   catch(e){ return ''; }
 }
 
+let ME = {};
+let interval = 'month';
+function parsePrice(x){ const m = (x||'').match(/(\d+(?:\.\d+)?)/); return m ? parseFloat(m[1]) : null; }
+function paintPrice(){
+  const monthly = ME.price_display || '', yearly = ME.price_display_yearly || '';
+  const el = document.getElementById('price');
+  if(interval === 'year' && ME.yearly_enabled){ el.innerHTML = (yearly || '—') + '<small> / year</small>'; }
+  else { el.innerHTML = (monthly || '—') + '<small> / month</small>'; }
+}
+function setupCycle(){
+  if(!ME.yearly_enabled || ME.tier === 'pro') return;
+  const cyc = document.getElementById('cycle'); cyc.style.display = 'inline-flex';
+  const m = parsePrice(ME.price_display), y = parsePrice(ME.price_display_yearly);
+  if(m && y && m*12 > y){ const pct = Math.round((1 - y/(m*12))*100); if(pct>0) document.getElementById('saveBadge').textContent = 'save ' + pct + '%'; }
+  cyc.querySelectorAll('.cyc').forEach(b => b.addEventListener('click', () => {
+    interval = b.dataset.int;
+    cyc.querySelectorAll('.cyc').forEach(x => x.classList.toggle('active', x === b));
+    paintPrice();
+  }));
+}
+
 async function init(){
   let me = {};
   try{ me = await (await fetch('/api/me',{cache:'no-store'})).json(); }catch(e){}
   if(me && me.auth === false){ location.href = '/login'; return; }
 
-  document.getElementById('price').innerHTML =
-    (me.price_display ? me.price_display : '—') + '<small> / month</small>';
+  ME = me; interval = 'month';
+  paintPrice();
+  setupCycle();
 
   const isPro = me.tier === 'pro';
   if(isPro){
@@ -157,6 +190,7 @@ async function init(){
     ps.textContent = 'You\u2019re on Pro' + renew + '. Manage or cancel your plan below.';
     cta.textContent = 'Manage billing';
     cta.dataset.action = 'portal';
+    const cyc = document.getElementById('cycle'); if(cyc) cyc.style.display = 'none';
     ctaNote.textContent = 'Update your card or cancel anytime';
   } else if(!me.billing_enabled){
     cta.textContent = 'Memberships open soon';
@@ -174,10 +208,11 @@ cta.addEventListener('click', async () => {
   const action = cta.dataset.action;
   if(!action || cta.disabled) return;
   const url = action === 'portal' ? '/api/billing/portal' : '/api/billing/checkout';
+  const body = action === 'checkout' ? {interval} : {};
   const label = cta.textContent;
   cta.disabled = true; cta.textContent = 'One moment\u2026';
   try{
-    const res = await fetch(url, {method:'POST'});
+    const res = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
     const data = await res.json().catch(() => ({}));
     if(res.ok && data.url){ location.href = data.url; return; }
     banner('err', data.error || 'Something went wrong. Please try again.');

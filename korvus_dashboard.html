@@ -658,6 +658,7 @@
     <span class="econ clear" id="econChip">● NO HIGH-IMPACT PRINTS TODAY</span>
     <div class="sess" id="sess">SESSION <b>—</b></div>
     <div class="clock"><span id="clock">--:--:--</span><small>New York / ET</small></div>
+    <a class="logoutbtn" href="/account" id="acctBtn" style="display:none;">Account</a>
     <a class="gopro" href="/upgrade" id="goProBtn" style="display:none;">⬆ Go Pro</a>
     <a class="logoutbtn" href="/logout" title="Log out" id="logoutBtn" style="display:none;">Log out</a>
   </header>
@@ -1287,6 +1288,8 @@ async function loadMe(){
       USER_TIER = me.tier || 'free';
       const lo = document.getElementById('logoutBtn');
       if(lo) lo.style.display = 'inline-block';
+      const ac = document.getElementById('acctBtn');
+      if(ac) ac.style.display = 'inline-block';
       const gp = document.getElementById('goProBtn');
       if(gp) gp.style.display = (USER_TIER === 'pro') ? 'none' : 'inline-flex';
       setTierLabel();
