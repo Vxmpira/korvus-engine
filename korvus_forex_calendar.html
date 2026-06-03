@@ -91,6 +91,14 @@
   .backterm:hover{background:rgba(232,35,63,.13);border-color:#e8233f;color:#fff;}
   .backterm svg{width:13px;height:13px;}
 
+  /* Eclipse-X Discord link (same as the terminal header) */
+  .discord{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+    color:#c5cbff;text-decoration:none;padding:6px 12px;border-radius:999px;
+    border:1px solid rgba(120,120,240,.4);background:rgba(88,101,242,.10);
+    box-shadow:0 0 16px -5px rgba(120,120,240,.6);transition:background .2s,box-shadow .2s,border-color .2s,color .2s;}
+  .discord:hover{background:rgba(88,101,242,.2);border-color:rgba(140,140,255,.7);box-shadow:0 0 22px -3px rgba(120,120,240,.85);color:#e6e8ff;}
+  .discord svg{width:14px;height:14px;}
+
   .livebadge{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--ink-dim);
     letter-spacing:.04em;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:rgba(70,209,127,.05);}
   .livebadge .dot{width:8px;height:8px;border-radius:50%;background:var(--bull);box-shadow:0 0 0 0 rgba(70,209,127,.6);animation:pulse 2.4s infinite;}
@@ -214,6 +222,10 @@
       </span>
     </div>
     <div class="spacer"></div>
+    <a class="discord" href="https://discord.gg/ZXt7Hkq7fv" target="_blank" rel="noopener noreferrer" title="Join the Eclipse-X community on Discord">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M20.3 4.6A19 19 0 0 0 15.6 3l-.3.5a13 13 0 0 1 4 2 14 14 0 0 0-12.6 0 13 13 0 0 1 4-2L10.4 3a19 19 0 0 0-4.7 1.6C2.8 8.8 2 13 2.4 17.1a19 19 0 0 0 5.7 2.9l.5-.7a13 13 0 0 1-2-1l.4-.3a13.5 13.5 0 0 0 11.6 0l.4.3a13 13 0 0 1-2 1l.5.7a19 19 0 0 0 5.7-2.9C22 12.7 21.2 8.5 20.3 4.6ZM9 14.7c-.9 0-1.7-.8-1.7-1.9S8 11 9 11s1.7.8 1.7 1.9-.8 1.8-1.7 1.8Zm6 0c-.9 0-1.7-.8-1.7-1.9S14 11 15 11s1.7.8 1.7 1.9-.8 1.8-1.7 1.8Z"/></svg>
+      ECLIPSE-X
+    </a>
     <a class="backterm" href="/terminal" title="Back to the terminal">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
       Terminal
@@ -274,7 +286,7 @@
    STATE
    ============================================================================ */
 let _events = [];          // current dataset (sample or live)
-let _impFilter = 'all';
+let _impSet = new Set();   // multi-select; empty = ALL (no impact filter)
 let _ccyFilter = 'all';
 
 /* ============================================================================
@@ -349,7 +361,7 @@ function render(){
   const body = document.getElementById('calBody');
   // filter
   let evs = _events.filter(e=>{
-    if(_impFilter!=='all' && e.impact!==_impFilter) return false;
+    if(_impSet.size && !_impSet.has(e.impact)) return false;   // empty Set = show all impacts
     if(_ccyFilter!=='all' && e.country!==_ccyFilter) return false;
     return true;
   });
@@ -405,7 +417,22 @@ function buildCcyChips(){
     ccys.map(c=>`<button class="chip" data-ccy="${c}" onclick="setCcy('${c}')">${c}</button>`).join('');
 }
 
-function setImp(v){ _impFilter=v; document.querySelectorAll('#impChips .chip').forEach(b=>b.classList.toggle('active', b.dataset.imp===v)); render(); }
+function setImp(v){
+  // "All" clears the filter (everything shows). Each level toggles on/off and
+  // stacks — e.g. enable High, then Medium, to see both together. Turning the
+  // last active level off reverts to All.
+  if(v==='all'){ _impSet.clear(); }
+  else { _impSet.has(v) ? _impSet.delete(v) : _impSet.add(v); }
+  refreshImpChips();
+  render();
+}
+function refreshImpChips(){
+  const isAll = _impSet.size===0;
+  document.querySelectorAll('#impChips .chip').forEach(b=>{
+    const imp = b.dataset.imp;
+    b.classList.toggle('active', imp==='all' ? isAll : _impSet.has(imp));
+  });
+}
 function setCcy(v){ _ccyFilter=v; document.querySelectorAll('#ccyChips .chip').forEach(b=>b.classList.toggle('active', b.dataset.ccy===v)); render(); }
 
 function setBadge(isLive){
@@ -454,6 +481,7 @@ async function loadLive(){
    ============================================================================ */
 _events = buildSampleEvents();
 buildCcyChips();
+refreshImpChips();
 render();
 setBadge(false);
 tick(); setInterval(tick,1000);
