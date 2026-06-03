@@ -244,6 +244,9 @@
     padding:4px 11px;border-radius:6px;border:none;background:transparent;color:var(--ink-faint);cursor:pointer;transition:all .15s;}
   .catbtn:hover{color:var(--ink-dim);}
   .catbtn.active{background:var(--crimson);color:#fff;box-shadow:0 0 14px -4px var(--crimson-glow);}
+  .catbtn.imp-high.active{background:var(--hi);color:#fff;box-shadow:0 0 14px -4px rgba(255,46,77,.7);}
+  .catbtn.imp-med.active{background:var(--med);color:#1a1206;box-shadow:0 0 14px -4px var(--med-glow);}
+  .catbtn.imp-low.active{background:var(--ink-faint);color:#fff;box-shadow:none;}
   .mktstatus{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
     padding:3px 9px 3px 8px;border-radius:999px;border:1px solid;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
   .mktstatus::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:none;}
@@ -623,9 +626,10 @@
       <div class="phead">
         <h2>News &amp; Market Impact</h2>
         <div class="catfilter">
-          <button class="catbtn active" data-cat="all" onclick="setNewsCat('all')">All</button>
-          <button class="catbtn" data-cat="general" onclick="setNewsCat('general')">Markets</button>
-          <button class="catbtn" data-cat="forex" onclick="setNewsCat('forex')">Forex</button>
+          <button class="catbtn active" data-imp="all" onclick="setNewsImp('all')">All</button>
+          <button class="catbtn imp-high" data-imp="high" onclick="setNewsImp('high')">High</button>
+          <button class="catbtn imp-med" data-imp="med" onclick="setNewsImp('med')">Med</button>
+          <button class="catbtn imp-low" data-imp="low" onclick="setNewsImp('low')">Low</button>
         </div>
         <span class="meta" id="feedMeta">— items</span>
       </div>
@@ -830,19 +834,26 @@ function instTag(sym){
 }
 
 let _newsCache = [];
-let _newsCat = 'all';
-function setNewsCat(cat){
-  _newsCat = cat;
-  document.querySelectorAll('.catbtn').forEach(b=>b.classList.toggle('active', b.dataset.cat===cat));
+let _newsImp = new Set();   // impact filter; empty = all (multi-select: stack High+Med, etc.)
+const MAX_INST = 3;         // cap instrument tags shown per card — tight & realistic
+function setNewsImp(v){
+  // "All" clears the filter; High/Med/Low toggle and stack
+  if(v==='all'){ _newsImp.clear(); }
+  else { _newsImp.has(v) ? _newsImp.delete(v) : _newsImp.add(v); }
+  const isAll = _newsImp.size===0;
+  document.querySelectorAll('.catfilter .catbtn').forEach(b=>{
+    const imp=b.dataset.imp;
+    b.classList.toggle('active', imp==='all' ? isAll : _newsImp.has(imp));
+  });
   renderNews(_newsCache);
 }
 function renderNews(list){
   _newsCache = list;
-  const shown = _newsCat==='all' ? list : list.filter(n => (n.category||'general')===_newsCat);
+  const shown = _newsImp.size ? list.filter(n => _newsImp.has(n.impact)) : list;
   document.getElementById('feed').innerHTML = shown.map((n,idx)=>{
     const realIdx = _newsCache.indexOf(n);
     const [arrow,cls,label]=dirMeta[n.dir];
-    const insts=n.inst.map(instTag).join('');
+    const insts=(n.inst||[]).slice(0,MAX_INST).map(instTag).join('');
     return `<article class="item" data-idx="${realIdx}" onclick="openNewsDetail(${realIdx})" title="Click for detail">
       <div class="rail">
         <div class="railtop"><span class="time">${n.time}</span><span class="impact ${n.impact}">${n.impact}</span></div>
@@ -859,8 +870,7 @@ function renderNews(list){
       </div>
     </article>`;
   }).join('');
-  const catLabel = _newsCat==='all' ? '' : (_newsCat==='forex' ? ' forex' : ' markets');
-  document.getElementById('feedMeta').textContent=shown.length+catLabel+' items';
+  document.getElementById('feedMeta').textContent=shown.length+' items';
 }
 
 /* ----- news detail modal (click-in) ----- */

@@ -522,10 +522,16 @@ OTHER:
   to watch — never "buy"/"sell"/"go long".
 - summary = the fast headline take. impact_desc = the deeper "why it matters / how
   it transmits / what to watch" analysis. Both grounded in THIS story only.
-- Tag the instruments MOST DIRECTLY affected by THIS story, across all markets —
-  not just index futures. Crude-oil -> CL; gold -> GC; Treasuries/yields -> ZN/ZB;
-  EUR/ECB -> 6E; yen/BOJ -> 6J; a single megacap -> that ticker (+ NQ/QQQ if big
-  enough to move the index). Tag EVERY instrument genuinely affected. [] if none.
+- Tag ONLY the instruments this story is a PRIMARY, direct driver for. Be strict:
+  AT MOST 3, usually 1-2, ordered most-direct first. If a story wouldn't plausibly
+  move an instrument on its own, do NOT tag it. A single-stock story tags that stock
+  (e.g. Broadcom earnings -> AVGO); add a broad index proxy (ONE of NQ/QQQ or ES/SPY)
+  ONLY when the move is genuinely big or broad enough to shift the whole index, not by
+  reflex. Macro mapping: crude -> CL; gold -> GC; Treasuries/yields -> ZN or ZB;
+  EUR/ECB -> 6E; yen/BOJ -> 6J. Do NOT pad the list with loosely-related names, and do
+  NOT stack near-duplicates of the same exposure (pick ONE of NQ/MNQ/QQQ, ONE of
+  ES/MES/SPY) — choose the single best representative. Prefer fewer, high-conviction
+  tags over a long "maybe" list. [] if nothing is directly moved.
 - Only use instruments from this watched list: {INSTRUMENTS}.
 """
 
@@ -557,6 +563,8 @@ def score_with_claude(client, item: dict) -> Optional[dict]:
         data["confidence"] = max(0, min(100, int(data.get("confidence", 0))))
         if not isinstance(data.get("instruments"), list):
             data["instruments"] = []
+        # keep it tight & realistic — at most the 3 most-direct (prompt orders them)
+        data["instruments"] = data["instruments"][:3]
         data["summary"] = (data.get("summary") or "").strip()
         data["impact_desc"] = (data.get("impact_desc") or "").strip()
         data["noise"] = bool(data.get("noise", False))
