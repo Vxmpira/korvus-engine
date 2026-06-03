@@ -668,7 +668,7 @@
 
   <!-- SESSION MAP — ICT killzones (ET clock) + key levels for the NQ proxy -->
   <div class="ctxband" id="sessionBand">
-    <div class="ctxlabel"><span class="t">Session Map</span><span class="s">ICT killzones · ET</span></div>
+    <div class="ctxlabel"><span class="t">Session Map</span><span class="s">Asia · London · New York · ET</span></div>
     <div id="killzones" style="display:flex;"></div>
     <div class="kznow" id="kzNow"></div>
     <div id="sessionLevels" style="display:flex;"></div>
@@ -1146,7 +1146,7 @@ async function loadLiveQuotes(){
   const futProxies = Object.values(FUT_PROXY);
   const smtProxies = ['QQQ','SPY','DIA'];
   const watchSyms  = collectWatchSymbols(SAMPLE_WATCH);
-  const all = [...new Set([...futProxies, ...smtProxies, ...watchSyms, 'UUP'])];
+  const all = [...new Set([...futProxies, ...smtProxies, ...watchSyms])];
 
   try{
     const res = await fetch('/api/quotes?symbols=' + all.join(','), {cache:'no-store'});
@@ -1175,15 +1175,11 @@ async function loadLiveQuotes(){
     }));
     renderWatch(SAMPLE_WATCH);
 
-    // macro confluence + session levels read the same quotes
-    renderMacroBand(q);
-    renderSessionLevels(q);
-
     // reflect market + tier state in the footer.
     // futures_session: 'rth' = stock hours (proxy prices live),
     //                  'globex' = futures open but ETF proxies at last close,
     //                  'closed' = futures closed (weekend / daily break).
-    const fs = (data.meta && data.meta.futures_session) || (open ? 'rth' : 'closed');
+    const fs = (data.meta && data.meta.futures_session) || _futuresStateET();
     let tag;
     if(fs === 'closed'){
       tag = '● FUTURES CLOSED';
@@ -1300,46 +1296,50 @@ function setTierLabel(){
 
 /* ============================================================================
    MACRO CONFLUENCE + SESSION MAP — ambient "why" context bands.
-   Macro: is the dollar / bonds / oil / volatility backdrop confirming or fighting
-   the index's direction right now? Transparent heuristic over snapshot % moves.
-   Session: ICT killzone timeline (live ET clock) + key levels for the NQ proxy.
-   Both read the same /api/quotes the board uses — no faked "live" data.
+   Macro: is the dollar / bonds / gold / oil / credit / volatility backdrop
+   confirming or fighting the index's direction right now? Transparent heuristic
+   over snapshot % moves. Session: global trading sessions on a live ET clock +
+   key levels for MNQ (priced via the QQQ proxy). Honest only — any value we
+   don't actually have from the feed shows "—", never a placeholder number.
    ============================================================================ */
 
 // macro factors -> ETF proxy + how a RISE in that proxy relates to equities
 const MACRO_FACS = [
   { key:'UUP',  nm:'Dollar',     sub:'DXY · UUP',  riseIs:'headwind' }, // strong $ pressures stocks
   { key:'IEF',  nm:'Bonds',      sub:'10Y · IEF',  riseIs:'tailwind' }, // bonds up = yields down = tailwind
-  { key:'USO',  nm:'Oil',        sub:'WTI · USO',  riseIs:'mixed'    }, // only a big move signals
+  { key:'GLD',  nm:'Gold',       sub:'XAU · GLD',  riseIs:'mixed'    }, // safe-haven; big move = risk-off
+  { key:'USO',  nm:'Oil',        sub:'WTI · USO',  riseIs:'mixed'    }, // big move = inflation headwind
+  { key:'HYG',  nm:'Credit',     sub:'HY · HYG',   riseIs:'tailwind' }, // high-yield up = risk-on
   { key:'VIXY', nm:'Volatility', sub:'VIX · VIXY', riseIs:'headwind' }, // vol up = risk-off
 ];
-// sample %s so the band reads instantly before live quotes land
-const MACRO_SAMPLE = { UUP:+0.18, IEF:-0.12, USO:+0.34, VIXY:-1.8, QQQ:-0.30 };
 function _mdir(p){ return p > 0.05 ? 1 : (p < -0.05 ? -1 : 0); }
 
 function renderMacroBand(q){
   const facsEl = document.getElementById('macroFacs'); if(!facsEl) return;
-  const get = s => (q && q[s] && typeof q[s].chg_pct === 'number') ? q[s].chg_pct : MACRO_SAMPLE[s];
-  const idxDir = _mdir(get('QQQ'));
-  let confirms = 0, fights = 0;
+  const has = s => q && q[s] && typeof q[s].chg_pct === 'number';
+  const idxHas = has('QQQ');
+  const idxDir = idxHas ? _mdir(q.QQQ.chg_pct) : null;
+  let confirms = 0, fights = 0, anyData = false;
   facsEl.innerHTML = MACRO_FACS.map(f => {
-    const v = get(f.key), up = _mdir(v);
-    let effect = 0; // +1 tailwind for stocks, -1 headwind, 0 neutral
-    if(f.riseIs === 'headwind') effect = -up;
-    else if(f.riseIs === 'tailwind') effect = up;
-    else effect = Math.abs(v) > 1.2 ? -up : 0; // oil: only a large move matters
+    if(!has(f.key)) return `<div class="mfac"><span class="nm">${f.nm}<small>${f.sub}</small></span><span class="mv" style="color:var(--ink-faint)">—</span></div>`;
+    anyData = true;
+    const v = q[f.key].chg_pct, up = _mdir(v);
+    let effect = f.riseIs==='headwind' ? -up : f.riseIs==='tailwind' ? up : (Math.abs(v) > 1.2 ? -up : 0);
     let vd='neutral', vt='—';
-    if(idxDir !== 0 && effect !== 0){
-      if(Math.sign(effect) === idxDir){ vd='confirm'; vt='confirms'; confirms++; }
+    if(idxDir!==null && idxDir!==0 && effect!==0){
+      if(Math.sign(effect)===idxDir){ vd='confirm'; vt='confirms'; confirms++; }
       else { vd='fight'; vt='fights'; fights++; }
     }
     const cls = up>0?'up':(up<0?'down':''), sign = v>0?'+':'';
     return `<div class="mfac"><span class="nm">${f.nm}<small>${f.sub}</small></span>`
-         + `<span class="mv ${cls}">${sign}${v.toFixed(2)}%</span>`
-         + `<span class="vd ${vd}">${vt}</span></div>`;
+         + `<span class="mv ${cls}">${sign}${v.toFixed(2)}%</span><span class="vd ${vd}">${vt}</span></div>`;
   }).join('');
 
   const vEl = document.getElementById('macroVerdict'); if(!vEl) return;
+  if(!idxHas || !anyData){
+    vEl.innerHTML = `<span class="lbl">Backdrop</span><span class="val mixed">—</span><span class="read">Awaiting live quotes…</span>`;
+    return;
+  }
   const word = idxDir>0?'rally':(idxDir<0?'decline':'chop');
   let val='MIXED', vcls='mixed', read;
   if(idxDir === 0){ val='NEUTRAL'; read='Index is flat — no clear backdrop to confirm.'; }
@@ -1349,12 +1349,11 @@ function renderMacroBand(q){
   vEl.innerHTML = `<span class="lbl">Backdrop</span><span class="val ${vcls}">${val}</span><span class="read">${read}</span>`;
 }
 
-// ICT killzones in ET. [start,end) decimal hours; end may be 24 (midnight).
-const KILLZONES = [
-  { nm:'Asia',   s:20,   e:24 },  // 8pm–midnight ET
-  { nm:'London', s:2,    e:5  },  // 2–5am ET
-  { nm:'NY AM',  s:7,    e:10 },  // 7–10am ET
-  { nm:'NY PM',  s:13.5, e:16 },  // 1:30–4pm ET
+// global trading sessions in ET. [s,e) decimal hours; wraps midnight when s>e.
+const SESSIONS = [
+  { nm:'Asia',     s:18,  e:4.75 },  // 6:00 PM – 4:45 AM ET (overnight)
+  { nm:'London',   s:3,   e:12   },  // 3:00 AM – 12:00 PM ET
+  { nm:'New York', s:8,   e:17   },  // 8:00 AM – 5:00 PM ET
 ];
 function _etNow(){
   const p = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour12:false,
@@ -1363,49 +1362,79 @@ function _etNow(){
   let h = parseInt(g('hour'),10); if(h===24) h=0;
   return h + (+g('minute'))/60 + (+g('second'))/3600;
 }
+function _etWeekday(){ // 0=Sun .. 6=Sat
+  const wd = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short'}).format(new Date());
+  return {Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6}[wd] ?? 1;
+}
+function _isOpen(k,t){ return k.s < k.e ? (t>=k.s && t<k.e) : (t>=k.s || t<k.e); }
 function _fmtCd(decHours){
   let t = Math.max(0, Math.round(decHours*3600));
   const hh=Math.floor(t/3600); t-=hh*3600; const mm=Math.floor(t/60), ss=t-mm*60;
   return (hh?hh+'h ':'') + ((hh||mm)?mm+'m ':'') + ss+'s';
 }
-function _kzLabel(k){
-  const f = x => { const h=Math.floor(x), m=Math.round((x-h)*60), ap=h>=12?'p':'a'; let hh=h%12||12;
+function _sessLabel(k){
+  const f = x => { x=((x%24)+24)%24; const h=Math.floor(x), m=Math.round((x-h)*60), ap=h>=12?'p':'a'; let hh=h%12||12;
     return hh + (m?(':' + (m<10?'0':'') + m):'') + ap; };
-  return f(k.s) + '–' + f(k.e===24?0:k.e);
+  return f(k.s) + '–' + f(k.e);
 }
-function renderKillzones(){
+// CME equity-index futures (MNQ/MES...): Sun 6pm ET -> Fri 5pm ET, daily 5-6pm ET break.
+function _futuresStateET(){
+  const t=_etNow(), wd=_etWeekday();
+  if(wd>=1 && wd<=5 && t>=9.5 && t<=16) return 'rth';   // proxies live (stock RTH)
+  if(wd===6) return 'closed';                            // Saturday
+  if(wd===0) return t>=18 ? 'globex' : 'closed';         // Sunday: opens 6pm ET
+  if(wd===5 && t>=17) return 'closed';                   // Friday: closes 5pm ET
+  if(t>=17 && t<18) return 'closed';                     // daily maintenance break
+  return 'globex';
+}
+function renderSessions(){
   const kzEl = document.getElementById('killzones'); if(!kzEl) return;
-  const t = _etNow();
-  let active = -1;
-  KILLZONES.forEach((k,i)=>{ if(t>=k.s && t<k.e) active=i; });
-  kzEl.innerHTML = KILLZONES.map((k,i)=>{
-    const cls = i===active ? 'active' : (t>=k.e ? 'past' : '');
-    return `<div class="kz ${cls}"><span class="kzdot"></span>`
-         + `<span><span class="knm">${k.nm}</span> <span class="kt">${_kzLabel(k)}</span></span></div>`;
+  const t = _etNow(); const openNames = [];
+  kzEl.innerHTML = SESSIONS.map(k=>{
+    const open = _isOpen(k,t); if(open) openNames.push(k.nm);
+    return `<div class="kz ${open?'active':''}"><span class="kzdot"></span>`
+         + `<span><span class="knm">${k.nm}</span> <span class="kt">${_sessLabel(k)}</span></span></div>`;
   }).join('');
   const nowEl = document.getElementById('kzNow'); if(!nowEl) return;
-  if(active>=0){
-    nowEl.innerHTML = `<span class="lbl">Now</span><span class="val">${KILLZONES[active].nm} · ${_fmtCd(KILLZONES[active].e - t)} left</span>`;
+  if(openNames.length){
+    nowEl.innerHTML = `<span class="lbl">Open</span><span class="val">${openNames.join(' + ')}</span>`;
   }else{
-    let best=null; KILLZONES.forEach(k=>{ let d=k.s-t; if(d<0)d+=24; if(best===null||d<best.d) best={nm:k.nm,d}; });
+    let best=null; SESSIONS.forEach(k=>{ let d=k.s-t; if(d<0)d+=24; if(best===null||d<best.d) best={nm:k.nm,d}; });
     nowEl.innerHTML = `<span class="lbl">Next</span><span class="val">${best.nm} in ${_fmtCd(best.d)}</span>`;
   }
 }
 
-// key levels for the NQ proxy (QQQ) — honest snapshot O/H/L/prev/current + range
-const LVL_SAMPLE = { open:740.20, high:742.10, low:738.40, prev_close:741.00, price:739.55 };
+// key levels for MNQ (priced via the QQQ proxy) — honest snapshot O/H/L/prev/current
 function renderSessionLevels(q){
   const el = document.getElementById('sessionLevels'); if(!el) return;
-  const live = q && q.QQQ && typeof q.QQQ.price === 'number' && q.QQQ.high;
-  const d = live ? q.QQQ : LVL_SAMPLE;
-  const have = ['open','high','low'].every(k => typeof d[k]==='number' && d[k]>0);
-  const pos = (have && d.high>d.low) ? Math.min(100,Math.max(0,(d.price-d.low)/(d.high-d.low)*100)) : 50;
+  const d = (q && q.QQQ) ? q.QQQ : null;
   const fx = v => (typeof v==='number' && v>0 ? v.toFixed(2) : '—');
+  const price = d && typeof d.price==='number' ? d.price : null;
+  const hasOHLC = d && ['open','high','low'].every(k=>typeof d[k]==='number' && d[k]>0);
+  const pos = (hasOHLC && d.high>d.low && price!=null) ? Math.min(100,Math.max(0,(price-d.low)/(d.high-d.low)*100)) : null;
   const item = (k,v) => `<div class="lvl"><span class="lk">${k}</span><span class="lv">${v}</span></div>`;
-  el.innerHTML = item('NQ·QQQ', fx(d.price)) + item('Open', fx(d.open)) + item('High', fx(d.high))
-    + item('Low', fx(d.low)) + item('Prev', fx(d.prev_close))
-    + (have ? `<div class="lvl"><span class="lk">Range</span><div class="rangebar" title="where price sits in today's range"><i style="left:${pos}%"></i></div></div>` : '')
-    + `<div class="ctxnote">today's range · per-session liquidity unlocks with an intraday feed</div>`;
+  el.innerHTML = item('MNQ', price!=null?fx(price):'—')
+    + item('Open', fx(d&&d.open)) + item('High', fx(d&&d.high))
+    + item('Low', fx(d&&d.low)) + item('Prev', fx(d&&d.prev_close))
+    + (pos!=null ? `<div class="lvl"><span class="lk">Range</span><div class="rangebar" title="where price sits in today's range"><i style="left:${pos}%"></i></div></div>` : '')
+    + `<div class="ctxnote">${hasOHLC ? "via QQQ · today's range · per-session liquidity needs an intraday feed" : 'awaiting OHLC from the feed'}</div>`;
+}
+
+// dedicated lean fetch so the bands always get clean data (esp. QQQ) — decoupled
+// from the larger board fetch, which can drop symbols under provider rate limits.
+async function loadContextBands(){
+  const syms = ['QQQ','UUP','IEF','GLD','USO','HYG','VIXY'];
+  try{
+    const res = await fetch('/api/quotes?symbols=' + syms.join(','), {cache:'no-store'});
+    if(!res.ok) throw new Error('no quotes');
+    const data = await res.json();
+    const q = data.quotes || {};
+    renderMacroBand(q);
+    renderSessionLevels(q);
+  }catch(e){
+    renderMacroBand(null);      // honest "—" / awaiting, never a fake number
+    renderSessionLevels(null);
+  }
 }
 
 // initial load + gentle polling
@@ -1419,9 +1448,11 @@ setInterval(loadLiveQuotes, 30000); // quotes every 30s
 setInterval(renderMembers, 60000);  // refresh online count every 60s
 setInterval(loadMe, 120000);        // re-check tier/session every 2 min
 
-// ambient context bands — render samples now, tick the killzone clock live
-renderMacroBand(null); renderSessionLevels(null); renderKillzones();
-setInterval(renderKillzones, 1000);
+// ambient context bands — fetch their own clean quotes; tick the session clock live
+renderMacroBand(null); renderSessionLevels(null); renderSessions();
+loadContextBands();
+setInterval(renderSessions, 1000);
+setInterval(loadContextBands, 30000);
 </script>
 </body>
 </html>
