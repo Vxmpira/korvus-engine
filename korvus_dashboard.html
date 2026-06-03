@@ -389,16 +389,21 @@
   .paneltabs{display:none;}
 
   @media (max-width: 1100px){
-    /* RELEASE the desktop scroll-lock: the base style sets body{overflow:hidden}
-       and app/html to a fixed 100vh, which freezes the page. In tab mode we let
-       the whole document scroll naturally so all content + the footer are reachable. */
-    html,body{height:auto;min-height:100%;overflow:visible;overflow-x:hidden;}
-    .app{height:auto;min-height:100vh;overflow:visible;}
-    /* single column; tabs decide which panel shows */
-    main{grid-template-columns:1fr;gap:0;padding:14px;flex:0 0 auto;min-height:auto;overflow:visible;}
+    /* ===== TAB MODE: one clean scroll model =====
+       Desktop locks the page (body overflow:hidden, app=100vh, panels scroll
+       internally). Here we fully RELEASE that lock and let the whole document
+       scroll naturally, so every panel's content AND the footer are reachable
+       at any window size. !important is used to defeat the base 100vh lock. */
+    html{height:auto !important;overflow-x:hidden;overflow-y:auto !important;}
+    body{height:auto !important;min-height:100%;overflow:visible !important;}
+    .app{height:auto !important;min-height:100vh;overflow:visible !important;}
+
+    /* single column; tabs decide which panel shows; main grows with content */
+    main{grid-template-columns:1fr !important;gap:0;padding:14px;
+         flex:0 0 auto;min-height:auto !important;overflow:visible !important;}
     .right{display:block;}
 
-    /* show the tab bar */
+    /* tab bar */
     .paneltabs{display:flex;gap:6px;padding:10px 14px 0;}
     .ptab{flex:1;font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;
       padding:10px 8px;border-radius:9px 9px 0 0;border:1px solid var(--line);border-bottom:none;
@@ -406,15 +411,15 @@
     .ptab.active{background:var(--panel-solid);color:var(--ink);border-color:rgba(255,255,255,.4);}
     .ptab:hover{color:var(--ink);}
 
-    /* only the active panel shows. Let the WHOLE PAGE scroll naturally (not a
-       scroll trapped inside the panel) so content flows and the footer with
-       legal terms stays reachable at the bottom. Cap panel height generously
-       so a long list still scrolls within the panel if needed, but never so
-       tall it hides the footer. */
+    /* only the active panel shows; panels size to their content (no internal
+       scroll trap), so the page scroll carries everything incl. the footer */
     [data-panel].tabhidden,.right.tabhidden{display:none !important;}
-    .panel{min-height:0;height:auto;overflow:visible;}
-    .feed,.watchbody,.smtbody{max-height:none;overflow-y:visible;}
+    .panel{min-height:0 !important;height:auto !important;overflow:visible !important;}
+    .feed,.watchbody,.smtbody{max-height:none !important;overflow-y:visible !important;}
     .right .panel{margin-bottom:14px;}
+
+    /* footer always flows at the bottom of the document */
+    footer{position:static;}
   }
 
   /* tablets / small laptops: start shedding non-essential header chips so it
