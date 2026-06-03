@@ -3,28 +3,34 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Korvus — Market Intelligence That Works While You Sleep · BlackCrownVxJ.LLC</title>
+<title>Korvus · Market Intelligence That Works While You Sleep · BlackCrownVxJ.LLC</title>
 <meta name="description" content="Korvus turns the firehose of market news and social chatter into clear, scored intelligence for index-futures traders. By BlackCrownVxJ.LLC." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#050608;
-    --bg-2:#0a0c10;
-    --panel:#0e1116;
-    --ink:#eef1f6;
-    --ink-dim:#9aa4b2;
-    --ink-faint:#5a6470;
-    --line:rgba(255,255,255,.08);
-    --line-bright:rgba(255,255,255,.16);
-    --gold:#f0b45a;
-    --gold-deep:#c99a45;
-    --crown:#ff3a2f;
-    --up:#46d17f;
-    --down:#ff5d57;
-    --candle-bull:#ffffff;
-    --candle-bear:#c2185b;
+    /* vanta black · neon white · neon crimson · matched to the terminal */
+    --bg:#000000;
+    --bg-2:#040406;
+    --panel:#0c0d11;
+    --ink:#f6f8ff;
+    --ink-dim:#aab0c0;
+    --ink-faint:#646b7d;
+    --line:rgba(255,255,255,.09);
+    --line-bright:rgba(255,255,255,.18);
+    --gold:#ff1f44;            /* alias -> crimson (existing rules pick it up) */
+    --gold-deep:#d4112f;
+    --crimson:#ff1f44;
+    --crimson-deep:#d4112f;
+    --crimson-bright:#ff3355;
+    --crimson-glow:rgba(255,31,68,.6);
+    --brand-yellow:#f5c542;    /* trademark yellow · for the LLC mark */
+    --crown:#ff1f44;
+    --up:#3ce594;
+    --down:#ff2e4d;
+    --candle-bull:#f6f8ff;
+    --candle-bear:#ff1f44;
     --mono:'IBM Plex Mono',ui-monospace,monospace;
     --body:'Hanken Grotesk',system-ui,sans-serif;
     --disp:'Fraunces',Georgia,serif;
@@ -41,7 +47,7 @@
     -webkit-mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,#000,transparent 80%);
             mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,#000,transparent 80%);}
   .glow{position:fixed;top:-30vh;left:50%;transform:translateX(-50%);width:90vw;height:70vh;z-index:0;pointer-events:none;
-    background:radial-gradient(ellipse at center,rgba(240,180,90,.10),rgba(255,58,47,.05) 40%,transparent 70%);filter:blur(30px);}
+    background:radial-gradient(ellipse at center,rgba(255,31,68,.14),rgba(255,31,68,.05) 42%,transparent 70%);filter:blur(30px);}
 
   /* animated candlestick field */
   #candles{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;}
@@ -53,9 +59,9 @@
   .nav-inner{display:flex;align-items:center;gap:14px;padding:16px 28px;max-width:1140px;margin:0 auto;}
   .brand{display:flex;align-items:center;gap:11px;}
   .crown{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex:none;
-    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);border:1px solid rgba(255,58,47,.38);
+    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);border:1px solid rgba(255,31,68,.38);
     box-shadow:0 0 22px -6px var(--crown);}
-  .crown svg{filter:drop-shadow(0 0 5px rgba(255,58,47,.6));}
+  .crown svg{filter:drop-shadow(0 0 5px rgba(255,31,68,.6));}
   .brand-name{font-family:var(--disp);font-weight:600;font-size:21px;letter-spacing:.01em;}
   .brand-sub{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);margin-top:2px;}
   .nav-links{margin-left:auto;display:flex;align-items:center;gap:28px;}
@@ -64,7 +70,7 @@
   .btn{font-family:var(--body);font-weight:600;font-size:14px;padding:10px 20px;border-radius:8px;cursor:pointer;text-decoration:none;display:inline-block;transition:all .2s;border:1px solid transparent;}
   .btn-ghost{border-color:var(--line-bright);color:var(--ink);background:transparent;}
   .btn-ghost:hover{border-color:var(--gold);color:var(--gold);}
-  .btn-gold{background:var(--gold);color:#0a0d12;font-weight:700;}
+  .btn-gold{background:var(--gold);color:#fff;font-weight:700;box-shadow:0 0 24px -6px var(--crimson-glow);}
   .btn-gold:hover{background:var(--gold-deep);transform:translateY(-1px);}
 
   /* ---------- hero ---------- */
@@ -114,7 +120,7 @@
   .pricing-wrap{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:54px;max-width:840px;margin-left:auto;margin-right:auto;}
   .plan{background:rgba(14,17,22,.45);border:1px solid var(--line-bright);border-radius:16px;padding:38px 32px;position:relative;transition:transform .25s,border-color .25s;backdrop-filter:blur(10px);}
   .plan:hover{transform:translateY(-4px);}
-  .plan.paid{border-color:rgba(240,180,90,.4);box-shadow:0 0 40px -16px rgba(240,180,90,.4);background:rgba(18,16,12,.5);}
+  .plan.paid{border-color:rgba(255,31,68,.4);box-shadow:0 0 44px -14px rgba(255,31,68,.45);background:rgba(16,10,12,.5);}
   .plan-tag{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px;}
   .plan.paid .plan-tag{color:var(--gold);}
   .plan h3{font-family:var(--disp);font-weight:600;font-size:26px;margin-bottom:6px;}
@@ -128,7 +134,7 @@
   .plan li.off{color:var(--ink-faint);}
   .plan li.off .ck{color:var(--ink-faint);}
   .plan .btn{width:100%;text-align:center;padding:13px;}
-  .badge-best{position:absolute;top:-12px;right:26px;background:var(--gold);color:#0a0d12;font-family:var(--mono);font-size:10px;
+  .badge-best{position:absolute;top:-12px;right:26px;background:var(--gold);color:#fff;font-family:var(--mono);font-size:10px;
     letter-spacing:.1em;text-transform:uppercase;font-weight:600;padding:5px 12px;border-radius:999px;}
 
   /* disclaimer band */
@@ -166,7 +172,7 @@
         </span>
         <div>
           <div class="brand-name">Korvus</div>
-          <div class="brand-sub">by BlackCrownVxJ.LLC</div>
+          <div class="brand-sub">by <b style="color:var(--brand-yellow);font-weight:600;">BlackCrownVxJ.LLC</b></div>
         </div>
       </div>
       <div class="nav-links">
@@ -182,12 +188,12 @@
   <header class="hero">
     <div class="container">
       <div class="eyebrow">Market intelligence · News · Impact · SMT</div>
-      <h1>Trade the news<br>before it <em>moves</em> you.</h1>
-      <p>Korvus reads the firehose of market news and social chatter around the clock,
-         then hands you clear, scored intelligence — so on quiet days you trade prepared,
-         not surprised.</p>
+      <h1>Your edge while<br>the world <em>sleeps</em>.</h1>
+      <p>While everyone else scrambles to figure out what just happened, you already know.
+         Korvus reads the market around the clock and puts the <em>why</em> in front of you:
+         clear, scored, and one click away. The hard part of trading, made simple.</p>
       <div class="hero-cta">
-        <a href="/signup" class="btn btn-gold">Start free</a>
+        <a href="/signup" class="btn btn-gold">Claim your free edge</a>
         <a href="#how" class="btn btn-ghost">See how it works</a>
       </div>
     </div>
@@ -198,24 +204,24 @@
 
   <section id="what">
     <div class="container">
-      <div class="sec-label">What Korvus does</div>
-      <div class="sec-title">The newsroom that never clocks out.</div>
-      <p class="sec-intro">Three jobs, run continuously, so nothing market-moving slips past you between sessions.</p>
+      <div class="sec-label">Why traders run Korvus</div>
+      <div class="sec-title">Never get blindsided again.</div>
+      <p class="sec-intro">The worst feeling in trading isn't a loss. It's a loss you didn't see coming, when the reason was sitting in a headline you never saw. Korvus exists to close that gap. Here's how it earns its place on your desk.</p>
       <div class="features">
         <div class="feature">
-          <div class="fnum">01 / INGEST</div>
-          <h3>Always listening</h3>
-          <p>A 24/7 engine pulls premium financial newswires and social chatter the moment they break — across the names and instruments that actually move index futures.</p>
+          <div class="fnum">01 / NEVER MISS</div>
+          <h3>It never sleeps, so you can</h3>
+          <p>A 24/7 engine watches premium newswires and market chatter the instant they break, across every instrument that actually moves the indices. The story that would've blindsided you at the open? You already saw it last night.</p>
         </div>
         <div class="feature">
-          <div class="fnum">02 / SCORE</div>
-          <h3>Read &amp; rated</h3>
-          <p>Every item is summarized in plain English and scored for likely market impact, direction, affected instruments, and confidence — the noise filtered from the signal.</p>
+          <div class="fnum">02 / KNOW WHY</div>
+          <h3>Signal, not noise</h3>
+          <p>Every item is read, summarized in plain English, and scored for real market impact, direction, and confidence, with the pure noise filtered out entirely. You stop drowning in headlines and start seeing the few that matter.</p>
         </div>
         <div class="feature">
-          <div class="fnum">03 / SURFACE</div>
-          <h3>One clean desk</h3>
-          <p>It all lands on a single terminal: a scored news feed, an SMT-divergence read on NQ/ES/YM, and a funds watchlist you can make your own.</p>
+          <div class="fnum">03 / ONE DESK</div>
+          <h3>Clarity in one glance</h3>
+          <p>It all lands on a single dark terminal: a scored news feed, a live SMT-divergence read on NQ/ES/YM, and a funds board you make your own. No twelve tabs. No second-guessing. Just the why, in front of you.</p>
         </div>
       </div>
     </div>
@@ -224,12 +230,12 @@
   <section id="how" style="background:rgba(10,12,16,.4);backdrop-filter:blur(6px);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
     <div class="container">
       <div class="sec-label">How it works</div>
-      <div class="sec-title">From headline to heads-up.</div>
+      <div class="sec-title">From headline to heads-up in seconds.</div>
       <div class="flow">
-        <div class="step"><span class="snum">01</span><h4>Capture</h4><p>News &amp; social stream in continuously, day and night.</p></div>
-        <div class="step"><span class="snum">02</span><h4>Analyze</h4><p>Each item is summarized and scored for index-futures impact.</p></div>
-        <div class="step"><span class="snum">03</span><h4>Surface</h4><p>Scored intelligence appears on your terminal in seconds.</p></div>
-        <div class="step"><span class="snum">04</span><h4>Decide</h4><p>You read the board prepared — the calls stay yours.</p></div>
+        <div class="step"><span class="snum">01</span><h4>Capture</h4><p>News &amp; market chatter stream in continuously, day and night.</p></div>
+        <div class="step"><span class="snum">02</span><h4>Analyze</h4><p>Each item is read, summarized, and scored for real impact.</p></div>
+        <div class="step"><span class="snum">03</span><h4>Surface</h4><p>The why lands on your terminal while it still matters.</p></div>
+        <div class="step"><span class="snum">04</span><h4>Decide</h4><p>You move with context, not guesswork. The calls stay yours.</p></div>
       </div>
     </div>
   </section>
@@ -250,8 +256,8 @@
             <li><span class="ck">✓</span> SMT divergence read (NQ/ES/YM)</li>
             <li><span class="ck">✓</span> Default funds watchlist board</li>
             <li><span class="ck">✓</span> Market data on a 15-minute delay</li>
-            <li class="off"><span class="ck">—</span> Personal watchlist imports</li>
-            <li class="off"><span class="ck">—</span> Real-time prices</li>
+            <li class="off"><span class="ck">✕</span> Personal watchlist imports</li>
+            <li class="off"><span class="ck">✕</span> Real-time prices</li>
           </ul>
           <a href="/signup" class="btn btn-ghost">Create free account</a>
         </div>
@@ -260,7 +266,7 @@
           <div class="plan-tag">Pro</div>
           <h3>Operator</h3>
           <div class="price">$XX<span>/mo</span></div>
-          <div class="price-note">placeholder — final price at launch</div>
+          <div class="price-note">placeholder · final price at launch</div>
           <ul>
             <li><span class="ck">✓</span> Everything in Observer</li>
             <li><span class="ck">✓</span> <b style="color:var(--ink)">Real-time</b> market data on every panel</li>
@@ -304,14 +310,14 @@
   </footer>
 
 <script>
-  // demo ticker strip — purely decorative on the landing page
+  // demo ticker strip · purely decorative on the landing page
   const syms = [['MNQ','+0.37','u'],['MES','+0.25','u'],['MYM','+0.74','u'],['M2K','-0.54','d'],
     ['NVDA','-1.44','d'],['MSFT','+0.61','u'],['QQQ','+0.41','u'],['SPY','+0.10','u'],
     ['GC','+1.06','u'],['CL','-1.28','d'],['TAN','+1.84','u'],['VX','-1.74','d']];
   const row = syms.map(s=>`<span><b>${s[0]}</b> <span class="${s[2]}">${s[1]}%</span></span>`).join('');
   document.getElementById('ticker').innerHTML = row + row; // doubled for seamless scroll
 
-  // ===== animated candlestick field — realistic horizontal price chart =====
+  // ===== animated candlestick field · realistic horizontal price chart =====
   (function(){
     const cv = document.getElementById('candles');
     const ctx = cv.getContext('2d');
