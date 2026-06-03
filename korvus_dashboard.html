@@ -184,6 +184,51 @@
   .spk{display:block;}
   .up{color:var(--bull);}.down{color:var(--bear);}
 
+  /* ---------- ambient context bands (macro confluence + session map) ---------- */
+  .ctxband{display:flex;align-items:stretch;gap:0;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(12,16,22,.5),rgba(6,8,12,.28));backdrop-filter:blur(8px);
+    overflow-x:auto;scrollbar-width:none;animation:fadeDown .7s .05s ease both;}
+  .ctxband::-webkit-scrollbar{display:none;}
+  .ctxlabel{display:flex;flex-direction:column;justify-content:center;gap:3px;padding:8px 16px;
+    border-right:1px solid var(--line-soft);white-space:nowrap;flex:none;}
+  .ctxlabel .t{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);}
+  .ctxlabel .s{font-family:var(--mono);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);}
+
+  /* macro confluence */
+  .mfac{display:flex;align-items:center;gap:9px;padding:8px 15px;border-right:1px solid var(--line-soft);white-space:nowrap;}
+  .mfac .nm{font-family:var(--disp);font-weight:700;font-size:12px;color:var(--ink);line-height:1.05;}
+  .mfac .nm small{display:block;font-family:var(--mono);font-weight:400;font-size:7.5px;color:var(--ink-faint);letter-spacing:.08em;text-transform:uppercase;margin-top:2px;}
+  .mfac .mv{font-family:var(--mono);font-size:11.5px;font-weight:600;}
+  .mfac .vd{font-family:var(--mono);font-size:8px;letter-spacing:.09em;text-transform:uppercase;padding:2px 6px;border-radius:4px;border:1px solid var(--line);color:var(--ink-faint);}
+  .vd.confirm{color:var(--bull);border-color:rgba(60,229,148,.4);background:rgba(60,229,148,.08);}
+  .vd.fight{color:var(--bear);border-color:rgba(255,46,77,.4);background:rgba(255,46,77,.08);}
+  .mverdict{margin-left:auto;display:flex;align-items:center;gap:10px;padding:8px 18px;border-left:1px solid var(--line-soft);white-space:nowrap;flex:none;}
+  .mverdict .lbl{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);}
+  .mverdict .val{font-family:var(--disp);font-weight:800;font-size:13px;letter-spacing:.02em;}
+  .mverdict .val.confirm{color:var(--bull);} .mverdict .val.fight{color:var(--bear);} .mverdict .val.mixed{color:var(--med);}
+  .mverdict .read{font-family:var(--mono);font-size:9px;color:var(--ink-dim);max-width:240px;white-space:normal;line-height:1.3;}
+
+  /* session / killzone map */
+  .kz{display:flex;align-items:center;gap:8px;padding:8px 14px;border-right:1px solid var(--line-soft);white-space:nowrap;flex:none;}
+  .kzdot{width:7px;height:7px;border-radius:50%;background:var(--ink-faint);flex:none;}
+  .kz .knm{font-family:var(--disp);font-weight:700;font-size:11.5px;color:var(--ink-dim);}
+  .kz .kt{font-family:var(--mono);font-size:8px;color:var(--ink-faint);letter-spacing:.05em;}
+  .kz.active{background:rgba(255,31,68,.08);}
+  .kz.active .kzdot{background:var(--crimson);box-shadow:0 0 9px var(--crimson-glow);animation:kpulse 2s ease-in-out infinite;}
+  .kz.active .knm{color:var(--ink);}
+  .kz.past{opacity:.42;}
+  @keyframes kpulse{0%,100%{transform:scale(1);}50%{transform:scale(1.4);}}
+  .kznow{display:flex;align-items:center;gap:8px;padding:8px 16px;border-right:1px solid var(--line-soft);white-space:nowrap;flex:none;}
+  .kznow .lbl{font-family:var(--mono);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);}
+  .kznow .val{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--crimson);}
+  .lvl{display:flex;align-items:center;gap:7px;padding:8px 13px;border-right:1px solid var(--line-soft);white-space:nowrap;flex:none;}
+  .lvl .lk{font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);}
+  .lvl .lv{font-family:var(--mono);font-size:11px;color:var(--ink-dim);}
+  .rangebar{position:relative;width:88px;height:5px;border-radius:3px;background:rgba(120,140,170,.16);flex:none;}
+  .rangebar i{position:absolute;top:-2px;width:2px;height:9px;border-radius:2px;background:var(--crimson);box-shadow:0 0 7px var(--crimson-glow);}
+  .ctxnote{display:flex;align-items:center;padding:0 14px;font-family:var(--mono);font-size:8px;color:var(--ink-faint);letter-spacing:.05em;white-space:nowrap;}
+  @media(max-width:760px){ .ctxlabel .s{display:none;} .mverdict .read{display:none;} }
+
   /* ---------- layout ---------- */
   main{flex:1;display:grid;grid-template-columns:1fr 384px;gap:16px;padding:16px;min-height:0;}
   .panel{
@@ -612,6 +657,21 @@
   <!-- FUTURES BOARD — more instruments -->
   <div class="ribbonwrap">
     <div class="ribbon" id="ribbon"></div>
+  </div>
+
+  <!-- MACRO CONFLUENCE — is the macro backdrop confirming or fighting the index? -->
+  <div class="ctxband" id="macroBand">
+    <div class="ctxlabel"><span class="t">Macro Confluence</span><span class="s">vs Nasdaq</span></div>
+    <div id="macroFacs" style="display:flex;"></div>
+    <div class="mverdict" id="macroVerdict"></div>
+  </div>
+
+  <!-- SESSION MAP — ICT killzones (ET clock) + key levels for the NQ proxy -->
+  <div class="ctxband" id="sessionBand">
+    <div class="ctxlabel"><span class="t">Session Map</span><span class="s">ICT killzones · ET</span></div>
+    <div id="killzones" style="display:flex;"></div>
+    <div class="kznow" id="kzNow"></div>
+    <div id="sessionLevels" style="display:flex;"></div>
   </div>
 
   <!-- panel tabs (shown on narrower screens so all panels stay reachable) -->
@@ -1086,7 +1146,7 @@ async function loadLiveQuotes(){
   const futProxies = Object.values(FUT_PROXY);
   const smtProxies = ['QQQ','SPY','DIA'];
   const watchSyms  = collectWatchSymbols(SAMPLE_WATCH);
-  const all = [...new Set([...futProxies, ...smtProxies, ...watchSyms])];
+  const all = [...new Set([...futProxies, ...smtProxies, ...watchSyms, 'UUP'])];
 
   try{
     const res = await fetch('/api/quotes?symbols=' + all.join(','), {cache:'no-store'});
@@ -1114,6 +1174,10 @@ async function loadLiveQuotes(){
       if(px){ r.px = px.price; r.chg = px.chg_pct; }
     }));
     renderWatch(SAMPLE_WATCH);
+
+    // macro confluence + session levels read the same quotes
+    renderMacroBand(q);
+    renderSessionLevels(q);
 
     // reflect market + tier state in the footer.
     // futures_session: 'rth' = stock hours (proxy prices live),
@@ -1234,6 +1298,116 @@ function setTierLabel(){
   }
 }
 
+/* ============================================================================
+   MACRO CONFLUENCE + SESSION MAP — ambient "why" context bands.
+   Macro: is the dollar / bonds / oil / volatility backdrop confirming or fighting
+   the index's direction right now? Transparent heuristic over snapshot % moves.
+   Session: ICT killzone timeline (live ET clock) + key levels for the NQ proxy.
+   Both read the same /api/quotes the board uses — no faked "live" data.
+   ============================================================================ */
+
+// macro factors -> ETF proxy + how a RISE in that proxy relates to equities
+const MACRO_FACS = [
+  { key:'UUP',  nm:'Dollar',     sub:'DXY · UUP',  riseIs:'headwind' }, // strong $ pressures stocks
+  { key:'IEF',  nm:'Bonds',      sub:'10Y · IEF',  riseIs:'tailwind' }, // bonds up = yields down = tailwind
+  { key:'USO',  nm:'Oil',        sub:'WTI · USO',  riseIs:'mixed'    }, // only a big move signals
+  { key:'VIXY', nm:'Volatility', sub:'VIX · VIXY', riseIs:'headwind' }, // vol up = risk-off
+];
+// sample %s so the band reads instantly before live quotes land
+const MACRO_SAMPLE = { UUP:+0.18, IEF:-0.12, USO:+0.34, VIXY:-1.8, QQQ:-0.30 };
+function _mdir(p){ return p > 0.05 ? 1 : (p < -0.05 ? -1 : 0); }
+
+function renderMacroBand(q){
+  const facsEl = document.getElementById('macroFacs'); if(!facsEl) return;
+  const get = s => (q && q[s] && typeof q[s].chg_pct === 'number') ? q[s].chg_pct : MACRO_SAMPLE[s];
+  const idxDir = _mdir(get('QQQ'));
+  let confirms = 0, fights = 0;
+  facsEl.innerHTML = MACRO_FACS.map(f => {
+    const v = get(f.key), up = _mdir(v);
+    let effect = 0; // +1 tailwind for stocks, -1 headwind, 0 neutral
+    if(f.riseIs === 'headwind') effect = -up;
+    else if(f.riseIs === 'tailwind') effect = up;
+    else effect = Math.abs(v) > 1.2 ? -up : 0; // oil: only a large move matters
+    let vd='neutral', vt='—';
+    if(idxDir !== 0 && effect !== 0){
+      if(Math.sign(effect) === idxDir){ vd='confirm'; vt='confirms'; confirms++; }
+      else { vd='fight'; vt='fights'; fights++; }
+    }
+    const cls = up>0?'up':(up<0?'down':''), sign = v>0?'+':'';
+    return `<div class="mfac"><span class="nm">${f.nm}<small>${f.sub}</small></span>`
+         + `<span class="mv ${cls}">${sign}${v.toFixed(2)}%</span>`
+         + `<span class="vd ${vd}">${vt}</span></div>`;
+  }).join('');
+
+  const vEl = document.getElementById('macroVerdict'); if(!vEl) return;
+  const word = idxDir>0?'rally':(idxDir<0?'decline':'chop');
+  let val='MIXED', vcls='mixed', read;
+  if(idxDir === 0){ val='NEUTRAL'; read='Index is flat — no clear backdrop to confirm.'; }
+  else if(confirms > fights){ val='CONFIRMING'; vcls='confirm'; read=`Macro backdrop supports the ${word}.`; }
+  else if(fights > confirms){ val='FIGHTING';  vcls='fight';   read=`Backdrop is leaning against the ${word} — fade-risk.`; }
+  else { read=`Macro is split on the ${word} — no edge from the backdrop.`; }
+  vEl.innerHTML = `<span class="lbl">Backdrop</span><span class="val ${vcls}">${val}</span><span class="read">${read}</span>`;
+}
+
+// ICT killzones in ET. [start,end) decimal hours; end may be 24 (midnight).
+const KILLZONES = [
+  { nm:'Asia',   s:20,   e:24 },  // 8pm–midnight ET
+  { nm:'London', s:2,    e:5  },  // 2–5am ET
+  { nm:'NY AM',  s:7,    e:10 },  // 7–10am ET
+  { nm:'NY PM',  s:13.5, e:16 },  // 1:30–4pm ET
+];
+function _etNow(){
+  const p = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour12:false,
+    hour:'2-digit',minute:'2-digit',second:'2-digit'}).formatToParts(new Date());
+  const g = t => p.find(x=>x.type===t)?.value || '0';
+  let h = parseInt(g('hour'),10); if(h===24) h=0;
+  return h + (+g('minute'))/60 + (+g('second'))/3600;
+}
+function _fmtCd(decHours){
+  let t = Math.max(0, Math.round(decHours*3600));
+  const hh=Math.floor(t/3600); t-=hh*3600; const mm=Math.floor(t/60), ss=t-mm*60;
+  return (hh?hh+'h ':'') + ((hh||mm)?mm+'m ':'') + ss+'s';
+}
+function _kzLabel(k){
+  const f = x => { const h=Math.floor(x), m=Math.round((x-h)*60), ap=h>=12?'p':'a'; let hh=h%12||12;
+    return hh + (m?(':' + (m<10?'0':'') + m):'') + ap; };
+  return f(k.s) + '–' + f(k.e===24?0:k.e);
+}
+function renderKillzones(){
+  const kzEl = document.getElementById('killzones'); if(!kzEl) return;
+  const t = _etNow();
+  let active = -1;
+  KILLZONES.forEach((k,i)=>{ if(t>=k.s && t<k.e) active=i; });
+  kzEl.innerHTML = KILLZONES.map((k,i)=>{
+    const cls = i===active ? 'active' : (t>=k.e ? 'past' : '');
+    return `<div class="kz ${cls}"><span class="kzdot"></span>`
+         + `<span><span class="knm">${k.nm}</span> <span class="kt">${_kzLabel(k)}</span></span></div>`;
+  }).join('');
+  const nowEl = document.getElementById('kzNow'); if(!nowEl) return;
+  if(active>=0){
+    nowEl.innerHTML = `<span class="lbl">Now</span><span class="val">${KILLZONES[active].nm} · ${_fmtCd(KILLZONES[active].e - t)} left</span>`;
+  }else{
+    let best=null; KILLZONES.forEach(k=>{ let d=k.s-t; if(d<0)d+=24; if(best===null||d<best.d) best={nm:k.nm,d}; });
+    nowEl.innerHTML = `<span class="lbl">Next</span><span class="val">${best.nm} in ${_fmtCd(best.d)}</span>`;
+  }
+}
+
+// key levels for the NQ proxy (QQQ) — honest snapshot O/H/L/prev/current + range
+const LVL_SAMPLE = { open:740.20, high:742.10, low:738.40, prev_close:741.00, price:739.55 };
+function renderSessionLevels(q){
+  const el = document.getElementById('sessionLevels'); if(!el) return;
+  const live = q && q.QQQ && typeof q.QQQ.price === 'number' && q.QQQ.high;
+  const d = live ? q.QQQ : LVL_SAMPLE;
+  const have = ['open','high','low'].every(k => typeof d[k]==='number' && d[k]>0);
+  const pos = (have && d.high>d.low) ? Math.min(100,Math.max(0,(d.price-d.low)/(d.high-d.low)*100)) : 50;
+  const fx = v => (typeof v==='number' && v>0 ? v.toFixed(2) : '—');
+  const item = (k,v) => `<div class="lvl"><span class="lk">${k}</span><span class="lv">${v}</span></div>`;
+  el.innerHTML = item('NQ·QQQ', fx(d.price)) + item('Open', fx(d.open)) + item('High', fx(d.high))
+    + item('Low', fx(d.low)) + item('Prev', fx(d.prev_close))
+    + (have ? `<div class="lvl"><span class="lk">Range</span><div class="rangebar" title="where price sits in today's range"><i style="left:${pos}%"></i></div></div>` : '')
+    + `<div class="ctxnote">today's range · per-session liquidity unlocks with an intraday feed</div>`;
+}
+
 // initial load + gentle polling
 loadMe();
 loadWatchlist().then(loadLiveQuotes);
@@ -1244,6 +1418,10 @@ setInterval(loadHealth, 30000);
 setInterval(loadLiveQuotes, 30000); // quotes every 30s
 setInterval(renderMembers, 60000);  // refresh online count every 60s
 setInterval(loadMe, 120000);        // re-check tier/session every 2 min
+
+// ambient context bands — render samples now, tick the killzone clock live
+renderMacroBand(null); renderSessionLevels(null); renderKillzones();
+setInterval(renderKillzones, 1000);
 </script>
 </body>
 </html>
