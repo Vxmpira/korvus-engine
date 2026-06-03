@@ -459,8 +459,8 @@
   }
 
   /* progressive, graceful header cleanup so it never bunches.
-     Priority to KEEP (longest): brand, live trader count, session, clock, logout.
-     Shed first: the wordy status chips (econ, heartbeat), then Eclipse-X. */
+     Priority to KEEP (longest): brand, Discord/Eclipse-X, session, clock, logout.
+     Shed first: the wordy status chips (econ, heartbeat, then live-count). */
   @media (max-width: 1280px){
     header{gap:14px;}
     .econ{display:none;}                   /* "NO HIGH-IMPACT PRINTS" — wordy, lowest value */
@@ -470,26 +470,27 @@
     header{gap:13px;}
   }
   @media (max-width: 1000px){
-    .discord{display:none;}                /* Eclipse-X chip — still linked in footer */
+    .members{display:none;}                /* live count — shed before Discord */
     header{gap:12px;padding:12px 16px;}
   }
-  @media (max-width: 900px){
-    header{flex-wrap:wrap;row-gap:10px;}
-    .members{display:none;}                /* live count drops only when truly tight */
-    .sess,.clock{font-size:10px;}
-    .fut{padding:10px 14px;gap:9px;}
-  }
 
-  /* phones */
+  /* phones — clean, intentional two-row header (not a cramped single row) */
   @media (max-width: 640px){
-    header{gap:8px 10px;padding:10px 13px;}
-    .brand .mark{font-size:16px;}
-    .brand .tagline{display:none;}              /* drop the sub-tagline on phones */
-    .sess,.clock{font-size:9.5px;}
-    /* header chips wrap into rows cleanly */
-    header > *{flex:0 0 auto;}
+    header{flex-wrap:wrap;gap:10px;padding:12px 14px;align-items:center;}
+    .brand{flex:1 1 100%;}                  /* brand owns the top row */
+    .brand .mark{font-size:18px;}
+    .brand .tagline{display:block;font-size:8px;letter-spacing:.16em;margin-top:4px;}
+    /* the spacer no longer pushes things around on mobile */
+    .spacer{display:none;}
+    /* second row: a tidy, flush line of the key chips */
+    .discord,.sess,.clock,.logoutbtn,.members{order:2;}
+    .discord{display:inline-flex;}          /* ALWAYS visible — community link is crucial */
+    .members{display:flex;}                 /* bring the live count back on phones too */
+    .sess,.clock{font-size:10px;}
+    .clock small{font-size:8px;}
+    .logoutbtn{margin-left:auto;}           /* logout sits neatly at the right end */
 
-    /* ribbon: let it scroll horizontally (already overflow-x auto), shrink items */
+    /* ribbon: scroll horizontally, shrink items */
     .fut{padding:9px 12px;gap:7px;}
     .fut .sym{font-size:12px;}
     .fut .chg.big{font-size:13px;}
