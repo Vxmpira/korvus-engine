@@ -71,7 +71,8 @@ def init_auth_db():
                      ("subscription_status", "TEXT"),
                      ("current_period_end", "TEXT"),
                      ("reset_token", "TEXT"),
-                     ("reset_expires", "TEXT")):
+                     ("reset_expires", "TEXT"),
+                     ("alert_opt_in", "INTEGER DEFAULT 1")):
         if col not in existing:
             conn.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
     conn.commit()
@@ -338,6 +339,80 @@ def send_reset_email(email, token):
     print(f"  Reset link: {link}")
     print("="*60 + "\n")
     return True
+
+
+# ----------------------------------------------------------------------------
+# ALERTS — email opted-in Pro members when the engine flags a high-impact event
+# ----------------------------------------------------------------------------
+def set_alert_opt_in(user_id, on):
+    """Turn high-impact email alerts on/off for one user."""
+    conn = get_db()
+    conn.execute("UPDATE users SET alert_opt_in = ? WHERE id = ?",
+                 (1 if on else 0, user_id))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def alert_recipients():
+    """Emails of verified Pro members who haven't opted out of alerts."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT email FROM users WHERE tier='pro' AND email_verified=1 "
+        "AND COALESCE(alert_opt_in,1)=1 AND email IS NOT NULL AND email != ''"
+    ).fetchall()
+    conn.close()
+    return [r["email"] for r in rows]
+
+
+def send_high_impact_alert(item):
+    """Email a high-impact event to opted-in Pro members.
+
+    `item` is a dict with headline / summary / impact_desc / direction /
+    instruments / url. Safe to call from the engine — it never raises and
+    returns the number of recipients emailed. When EMAIL_PROVIDER is 'off'
+    it logs to the console instead of sending (same stub behavior as the
+    verification + reset emails)."""
+    try:
+        recips = alert_recipients()
+    except Exception as e:
+        print(f"  [alert] recipient lookup failed: {e}")
+        return 0
+    if not recips:
+        return 0
+
+    inst = ", ".join(item.get("instruments") or []) or "\u2014"
+    dword = {"bull": "bullish", "bear": "bearish", "neut": "neutral"}.get(
+        item.get("direction", ""), item.get("direction", "") or "neutral")
+    headline = (item.get("headline") or "")[:140]
+    subject = f"Korvus \u00b7 High-impact: {headline}"
+
+    body = ("A HIGH-IMPACT event was just flagged by the Korvus engine.\n\n"
+            f"{item.get('headline','')}\n\n"
+            f"{item.get('summary','')}\n\n")
+    if item.get("impact_desc"):
+        body += f"Why it matters:\n{item.get('impact_desc')}\n\n"
+    body += f"Instruments: {inst}\nLikely direction: {dword}\n"
+    if item.get("url"):
+        body += f"Source: {item.get('url')}\n"
+    body += (f"\nOpen the terminal: {SITE_URL}/terminal\n"
+             f"Manage or turn off alerts: {SITE_URL}/account\n\n"
+             "\u2014 Korvus \u00b7 BlackCrownVxJ.LLC")
+
+    sent = 0
+    for email in recips:
+        try:
+            if EMAIL_PROVIDER == "ses":
+                if _send_ses(email, subject, body):
+                    sent += 1
+            else:
+                print(f"  [alert:stub] EMAIL_PROVIDER off \u2014 would email "
+                      f"{email}: {subject}")
+                sent += 1
+        except Exception as e:
+            print(f"  [alert] send to {email} failed: {e}")
+    print(f"  [alert] high-impact \u2192 {sent}/{len(recips)} recipient(s)")
+    return sent
 
 
 def send_verification_email(email, token):

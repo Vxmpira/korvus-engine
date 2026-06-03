@@ -52,6 +52,17 @@
   .msg{font-family:var(--mono);font-size:11.5px;margin-top:4px;min-height:15px;line-height:1.4;}
   .msg.ok{color:#9fe9bd;} .msg.err{color:#ffb3af;}
   .planrow{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .hr{height:1px;background:rgba(255,255,255,.08);margin:18px 0;}
+  .alertrow{display:flex;align-items:flex-start;gap:14px;}
+  .switch{position:relative;display:inline-block;width:46px;height:26px;flex:0 0 auto;cursor:pointer;}
+  .switch input{opacity:0;width:0;height:0;}
+  .slider{position:absolute;inset:0;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);border-radius:999px;transition:.2s;}
+  .slider:before{content:"";position:absolute;height:18px;width:18px;left:3px;top:3px;background:var(--ink);border-radius:50%;transition:.2s;}
+  .switch input:checked + .slider{background:var(--crimson);border-color:var(--crimson);box-shadow:0 0 14px rgba(255,31,68,.5);}
+  .switch input:checked + .slider:before{transform:translateX(20px);}
+  .switch input:disabled + .slider{opacity:.4;cursor:not-allowed;}
+  .alabel{font-weight:600;color:var(--ink);font-size:.95rem;}
+  .anote{color:var(--ink-dim);font-size:.82rem;margin-top:3px;line-height:1.45;}
   .pill{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:5px 11px;border-radius:7px;font-weight:600;}
   .pill.pro{color:#0a0d12;background:var(--up);}
   .pill.free{color:var(--ink-dim);border:1px solid var(--line-bright);}
@@ -158,6 +169,14 @@
         </div>
         <button class="btn" id="billBtn">Go Pro</button>
       </div>
+      <div class="hr"></div>
+      <div class="alertrow">
+        <label class="switch"><input type="checkbox" id="alertToggle" /><span class="slider"></span></label>
+        <div>
+          <div class="alabel">High-impact email alerts</div>
+          <div class="anote" id="alertNote">An email the moment the engine flags a high-impact event.</div>
+        </div>
+      </div>
       <div class="msg" id="billMsg"></div>
     </div>
 
@@ -196,6 +215,18 @@ async function load(){
     if(ME.billing_enabled){ billBtn.textContent='Go Pro'; billBtn.dataset.action='upgrade'; }
     else { billBtn.textContent='Memberships soon'; billBtn.disabled=true; }
   }
+
+  // high-impact email alerts toggle
+  const at = document.getElementById('alertToggle');
+  const an = document.getElementById('alertNote');
+  at.checked = (ME.alert_opt_in !== 0);
+  if(ME.tier === 'pro'){
+    at.disabled = false;
+    an.textContent = 'An email the moment the engine flags a high-impact event.';
+  } else {
+    at.disabled = true;
+    an.textContent = 'A Pro feature — upgrade to get an email the moment a high-impact event hits.';
+  }
 }
 
 async function post(url, body){
@@ -232,6 +263,11 @@ document.getElementById('resendLink').onclick = async (e) => {
   e.preventDefault();
   const {ok, data} = await post('/api/account/resend-verification', {});
   setMsg('emailMsg', 'ok', data.message || 'Verification link sent.');
+};
+
+document.getElementById('alertToggle').onchange = async (e) => {
+  const {ok, data} = await post('/api/account/alerts', {on: e.target.checked});
+  setMsg('billMsg', ok?'ok':'err', data.message || (ok?'Saved.':'Could not save.'));
 };
 
 document.getElementById('billBtn').onclick = async (e) => {

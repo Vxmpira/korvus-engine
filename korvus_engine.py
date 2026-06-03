@@ -29,6 +29,7 @@ import json
 import time
 import hashlib
 import sqlite3
+import korvus_auth as auth   # for high-impact email alerts
 import argparse
 import datetime as dt
 from typing import Optional
@@ -603,6 +604,20 @@ def process_unscored(conn, client, limit: int = 40):
             item["id"],
         ))
         conn.commit()
+        # Fire a one-time email alert to opted-in Pro members on genuine
+        # high-impact events. Wrapped so a mail hiccup never breaks scoring.
+        if result["impact"] == "high" and not result.get("noise"):
+            try:
+                auth.send_high_impact_alert({
+                    "headline":    item.get("headline", ""),
+                    "summary":     result.get("summary", ""),
+                    "impact_desc": result.get("impact_desc", ""),
+                    "direction":   result.get("direction", ""),
+                    "instruments": result.get("instruments", []),
+                    "url":         item.get("url", ""),
+                })
+            except Exception as e:
+                print(f"    [alerts] notify failed: {e}")
         if result.get("noise"):
             print(f"    · [noise — hidden]                     {item['headline'][:60]}")
         else:

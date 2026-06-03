@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Owner · Korvus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000000;--panel:#0c0d11;--ink:#f6f8ff;--ink-dim:#aab0c0;--ink-faint:#646b7d;
+    --line:rgba(255,255,255,.09);--line-bright:rgba(255,255,255,.18);
+    --gold:#ff1f44;--gold-deep:#d4112f;--crimson:#ff1f44;--crimson-bright:#ff3355;
+    --crimson-glow:rgba(255,31,68,.55);--up:#3ce594;
+    --mono:'IBM Plex Mono',monospace;--body:'Hanken Grotesk',system-ui,sans-serif;--disp:'Fraunces',Georgia,serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);min-height:100vh;
+    display:flex;flex-direction:column;align-items:center;padding:40px 24px 56px;overflow-x:hidden;}
+  .glow{position:fixed;top:-22vh;left:50%;transform:translateX(-50%);width:90vw;height:60vh;z-index:0;pointer-events:none;
+    background:radial-gradient(ellipse at center,rgba(255,31,68,.12),rgba(255,31,68,.04) 42%,transparent 72%);filter:blur(30px);}
+  .wrap{position:relative;z-index:2;width:100%;max-width:920px;}
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:30px;gap:14px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:center;gap:11px;}
+  .crown{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
+    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);border:1px solid rgba(255,31,68,.42);box-shadow:0 0 22px -6px var(--crimson);}
+  .crown svg{width:18px;height:18px;}
+  .brand-name{font-family:var(--disp);font-weight:600;font-size:22px;}
+  .ownertag{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--crimson);
+    border:1px solid rgba(255,31,68,.4);border-radius:6px;padding:3px 7px;margin-left:4px;align-self:center;}
+  .navlinks{display:flex;gap:9px;}
+  .navlinks a{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);
+    text-decoration:none;border:1px solid var(--line-bright);border-radius:8px;padding:8px 12px;transition:border-color .2s,color .2s;}
+  .navlinks a:hover{border-color:var(--crimson);color:var(--ink);}
+  h1{font-family:var(--disp);font-weight:500;font-size:30px;margin-bottom:6px;letter-spacing:-.01em;}
+  .hello{color:var(--ink-dim);font-size:14.5px;margin-bottom:26px;}
+  .hello b{color:var(--ink);font-weight:600;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:18px;}
+  .stat{background:rgba(14,17,22,.55);backdrop-filter:blur(14px);border:1px solid var(--line-bright);
+    border-radius:14px;padding:18px 18px 16px;}
+  .stat .k{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);}
+  .stat .v{font-family:var(--disp);font-weight:500;font-size:34px;line-height:1.05;margin-top:8px;letter-spacing:-.02em;}
+  .stat .v.accent{color:var(--crimson-bright);}
+  .stat .v.green{color:var(--up);}
+  .stat .sub{font-size:12px;color:var(--ink-dim);margin-top:6px;}
+
+  .card{background:rgba(14,17,22,.55);backdrop-filter:blur(14px);border:1px solid var(--line-bright);
+    border-radius:16px;padding:22px;margin-bottom:18px;}
+  .card h2{font-family:var(--disp);font-weight:500;font-size:18px;margin-bottom:4px;}
+  .card .desc{color:var(--ink-faint);font-size:12.5px;margin-bottom:16px;line-height:1.5;}
+  .erow{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:14px;}
+  .erow .k{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);}
+  .erow .v{font-family:var(--disp);font-size:24px;font-weight:500;margin-top:5px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);
+    text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-bright);}
+  td{padding:10px;border-bottom:1px solid var(--line);color:var(--ink-dim);}
+  td.user{color:var(--ink);font-weight:600;}
+  .sbadge{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:5px;}
+  .sbadge.active{color:#9fe9bd;background:rgba(60,229,148,.12);}
+  .sbadge.other{color:var(--ink-dim);background:rgba(255,255,255,.06);}
+  .empty{color:var(--ink-faint);font-size:13px;padding:14px 4px;}
+  .updated{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);text-align:center;margin-top:6px;}
+  .refresh{font-family:var(--mono);font-size:11px;color:var(--crimson);background:none;border:1px solid var(--line-bright);
+    border-radius:8px;padding:7px 12px;cursor:pointer;transition:border-color .2s;}
+  .refresh:hover{border-color:var(--crimson);}
+  .denied{font-family:var(--mono);font-size:13px;color:#ffb3af;text-align:center;padding:30px;}
+  .foot{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);margin-top:8px;line-height:1.6;text-align:center;}
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <span class="crown"><svg viewBox="0 0 24 24" fill="none"><path d="M3 7l4 4 5-7 5 7 4-4-2 12H5L3 7z" stroke="#ff1f44" stroke-width="1.4" stroke-linejoin="round"/></svg></span>
+        <span class="brand-name">Korvus</span>
+        <span class="ownertag">Owner</span>
+      </div>
+      <div class="navlinks">
+        <a href="/terminal">Terminal</a>
+        <a href="/account">Account</a>
+      </div>
+    </div>
+
+    <h1>Owner dashboard</h1>
+    <p class="hello" id="hello">Live business &amp; engine snapshot.</p>
+
+    <div id="content" style="display:none">
+      <!-- Members -->
+      <div class="grid" id="memberGrid"></div>
+
+      <!-- Engine -->
+      <div class="card">
+        <h2>Engine health</h2>
+        <p class="desc">The 24/7 intelligence engine — ingestion and scoring.</p>
+        <div class="erow" id="engineRow"></div>
+      </div>
+
+      <!-- Subscribers -->
+      <div class="card">
+        <h2>Pro members</h2>
+        <p class="desc">Most recent first · up to 50 shown.</p>
+        <div id="subsWrap"></div>
+      </div>
+
+      <div style="text-align:center"><button class="refresh" id="refreshBtn">↻ Refresh</button></div>
+      <div class="updated" id="updated"></div>
+    </div>
+
+    <div id="denied" class="denied" style="display:none">
+      You don't have access to this page.
+    </div>
+
+    <p class="foot">Korvus · BlackCrownVxJ.LLC — private owner view.</p>
+  </div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function num(n){ return (n===null||n===undefined) ? '—' : Number(n).toLocaleString(); }
+function money(n, sym){ return (n===null||n===undefined) ? '—' : (sym||'$') + Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function sym(disp){ const m=(disp||'').match(/^[^\d\s]+/); return m ? m[0] : '$'; }
+
+function statCard(k, v, sub, cls){
+  return `<div class="stat"><div class="k">${k}</div><div class="v ${cls||''}">${v}</div>`
+       + (sub ? `<div class="sub">${sub}</div>` : '') + `</div>`;
+}
+
+function render(d){
+  const m = d.members || {};
+  if(m.error){ $('memberGrid').innerHTML = `<div class="stat"><div class="k">Members</div><div class="sub">DB not ready yet — ${m.error}</div></div>`; }
+  else {
+    const csym = sym(d.price_display);
+    $('memberGrid').innerHTML =
+      statCard('Total members', num(m.total)) +
+      statCard('Pro', num(m.pro), 'active subs: ' + num(m.active_subs), 'green') +
+      statCard('Free', num(m.free)) +
+      statCard('Est. MRR', money(d.mrr_est, csym), num(m.active_subs) + ' active × ' + (d.price_display||'—'), 'accent') +
+      statCard('Verified', num(m.verified), 'of ' + num(m.total) + ' members') +
+      statCard('Signups · 7d', num(m.signups_7d), '30d: ' + num(m.signups_30d)) +
+      statCard('Online now', num(d.online), 'last 5 min');
+  }
+
+  const e = d.engine || {};
+  if(e.error || (!e.total && e.total!==0)){
+    $('engineRow').innerHTML = `<div><div class="k">Status</div><div class="v">—</div></div>`;
+  } else {
+    $('engineRow').innerHTML =
+      `<div><div class="k">Items total</div><div class="v">${num(e.total)}</div></div>` +
+      `<div><div class="k">Scored</div><div class="v">${num(e.scored)}</div></div>` +
+      `<div><div class="k">High-impact</div><div class="v" style="color:var(--crimson-bright)">${num(e.high_impact)}</div></div>` +
+      `<div><div class="k">Last update</div><div class="v" style="font-size:15px">${e.last_update || '—'}</div></div>`;
+  }
+
+  const subs = d.subscribers || [];
+  if(!subs.length){
+    $('subsWrap').innerHTML = `<div class="empty">No Pro members yet.</div>`;
+  } else {
+    let rows = subs.map(s => {
+      const active = (s.status||'').toLowerCase()==='active' || (s.status||'').toLowerCase()==='trialing';
+      return `<tr><td class="user">${s.username||'—'}</td>`
+           + `<td><span class="sbadge ${active?'active':'other'}">${s.status||'—'}</span></td>`
+           + `<td>${s.renews||'—'}</td><td>${s.joined||'—'}</td></tr>`;
+    }).join('');
+    $('subsWrap').innerHTML =
+      `<table><thead><tr><th>Member</th><th>Status</th><th>Renews</th><th>Joined</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  $('updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+async function load(){
+  try{
+    const res = await fetch('/api/admin/stats', {cache:'no-store'});
+    if(res.status === 403){ $('denied').style.display='block'; $('content').style.display='none'; return; }
+    if(res.status === 401){ location.href='/login'; return; }
+    const d = await res.json();
+    $('content').style.display='block'; $('denied').style.display='none';
+    render(d);
+  }catch(e){
+    $('denied').style.display='block'; $('denied').textContent = 'Could not load dashboard.';
+  }
+}
+
+$('refreshBtn').onclick = load;
+load();
+setInterval(load, 30000);   // auto-refresh every 30s
+</script>
+</body>
+</html>
