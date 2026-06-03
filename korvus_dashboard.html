@@ -385,14 +385,28 @@
 
   /* allow natural scrolling on touch / short viewports instead of locking
      to 100vh (mobile browser chrome fights fixed 100vh) */
+  /* ---- panel tabs: hidden on wide screens (two-col layout handles it) ---- */
+  .paneltabs{display:none;}
+
   @media (max-width: 1100px){
     .app{height:auto;min-height:100vh;}
-    /* stack the two columns: news on top, SMT+Funds below */
-    main{grid-template-columns:1fr;gap:14px;padding:14px;}
-    .right{grid-template-rows:auto auto;}
-    /* give the stacked panels a sensible height so they're usable, not crushed */
+    /* single column; tabs decide which panel shows */
+    main{grid-template-columns:1fr;gap:0;padding:14px;}
+    .right{display:block;}
+
+    /* show the tab bar */
+    .paneltabs{display:flex;gap:6px;padding:10px 14px 0;}
+    .ptab{flex:1;font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;
+      padding:10px 8px;border-radius:9px 9px 0 0;border:1px solid var(--line);border-bottom:none;
+      background:rgba(150,170,200,.04);color:var(--ink-dim);cursor:pointer;transition:all .15s;}
+    .ptab.active{background:var(--panel-solid);color:var(--ink);border-color:rgba(255,255,255,.4);}
+    .ptab:hover{color:var(--ink);}
+
+    /* only the active panel shows; it fills the screen and scrolls naturally */
+    [data-panel].tabhidden,.right.tabhidden{display:none !important;}
     .feed{max-height:none;}
-    .right > section{min-height:340px;}
+    .panel{min-height:60vh;}
+    .right .panel{margin-bottom:14px;}
   }
 
   /* tablets / small laptops: tighten the header + ribbon */
@@ -491,8 +505,15 @@
     <div class="ribbon" id="ribbon"></div>
   </div>
 
+  <!-- panel tabs (shown on narrower screens so all panels stay reachable) -->
+  <div class="paneltabs" id="panelTabs">
+    <button class="ptab active" data-target="news" onclick="switchPanel('news')">News &amp; Impact</button>
+    <button class="ptab" data-target="smt" onclick="switchPanel('smt')">SMT Divergence</button>
+    <button class="ptab" data-target="watch" onclick="switchPanel('watch')">Funds Watch</button>
+  </div>
+
   <main>
-    <section class="panel news">
+    <section class="panel news" data-panel="news">
       <div class="phead">
         <h2>News &amp; Market Impact</h2>
         <span class="meta" id="feedMeta">— items</span>
@@ -501,11 +522,11 @@
     </section>
 
     <section class="right">
-      <section class="panel smt">
+      <section class="panel smt" data-panel="smt">
         <div class="phead"><h2>SMT Divergence</h2><span class="tag">NQ · ES · YM</span></div>
         <div class="smtbody" id="smt"></div>
       </section>
-      <section class="panel watch">
+      <section class="panel watch" data-panel="watch">
         <div class="phead"><h2>Funds Watch</h2><span class="tag">no crypto</span><span class="meta" id="watchMeta"></span><button id="importBtn" class="importbtn">+ Import</button></div>
         <div class="watchbody" id="watch"></div>
       </section>
@@ -736,6 +757,30 @@ function openNewsDetail(idx){
   document.getElementById('newsDetailModal').classList.add('show');
 }
 function closeNewsDetail(){ document.getElementById('newsDetailModal').classList.remove('show'); }
+
+/* ----- panel tabs (active only on narrower screens via CSS) ----- */
+function switchPanel(target){
+  document.querySelectorAll('.ptab').forEach(b=>{
+    b.classList.toggle('active', b.dataset.target===target);
+  });
+  document.querySelectorAll('[data-panel]').forEach(p=>{
+    p.classList.toggle('tabhidden', p.dataset.panel!==target);
+  });
+  // the SMT + Watch share the .right wrapper — show it whenever either is active
+  const right=document.querySelector('.right');
+  if(right) right.classList.toggle('tabhidden', target==='news');
+}
+// on wide screens, clear any tab-hiding so the full two-column layout shows
+function syncPanelMode(){
+  if(window.innerWidth > 1100){
+    document.querySelectorAll('.tabhidden').forEach(el=>el.classList.remove('tabhidden'));
+  } else {
+    // re-apply the currently-active tab
+    const active=document.querySelector('.ptab.active');
+    switchPanel(active?active.dataset.target:'news');
+  }
+}
+window.addEventListener('resize', syncPanelMode);
 // close detail modal when clicking the dark backdrop (not the card itself)
 document.addEventListener('click', function(e){
   const m = document.getElementById('newsDetailModal');
@@ -1023,6 +1068,7 @@ function setTierLabel(){
 loadMe();
 loadWatchlist().then(loadLiveQuotes);
 loadLiveNews(); loadHealth();
+syncPanelMode();   // set tab vs two-column based on current width
 setInterval(loadLiveNews, 30000);   // news every 30s
 setInterval(loadHealth, 30000);
 setInterval(loadLiveQuotes, 30000); // quotes every 30s
