@@ -62,6 +62,13 @@
   .crow .cval{font-size:14px;color:var(--ink-dim);}
   .crow a.cval{color:var(--crimson);text-decoration:none;}
   .crow a.cval:hover{text-decoration:underline;}
+  .hr{height:1px;background:var(--line);margin:18px 0;}
+  .btnrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+  .vbadge{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:5px;margin-left:6px;}
+  .vbadge.ok{color:#9fe9bd;background:rgba(60,229,148,.12);}
+  .vbadge.no{color:#ffb3af;background:rgba(255,46,77,.12);}
+  .resend{font-family:var(--mono);font-size:11px;color:var(--crimson);text-decoration:none;}
+  .resend:hover{text-decoration:underline;}
   .foot{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);margin-top:8px;line-height:1.6;text-align:center;}
   .foot a{color:var(--gold-deep);text-decoration:none;}
 </style>
@@ -93,13 +100,19 @@
     <!-- Login / username -->
     <div class="card">
       <h2>Login</h2>
-      <p class="desc">Your username is how you sign in. Your account email is shown for reference.</p>
+      <p class="desc">Your username is how you sign in. Changing your email re-sends a verification link to the new address.</p>
       <label for="username">Username</label>
       <input id="username" type="text" autocomplete="username" />
-      <label for="email">Account email</label>
-      <input id="email" type="email" disabled />
       <button class="btn" id="saveUser">Save username</button>
       <div class="msg" id="userMsg"></div>
+      <div class="hr"></div>
+      <label for="email">Account email <span class="vbadge" id="verifBadge"></span></label>
+      <input id="email" type="email" autocomplete="email" />
+      <div class="btnrow">
+        <button class="btn" id="saveEmail">Update email</button>
+        <a href="#" class="resend" id="resendLink" style="display:none;">Resend verification</a>
+      </div>
+      <div class="msg" id="emailMsg"></div>
     </div>
 
     <!-- Password -->
@@ -165,6 +178,10 @@ async function load(){
     'Signed in as ' + (ME.username || '—') + '.';
   document.getElementById('username').value = ME.username || '';
   document.getElementById('email').value = ME.email || '';
+  const vb = document.getElementById('verifBadge');
+  const rl = document.getElementById('resendLink');
+  if(ME.verified){ vb.className='vbadge ok'; vb.textContent='verified'; rl.style.display='none'; }
+  else { vb.className='vbadge no'; vb.textContent='unverified'; rl.style.display='inline'; }
 
   const pill = document.getElementById('planPill');
   const meta = document.getElementById('planMeta');
@@ -202,6 +219,19 @@ document.getElementById('savePw').onclick = async () => {
   const {ok, data} = await post('/api/account/password', {current: cur, new: a});
   setMsg('pwMsg', ok?'ok':'err', data.message || (ok?'Changed.':'Could not change.'));
   if(ok){ document.getElementById('curpw').value=''; document.getElementById('newpw').value=''; document.getElementById('newpw2').value=''; }
+};
+
+document.getElementById('saveEmail').onclick = async () => {
+  const v = document.getElementById('email').value.trim();
+  const {ok, data} = await post('/api/account/email', {email: v});
+  setMsg('emailMsg', ok?'ok':'err', data.message || (ok?'Saved.':'Could not update.'));
+  if(ok) load();
+};
+
+document.getElementById('resendLink').onclick = async (e) => {
+  e.preventDefault();
+  const {ok, data} = await post('/api/account/resend-verification', {});
+  setMsg('emailMsg', 'ok', data.message || 'Verification link sent.');
 };
 
 document.getElementById('billBtn').onclick = async (e) => {

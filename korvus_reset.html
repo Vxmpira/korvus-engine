@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Set new password · Korvus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000;--ink:#f6f8ff;--ink-dim:#aab0c0;--ink-faint:#646b7d;
+    --line-bright:rgba(255,255,255,.18);--crimson:#ff1f44;--crimson-bright:#ff3355;
+    --crimson-glow:rgba(255,31,68,.55);--up:#3ce594;--gold-deep:#d4112f;
+    --mono:'IBM Plex Mono',monospace;--body:'Hanken Grotesk',system-ui,sans-serif;--disp:'Fraunces',Georgia,serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);min-height:100vh;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;overflow-x:hidden;}
+  .glow{position:fixed;top:-22vh;left:50%;transform:translateX(-50%);width:90vw;height:60vh;z-index:0;pointer-events:none;
+    background:radial-gradient(ellipse at center,rgba(255,31,68,.13),rgba(255,31,68,.04) 42%,transparent 72%);filter:blur(30px);}
+  .card{position:relative;z-index:2;width:100%;max-width:420px;background:rgba(14,17,22,.6);backdrop-filter:blur(14px);
+    border:1px solid var(--line-bright);border-radius:18px;padding:32px 30px;box-shadow:0 30px 80px -34px #000;}
+  .brand{display:flex;align-items:center;gap:11px;margin-bottom:22px;}
+  .crown{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
+    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);border:1px solid rgba(255,31,68,.42);box-shadow:0 0 22px -6px var(--crimson);}
+  .brand-name{font-family:var(--disp);font-weight:600;font-size:22px;}
+  h1{font-family:var(--disp);font-weight:500;font-size:25px;margin-bottom:8px;}
+  .desc{color:var(--ink-dim);font-size:14px;line-height:1.55;margin-bottom:22px;}
+  label{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 6px 2px;}
+  input{width:100%;background:#0a0d12;border:1px solid var(--line-bright);border-radius:10px;color:var(--ink);
+    font-family:var(--body);font-size:14.5px;padding:12px 13px;margin-bottom:16px;transition:border-color .2s;}
+  input:focus{outline:none;border-color:var(--crimson);}
+  .btn{width:100%;background:var(--crimson);color:#0a0d12;font-weight:700;font-size:15px;padding:13px;border:none;border-radius:11px;
+    cursor:pointer;font-family:var(--body);transition:background .2s,transform .15s;box-shadow:0 0 22px -6px var(--crimson-glow);}
+  .btn:hover:not(:disabled){background:var(--crimson-bright);transform:translateY(-1px);}
+  .btn:disabled{opacity:.55;cursor:not-allowed;box-shadow:none;}
+  .msg{font-family:var(--mono);font-size:12px;margin-top:14px;min-height:16px;line-height:1.5;}
+  .msg.ok{color:#9fe9bd;} .msg.err{color:#ffb3af;}
+  .alt{margin-top:18px;font-size:13px;color:var(--ink-dim);text-align:center;}
+  .alt a{color:var(--gold-deep);text-decoration:none;}
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="card">
+    <div class="brand">
+      <span class="crown">
+        <svg viewBox="0 0 48 48" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a6e"/><stop offset="1" stop-color="#c2160c"/></linearGradient></defs>
+          <path d="M5 35 L8.2 16.5 L17 23.5 L24 9 L31 23.5 L39.8 16.5 L43 35 Z" fill="url(#c)" stroke="#ff8a7e" stroke-width="0.7" stroke-linejoin="round"/>
+          <rect x="6" y="34.5" width="36" height="5" rx="1.2" fill="url(#c)"/>
+        </svg>
+      </span>
+      <span class="brand-name">Korvus</span>
+    </div>
+    <h1>Set a new password</h1>
+    <p class="desc">Choose a strong password — at least 8 characters.</p>
+    <div id="form">
+      <label for="pw">New password</label>
+      <input id="pw" type="password" autocomplete="new-password" placeholder="new password" />
+      <label for="pw2">Confirm new password</label>
+      <input id="pw2" type="password" autocomplete="new-password" placeholder="confirm password" />
+      <button class="btn" id="save">Set new password</button>
+    </div>
+    <div class="msg" id="msg"></div>
+    <p class="alt" id="altLine"><a href="/login">Back to log in</a></p>
+  </div>
+<script>
+const token = new URLSearchParams(location.search).get('token');
+const save = document.getElementById('save');
+function msg(kind, text){ const e=document.getElementById('msg'); e.className='msg '+kind; e.textContent=text; }
+
+if(!token){
+  document.getElementById('form').style.display = 'none';
+  msg('err', 'This reset link is missing its token. Request a new one from the login page.');
+}
+
+save && save.addEventListener('click', async () => {
+  const a = document.getElementById('pw').value;
+  const b = document.getElementById('pw2').value;
+  if(a.length < 8){ msg('err','Password must be at least 8 characters.'); return; }
+  if(a !== b){ msg('err','Passwords do not match.'); return; }
+  save.disabled = true; const label = save.textContent; save.textContent = 'Saving\u2026';
+  try{
+    const res = await fetch('/api/reset', {method:'POST', headers:{'Content-Type':'application/json'},
+                                           body: JSON.stringify({token, new: a})});
+    const data = await res.json().catch(()=>({}));
+    if(res.ok && data.ok){
+      document.getElementById('form').style.display = 'none';
+      msg('ok', data.message || 'Password updated. You can now log in.');
+    } else {
+      msg('err', data.message || 'Could not reset your password.');
+      save.disabled = false; save.textContent = label;
+    }
+  }catch(e){
+    msg('err','Network error — please try again.');
+    save.disabled = false; save.textContent = label;
+  }
+});
+</script>
+</body>
+</html>

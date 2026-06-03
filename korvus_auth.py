@@ -69,7 +69,9 @@ def init_auth_db():
     for col, ddl in (("stripe_customer_id", "TEXT"),
                      ("stripe_subscription_id", "TEXT"),
                      ("subscription_status", "TEXT"),
-                     ("current_period_end", "TEXT")):
+                     ("current_period_end", "TEXT"),
+                     ("reset_token", "TEXT"),
+                     ("reset_expires", "TEXT")):
         if col not in existing:
             conn.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
     conn.commit()
@@ -243,6 +245,101 @@ def change_password(user_id, current_pw, new_pw):
 # ----------------------------------------------------------------------------
 # EMAIL  (pluggable; stubbed until EMAIL_PROVIDER is configured)
 # ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+# PASSWORD RESET + EMAIL VERIFICATION POLISH
+# ----------------------------------------------------------------------------
+RESET_TTL_MIN = 60   # reset links are valid for one hour
+
+def create_reset_token(email):
+    """Issue a password-reset token for a known email. Returns (token, email) if
+    a matching account exists, else (None, None). Callers must respond generically
+    either way so account existence isn't leaked."""
+    email = (email or "").strip().lower()
+    conn = get_db()
+    row = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+    if not row:
+        conn.close(); return None, None
+    token = secrets.token_urlsafe(32)
+    expires = (dt.datetime.now(dt.timezone.utc) + dt.timedelta(minutes=RESET_TTL_MIN)).isoformat()
+    conn.execute("UPDATE users SET reset_token = ?, reset_expires = ? WHERE id = ?",
+                 (token, expires, row["id"]))
+    conn.commit(); conn.close()
+    return token, email
+
+
+def reset_password(token, new_pw):
+    """Consume a valid, unexpired reset token and set a new password. Returns (ok, message)."""
+    if not token:
+        return False, "Invalid or missing reset link."
+    if len(new_pw or "") < 8:
+        return False, "New password must be at least 8 characters."
+    conn = get_db()
+    row = conn.execute("SELECT id, reset_expires FROM users WHERE reset_token = ?", (token,)).fetchone()
+    if not row:
+        conn.close(); return False, "This reset link is invalid or has already been used."
+    try:
+        expired = dt.datetime.fromisoformat(row["reset_expires"]) < dt.datetime.now(dt.timezone.utc)
+    except Exception:
+        expired = True
+    if expired:
+        conn.execute("UPDATE users SET reset_token = NULL, reset_expires = NULL WHERE id = ?", (row["id"],))
+        conn.commit(); conn.close()
+        return False, "This reset link has expired. Please request a new one."
+    conn.execute("UPDATE users SET password_hash = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?",
+                 (generate_password_hash(new_pw), row["id"]))
+    conn.commit(); conn.close()
+    return True, "Password updated. You can now log in."
+
+
+def resend_verification(email):
+    """Reissue a verification token for an unverified account. Returns (token, email)
+    or (None, None). Respond generically regardless."""
+    email = (email or "").strip().lower()
+    conn = get_db()
+    row = conn.execute("SELECT id, email_verified FROM users WHERE email = ?", (email,)).fetchone()
+    if not row or row["email_verified"]:
+        conn.close(); return None, None
+    token = secrets.token_urlsafe(32)
+    conn.execute("UPDATE users SET verify_token = ? WHERE id = ?", (token, row["id"]))
+    conn.commit(); conn.close()
+    return token, email
+
+
+def change_email(user_id, new_email):
+    """Change the account email, mark it unverified, and issue a fresh verify token
+    (the caller emails it to the NEW address). Returns (ok, message, token, email)."""
+    new_email = (new_email or "").strip().lower()
+    if "@" not in new_email or "." not in new_email:
+        return False, "Please enter a valid email address.", None, None
+    conn = get_db()
+    other = conn.execute("SELECT id FROM users WHERE email = ?", (new_email,)).fetchone()
+    if other and str(other["id"]) != str(user_id):
+        conn.close(); return False, "That email is already in use.", None, None
+    token = secrets.token_urlsafe(32)
+    conn.execute("UPDATE users SET email = ?, email_verified = 0, verify_token = ? WHERE id = ?",
+                 (new_email, token, user_id))
+    conn.commit(); conn.close()
+    return True, "Email updated — check your new inbox to verify it.", token, new_email
+
+
+def send_reset_email(email, token):
+    """Sends the password-reset link (SES, or console stub until a provider is set)."""
+    link = f"{SITE_URL}/reset?token={token}"
+    subject = "Reset your Korvus password"
+    body = (f"We received a request to reset your Korvus password.\n\n"
+            f"Set a new password here (valid for {RESET_TTL_MIN} minutes):\n{link}\n\n"
+            f"If you didn't request this, you can safely ignore this message — "
+            f"your password won't change.\n\n— BlackCrownVxJ.LLC")
+    if EMAIL_PROVIDER == "ses":
+        return _send_ses(email, subject, body)
+    print("\n" + "="*60)
+    print("  [email:stub] EMAIL_PROVIDER is off — not actually sending.")
+    print(f"  To: {email}")
+    print(f"  Reset link: {link}")
+    print("="*60 + "\n")
+    return True
+
+
 def send_verification_email(email, token):
     """
     Sends the verification link. Until a provider is set up, this logs the link

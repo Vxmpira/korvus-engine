@@ -240,6 +240,34 @@ def verify():
     return _render("korvus_login.html", f'<div class="msg {cls}">{note}</div>')
 
 
+@app.route("/forgot")
+def forgot_page():
+    return send_from_directory(HERE, "korvus_forgot.html")
+
+
+@app.route("/reset")
+def reset_page():
+    return send_from_directory(HERE, "korvus_reset.html")
+
+
+@app.route("/api/forgot", methods=["POST"])
+def api_forgot():
+    data = request.get_json(silent=True) or {}
+    token, email = auth.create_reset_token(data.get("email"))
+    if token:
+        auth.send_reset_email(email, token)
+    # generic response either way — never reveal whether an account exists
+    return jsonify({"ok": True,
+                    "message": "If an account exists for that email, a reset link is on its way."})
+
+
+@app.route("/api/reset", methods=["POST"])
+def api_reset():
+    data = request.get_json(silent=True) or {}
+    ok, msg = auth.reset_password(data.get("token"), data.get("new"))
+    return (jsonify({"ok": ok, "message": msg}), 200 if ok else 400)
+
+
 @app.route("/api/me")
 def api_me():
     """Lets the dashboard / account page know who's logged in, their tier,
@@ -307,6 +335,26 @@ def account_password():
     data = request.get_json(silent=True) or {}
     ok, msg = auth.change_password(current_user.id, data.get("current"), data.get("new"))
     return (jsonify({"ok": ok, "message": msg}), 200 if ok else 400)
+
+
+@app.route("/api/account/email", methods=["POST"])
+@login_required
+def account_email():
+    data = request.get_json(silent=True) or {}
+    ok, msg, token, new_email = auth.change_email(current_user.id, data.get("email"))
+    if ok:
+        auth.send_verification_email(new_email, token)
+    return (jsonify({"ok": ok, "message": msg}), 200 if ok else 400)
+
+
+@app.route("/api/account/resend-verification", methods=["POST"])
+@login_required
+def account_resend():
+    u = auth.get_user_by_id(current_user.id) or {}
+    token, email = auth.resend_verification(u.get("email"))
+    if token:
+        auth.send_verification_email(email, token)
+    return jsonify({"ok": True, "message": "If your email needs verifying, a new link is on its way."})
 
 
 @app.route("/api/billing/portal", methods=["POST"])
