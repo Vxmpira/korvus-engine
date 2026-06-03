@@ -137,6 +137,11 @@
   .clock small{display:block;color:var(--ink-faint);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;margin-top:2px;}
 
   /* ---------- futures ribbon (MORE INSTRUMENTS) ---------- */
+  .ribbonwrap{position:relative;}
+  /* right-edge fade hints that the ribbon scrolls to more instruments */
+  .ribbonwrap::after{content:"";position:absolute;top:0;right:0;bottom:0;width:48px;
+    pointer-events:none;z-index:2;
+    background:linear-gradient(90deg,rgba(7,9,13,0),rgba(7,9,13,.92));}
   .ribbon{
     display:flex;gap:0;overflow-x:auto;border-bottom:1px solid var(--line);
     background:linear-gradient(180deg,rgba(12,16,22,.55),rgba(6,8,12,.3));
@@ -350,6 +355,30 @@
   .readfull:hover{background:var(--gold-deep);}
 
   /* ============================================================
+     SCALE UP — fill big screens gracefully instead of leaving the
+     right column tiny and stretching news lines too wide.
+     ============================================================ */
+
+  /* large desktops: widen the right column so it's balanced, not a thin strip */
+  @media (min-width: 1500px){
+    main{grid-template-columns:1fr 440px;gap:20px;padding:20px;}
+    .headline{font-size:16px;}
+    .summary{font-size:13.5px;}
+  }
+
+  /* very large / ultrawide: cap the working area and center it so headlines
+     don't stretch into unreadable full-width lines, but keep it generous */
+  @media (min-width: 1900px){
+    main{grid-template-columns:1fr 480px;gap:24px;
+         max-width:2100px;margin:0 auto;width:100%;}
+    .ribbon{max-width:2100px;margin:0 auto;width:100%;}
+    header{max-width:2100px;margin:0 auto;width:100%;}
+    footer{max-width:2100px;margin:0 auto;width:100%;}
+    .fut{padding:13px 26px;}
+    .headline{font-size:17px;}
+  }
+
+  /* ============================================================
      RESPONSIVE — keep the terminal aesthetic, fit every screen.
      Desktop default is the 2-col grid above; these adapt it down.
      ============================================================ */
@@ -458,7 +487,9 @@
   </header>
 
   <!-- FUTURES BOARD — more instruments -->
-  <div class="ribbon" id="ribbon"></div>
+  <div class="ribbonwrap">
+    <div class="ribbon" id="ribbon"></div>
+  </div>
 
   <main>
     <section class="panel news">
