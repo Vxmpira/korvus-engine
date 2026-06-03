@@ -389,7 +389,11 @@
   .paneltabs{display:none;}
 
   @media (max-width: 1100px){
-    .app{height:auto;min-height:100vh;}
+    /* RELEASE the desktop scroll-lock: the base style sets body{overflow:hidden}
+       and app/html to a fixed 100vh, which freezes the page. In tab mode we let
+       the whole document scroll naturally so all content + the footer are reachable. */
+    html,body{height:auto;min-height:100%;overflow:visible;overflow-x:hidden;}
+    .app{height:auto;min-height:100vh;overflow:visible;}
     /* single column; tabs decide which panel shows */
     main{grid-template-columns:1fr;gap:0;padding:14px;flex:0 0 auto;min-height:auto;overflow:visible;}
     .right{display:block;}
