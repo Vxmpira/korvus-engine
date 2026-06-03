@@ -65,7 +65,11 @@
     --crown-glow:rgba(255,31,68,.65);
 
     --teal:#ff3355;          /* secondary accent folded into the crimson family */
-    --hi:#ff2e4d; --med:#ff1f44; --lo:#646b7d;
+    --brand-yellow:#f5c542;  /* trademark yellow — reserved for the LLC mark */
+    --hi:#ff2e4d; --med:#ff9d2e; --lo:#646b7d;
+    --med-glow:rgba(255,157,46,.55);
+    --med-line:rgba(255,157,46,.34);
+    --med-soft:rgba(255,157,46,.10);
     --mono:'IBM Plex Mono',ui-monospace,monospace;
     --body:'Hanken Grotesk',system-ui,sans-serif;
     --disp:'Bricolage Grotesque',var(--body);
@@ -129,17 +133,22 @@
   .brand .mark .llc{font-family:var(--mono);font-weight:500;font-size:9px;color:var(--gold-deep);letter-spacing:.14em;margin-left:5px;align-self:flex-start;}
   .brand .tagline{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);margin-top:5px;}
   .brand .tagline b{color:var(--gold);font-weight:600;}
+  .brand .tagline .llc{color:var(--brand-yellow);font-weight:600;text-shadow:0 0 10px rgba(245,197,66,.35);}
 
   .heartbeat{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--ink-dim);letter-spacing:.04em;
     padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:rgba(70,209,127,.05);}
   .hb{width:8px;height:8px;border-radius:50%;background:var(--bull);box-shadow:0 0 0 0 rgba(70,209,127,.6);animation:pulse 2.4s infinite;}
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(70,209,127,.55);}70%{box-shadow:0 0 0 8px rgba(70,209,127,0);}100%{box-shadow:0 0 0 0 rgba(70,209,127,0);}}
 
-  .members{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;color:var(--ink-dim);}
-  .avatars{display:flex;}
-  .avatars b{width:21px;height:21px;border-radius:50%;border:1.5px solid var(--bg);margin-left:-7px;font-family:var(--body);
-    font-weight:600;font-size:9.5px;display:grid;place-items:center;color:#0a0d12;}
-  .avatars b:first-child{margin-left:0;}
+  .members{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--ink);
+    padding:5px 11px 5px 10px;border:1px solid rgba(255,255,255,.16);border-radius:999px;
+    background:rgba(255,255,255,.03);letter-spacing:.02em;}
+  /* live-signal dot — concentric pulsing rings, reads as "live now" */
+  .livedot{position:relative;width:9px;height:9px;border-radius:50%;background:var(--crimson);flex:none;
+    box-shadow:0 0 8px var(--crimson-glow);}
+  .livedot::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1.5px solid var(--crimson);
+    opacity:.6;animation:livepulse 2s ease-out infinite;}
+  @keyframes livepulse{0%{transform:scale(.6);opacity:.7;}100%{transform:scale(1.5);opacity:0;}}
 
   .econ{font-family:var(--mono);font-size:11px;padding:6px 12px;border-radius:999px;letter-spacing:.02em;
     border:1px solid var(--gold-line);background:var(--gold-soft);color:var(--gold);}
@@ -218,10 +227,16 @@
   .panel.smt{animation-delay:.16s;}
   .panel.watch{animation-delay:.22s;}
 
-  .phead{display:flex;align-items:center;gap:11px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.09);}
-  .phead h2{font-family:var(--disp);font-weight:700;font-size:15px;letter-spacing:.01em;margin:0;color:var(--ink);}
+  .phead{display:flex;align-items:center;gap:11px;padding:14px 18px;
+    border-bottom:1px solid rgba(255,255,255,.12);
+    box-shadow:0 1px 0 rgba(246,248,255,.04);}
+  .phead h2{font-family:var(--disp);font-weight:700;font-size:15px;letter-spacing:.01em;margin:0;color:var(--ink);
+    text-shadow:0 0 18px rgba(246,248,255,.25);position:relative;padding-left:13px;}
+  /* neon-white tick before each panel title */
+  .phead h2::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);
+    width:3px;height:14px;border-radius:2px;background:var(--ink);box-shadow:0 0 10px var(--white-glow);}
   .phead .tag{font-family:var(--mono);font-size:9.5px;color:var(--ink-faint);letter-spacing:.14em;text-transform:uppercase;
-    padding:3px 8px;border:1px solid rgba(255,255,255,.12);border-radius:999px;}
+    padding:3px 8px;border:1px solid rgba(255,255,255,.14);border-radius:999px;}
   .phead .meta{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-dim);}
 
   /* ---------- news feed ---------- */
@@ -238,14 +253,14 @@
 
   .rail{display:flex;flex-direction:column;align-items:center;gap:9px;width:58px;}
   .accent{width:3px;border-radius:3px;flex:1;min-height:38px;}
-  .accent.high{background:linear-gradient(var(--bear),var(--bear-dim));box-shadow:0 0 10px -2px var(--bear);}
-  .accent.med{background:linear-gradient(var(--gold),var(--gold-deep));box-shadow:0 0 10px -2px var(--gold);}
+  .accent.high{background:linear-gradient(var(--bear),var(--bear-dim));box-shadow:0 0 12px -1px var(--bear);}
+  .accent.med{background:linear-gradient(var(--med),#b86a1a);box-shadow:0 0 12px -1px var(--med);}
   .accent.low{background:linear-gradient(#3a424f,#222a35);}
   .railtop{display:flex;flex-direction:column;align-items:center;gap:7px;}
   .time{font-family:var(--mono);font-size:11px;color:var(--ink-faint);}
   .impact{font-family:var(--mono);font-size:8.5px;font-weight:600;letter-spacing:.12em;padding:3px 6px;border-radius:5px;text-transform:uppercase;border:1px solid;}
-  .impact.high{color:var(--hi);border-color:var(--bear-dim);background:rgba(255,46,77,.10);}
-  .impact.med{color:var(--med);border-color:var(--gold-line);background:var(--gold-soft);}
+  .impact.high{color:var(--hi);border-color:var(--bear-dim);background:rgba(255,46,77,.10);box-shadow:0 0 14px -4px var(--bear);}
+  .impact.med{color:var(--med);border-color:var(--med-line);background:var(--med-soft);box-shadow:0 0 14px -4px var(--med-glow);}
   .impact.low{color:var(--lo);border-color:var(--line);}
 
   .src{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
@@ -443,19 +458,24 @@
     .item{animation:none !important;}
   }
 
-  /* tablets / small laptops: start shedding non-essential header chips so it
-     stays clean instead of cramming everything into one crowded row */
-  @media (max-width: 1200px){
-    .heartbeat{display:none;}              /* "ENGINE LIVE" — status also in footer */
+  /* progressive, graceful header cleanup so it never bunches.
+     Priority to KEEP (longest): brand, live trader count, session, clock, logout.
+     Shed first: the wordy status chips (econ, heartbeat), then Eclipse-X. */
+  @media (max-width: 1280px){
     header{gap:14px;}
+    .econ{display:none;}                   /* "NO HIGH-IMPACT PRINTS" — wordy, lowest value */
+  }
+  @media (max-width: 1140px){
+    .heartbeat{display:none;}              /* "ENGINE LIVE" — also shown in footer */
+    header{gap:13px;}
   }
   @media (max-width: 1000px){
-    .members{display:none;}                /* "N on the desk" */
-    .econ{display:none;}                   /* "NO HIGH-IMPACT PRINTS" chip */
+    .discord{display:none;}                /* Eclipse-X chip — still linked in footer */
+    header{gap:12px;padding:12px 16px;}
   }
   @media (max-width: 900px){
-    header{gap:12px;padding:11px 16px;flex-wrap:wrap;}
-    .discord{display:none;}                /* Eclipse-X chip — still in footer/legal */
+    header{flex-wrap:wrap;row-gap:10px;}
+    .members{display:none;}                /* live count drops only when truly tight */
     .sess,.clock{font-size:10px;}
     .fut{padding:10px 14px;gap:9px;}
   }
@@ -523,12 +543,12 @@
       </span>
       <span class="txt">
         <div class="mark">KOR<b>VUS</b></div>
-        <div class="tagline">by <b>BlackCrownVxJ.LLC</b> · your edge while the world sleeps</div>
+        <div class="tagline">by <b class="llc">BlackCrownVxJ.LLC</b> · your edge while the world sleeps</div>
       </span>
     </div>
     <div class="heartbeat"><span class="hb"></span>ENGINE LIVE · REAL-TIME</div>
-    <div class="members" title="Members currently on the desk">
-      <span class="avatars" id="avatars"></span><span id="memCount">— on the desk</span>
+    <div class="members" title="Traders live on Korvus right now">
+      <span class="livedot"></span><span id="memCount">— live</span>
     </div>
     <a class="discord" href="https://discord.gg/ZXt7Hkq7fv" target="_blank" rel="noopener noreferrer" title="Join the Eclipse-X community on Discord">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M20.3 4.6A19 19 0 0 0 15.6 3l-.3.5a13 13 0 0 1 4 2 14 14 0 0 0-12.6 0 13 13 0 0 1 4-2L10.4 3a19 19 0 0 0-4.7 1.6C2.8 8.8 2 13 2.4 17.1a19 19 0 0 0 5.7 2.9l.5-.7a13 13 0 0 1-2-1l.4-.3a13.5 13.5 0 0 0 11.6 0l.4.3a13 13 0 0 1-2 1l.5.7a19 19 0 0 0 5.7-2.9C22 12.7 21.2 8.5 20.3 4.6ZM9 14.7c-.9 0-1.7-.8-1.7-1.9S8 11 9 11s1.7.8 1.7 1.9-.8 1.8-1.7 1.8Zm6 0c-.9 0-1.7-.8-1.7-1.9S14 11 15 11s1.7.8 1.7 1.9-.8 1.8-1.7 1.8Z"/></svg>
@@ -867,14 +887,8 @@ async function renderMembers(){
     const res = await fetch('/api/online', {cache:'no-store'});
     if(res.ok){ const d = await res.json(); online = d.online || 1; }
   }catch(e){}
-  const label = online === 1 ? '1 on the desk' : online + ' on the desk';
+  const label = online === 1 ? '1 trader live' : online + ' traders live';
   document.getElementById('memCount').textContent = label;
-  // show up to 4 generic avatar dots reflecting the count
-  const palette = ['#ff1f44','#ff3355','#f6f8ff','#d4112f'];
-  const n = Math.min(online, 4);
-  let dots = '';
-  for(let i=0;i<n;i++){ dots += `<b style="background:${palette[i]}">●</b>`; }
-  document.getElementById('avatars').innerHTML = dots;
 }
 
 /* ----------------------------- clock + session ----------------------------- */
