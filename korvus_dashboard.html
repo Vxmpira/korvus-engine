@@ -238,6 +238,14 @@
   .phead .tag{font-family:var(--mono);font-size:9.5px;color:var(--ink-faint);letter-spacing:.14em;text-transform:uppercase;
     padding:3px 8px;border:1px solid rgba(255,255,255,.14);border-radius:999px;}
   .phead .meta{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-dim);}
+  /* Funds Watch OPEN/CLOSED market-status pill */
+  .mktstatus{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+    padding:3px 9px 3px 8px;border-radius:999px;border:1px solid;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+  .mktstatus::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:none;}
+  .mktstatus.open{color:var(--bull);border-color:var(--bull-dim);background:rgba(60,229,148,.08);}
+  .mktstatus.open::before{box-shadow:0 0 7px var(--bull);animation:pulse 2.4s infinite;}
+  .mktstatus.closed{color:var(--bear);border-color:var(--bear-dim);background:rgba(255,46,77,.08);}
+  .mktstatus.globex{color:var(--med);border-color:var(--med-line);background:var(--med-soft);}
 
   /* ---------- news feed ---------- */
   .feed{overflow-y:auto;padding:8px;}
@@ -608,7 +616,7 @@
         <div class="smtbody" id="smt"></div>
       </section>
       <section class="panel watch" data-panel="watch">
-        <div class="phead"><h2>Funds Watch</h2><span class="tag">no crypto</span><span class="meta" id="watchMeta"></span><button id="importBtn" class="importbtn">+ Import</button></div>
+        <div class="phead"><h2>Funds Watch</h2><span class="mktstatus" id="watchStatus">—</span><span class="meta" id="watchMeta"></span><button id="importBtn" class="importbtn">+ Import</button></div>
         <div class="watchbody" id="watch"></div>
       </section>
     </section>
@@ -1081,6 +1089,18 @@ async function loadLiveQuotes(){
     }
     const rt = document.querySelector('footer .rt') || document.getElementById('rtTag');
     if(rt) rt.textContent = tag;
+
+    // Funds Watch status pill — tells users why prices are / aren't moving
+    const ws = document.getElementById('watchStatus');
+    if(ws){
+      if(fs === 'closed'){
+        ws.textContent = 'CLOSED'; ws.className = 'mktstatus closed';
+      } else if(fs === 'globex'){
+        ws.textContent = 'GLOBEX · LAST CLOSE'; ws.className = 'mktstatus globex';
+      } else {
+        ws.textContent = 'OPEN'; ws.className = 'mktstatus open';
+      }
+    }
   }catch(e){ /* server/quotes offline: panels stay on sample numbers */ }
 }
 
