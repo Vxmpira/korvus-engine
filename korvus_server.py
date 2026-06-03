@@ -92,8 +92,12 @@ def api_news():
     if not os.path.exists(DB_PATH):
         return jsonify({"error": "korvus.db not found — run the engine first", "items": []})
     conn = db()
+    # hide items Claude flagged as pure non-market noise. Guard for older DBs
+    # that may not have the column yet.
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
+    noise_clause = "AND COALESCE(noise,0)=0" if "noise" in cols else ""
     rows = conn.execute(
-        "SELECT * FROM items WHERE processed=1 ORDER BY created_at DESC LIMIT 60"
+        f"SELECT * FROM items WHERE processed=1 {noise_clause} ORDER BY created_at DESC LIMIT 60"
     ).fetchall()
     conn.close()
 

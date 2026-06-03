@@ -157,6 +157,7 @@ def db_init():
             direction    TEXT,               -- 'bull' | 'bear' | 'neut'
             instruments  TEXT,               -- JSON list e.g. ["MNQ","MES"]
             confidence   INTEGER,            -- 0-100
+            noise        INTEGER DEFAULT 0,  -- 1 = pure non-market junk, hidden from feed
             processed    INTEGER DEFAULT 0   -- 1 once Claude has scored it
         )
     """)
@@ -165,6 +166,9 @@ def db_init():
     if "impact_desc" not in cols:
         conn.execute("ALTER TABLE items ADD COLUMN impact_desc TEXT")
         print("  [db] migrated: added impact_desc column")
+    if "noise" not in cols:
+        conn.execute("ALTER TABLE items ADD COLUMN noise INTEGER DEFAULT 0")
+        print("  [db] migrated: added noise column")
     conn.commit()
     conn.close()
 
@@ -449,6 +453,7 @@ impact on US index futures and return STRICT JSON only — no prose, no markdown
 
 Return exactly this shape:
 {
+  "noise": true | false,        // true ONLY for pure non-market junk (see rules)
   "summary": "<=2 sentences, plain English, the quick take shown on the feed card>",
   "impact_desc": "<3-5 sentences: a richer analysis for the detail view. Explain WHY this matters, the transmission mechanism (HOW it could move the tagged instruments), what a trader should WATCH for next, and any important caveat or condition. Be concrete and specific to THIS story.>",
   "impact": "high" | "med" | "low",
@@ -458,17 +463,56 @@ Return exactly this shape:
 }
 
 Guidance:
-- "high" impact = likely to move markets now (Fed, CPI, megacap shock, geopolitics, OPEC, major data).
+
+NOISE FILTER (set "noise": true ONLY for pure non-market junk that should never
+appear in a trading feed). Mark noise=true for:
+  - personal-finance listicles ("10 best free checking accounts", "best credit
+    cards", "should I buy a boat", mortgage-rate roundups, retirement advice)
+  - product/service reviews (credit card reviews, app reviews)
+  - celebrity / human-interest / lifestyle with zero market relevance
+  - pure how-to / explainer content with no market event
+Everything with ANY genuine market relevance gets noise=false — even if low impact.
+When in doubt, noise=false.
+
+IMPACT — use these CONCRETE criteria and be CONSISTENT (the same underlying
+event must get the same impact regardless of how the headline is worded):
+
+  "high" = a genuine MACRO market-mover likely to move index futures NOW:
+    - Fed/FOMC decisions, rate guidance, Powell remarks
+    - CPI / PCE / jobs (NFP) / major economic data surprises
+    - Broad tariffs / trade war affecting MANY countries or whole sectors
+    - War, military strikes, major geopolitical shocks, oil supply shocks
+    - Central-bank intervention (BOJ yen intervention, ECB emergency action)
+    - Mega-cap earnings shocks or guidance from NVDA/AAPL/MSFT/etc. that move the index
+    - Systemic/credit events (bank failures, sovereign stress)
+    -> If a story is broad geopolitics, war/oil, Fed, or sweeping tariffs, it is
+       almost always "high", NOT "med". Do not under-rate these.
+
+  "med" = matters and is directional but is sector/single-name or second-order:
+    - one large-cap's earnings/news (not enough alone to move the whole index)
+    - a single commodity move, one country's data, sector rotation
+    - meaningful but not market-wide
+
+  "low" = minor / single small-cap / routine filings (Form 144, 6-K, S-1),
+    micro-cap news, slow-moving or already-priced-in items.
+
+DIRECTION — neutral is the HONEST default. Only assign "bull" or "bear" when the
+story has a CLEAR directional read for the tagged instruments. Do NOT force a
+direction to seem decisive — an informational item with no clear lean is "neut",
+and that is correct. BUT: if a story is clearly risk-on or risk-off (e.g. "oil
+jumps on Mideast missiles", "stocks rally on cooler CPI"), do NOT lazily call it
+neutral — give it the real direction it implies.
+
+OTHER:
 - Social/rumor with no confirmation = usually "low" and lower confidence.
-- Be calibrated and sober. Do NOT give trading advice or tell the user to buy/sell.
-  Explain mechanisms and what to watch — never "buy"/"sell"/"go long".
-- summary = the fast headline take. impact_desc = the deeper "why it matters /
-  how it transmits / what to watch" analysis. Both grounded in THIS story only.
+- Be calibrated and sober. Do NOT give trading advice. Explain mechanisms and what
+  to watch — never "buy"/"sell"/"go long".
+- summary = the fast headline take. impact_desc = the deeper "why it matters / how
+  it transmits / what to watch" analysis. Both grounded in THIS story only.
 - Tag the instruments MOST DIRECTLY affected by THIS story, across all markets —
-  not just index futures. A crude-oil story -> CL; gold -> GC; a Treasury/yield
-  story -> ZN/ZB; a EUR/ECB story -> 6E; a single megacap -> that ticker (+ NQ/QQQ
-  if it's big enough to move the index). Tag EVERY instrument genuinely affected,
-  not just one. Use [] if nothing on the list fits.
+  not just index futures. Crude-oil -> CL; gold -> GC; Treasuries/yields -> ZN/ZB;
+  EUR/ECB -> 6E; yen/BOJ -> 6J; a single megacap -> that ticker (+ NQ/QQQ if big
+  enough to move the index). Tag EVERY instrument genuinely affected. [] if none.
 - Only use instruments from this watched list: {INSTRUMENTS}.
 """
 
@@ -502,6 +546,7 @@ def score_with_claude(client, item: dict) -> Optional[dict]:
             data["instruments"] = []
         data["summary"] = (data.get("summary") or "").strip()
         data["impact_desc"] = (data.get("impact_desc") or "").strip()
+        data["noise"] = bool(data.get("noise", False))
         return data
     except Exception as e:
         print(f"    [claude] error: {e}")
@@ -524,7 +569,7 @@ def process_unscored(conn, client, limit: int = 40):
             continue
         conn.execute("""
             UPDATE items
-            SET summary=?, impact_desc=?, impact=?, direction=?, instruments=?, confidence=?, processed=1
+            SET summary=?, impact_desc=?, impact=?, direction=?, instruments=?, confidence=?, noise=?, processed=1
             WHERE id=?
         """, (
             result["summary"],
@@ -533,11 +578,15 @@ def process_unscored(conn, client, limit: int = 40):
             result["direction"],
             json.dumps(result["instruments"]),
             result["confidence"],
+            1 if result.get("noise") else 0,
             item["id"],
         ))
         conn.commit()
-        print(f"    ✓ [{result['impact']:>4}|{result['direction']:>4}|{result['confidence']:>3}%] "
-              f"{item['headline'][:64]}")
+        if result.get("noise"):
+            print(f"    · [noise — hidden]                     {item['headline'][:60]}")
+        else:
+            print(f"    ✓ [{result['impact']:>4}|{result['direction']:>4}|{result['confidence']:>3}%] "
+                  f"{item['headline'][:64]}")
         time.sleep(0.4)  # gentle pacing
 
 
