@@ -348,6 +348,77 @@
   .readfull{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;
     padding:9px 16px;border-radius:8px;background:var(--gold);color:#0a0d12;font-weight:600;text-decoration:none;}
   .readfull:hover{background:var(--gold-deep);}
+
+  /* ============================================================
+     RESPONSIVE — keep the terminal aesthetic, fit every screen.
+     Desktop default is the 2-col grid above; these adapt it down.
+     ============================================================ */
+
+  /* allow natural scrolling on touch / short viewports instead of locking
+     to 100vh (mobile browser chrome fights fixed 100vh) */
+  @media (max-width: 1100px){
+    .app{height:auto;min-height:100vh;}
+    /* stack the two columns: news on top, SMT+Funds below */
+    main{grid-template-columns:1fr;gap:14px;padding:14px;}
+    .right{grid-template-rows:auto auto;}
+    /* give the stacked panels a sensible height so they're usable, not crushed */
+    .feed{max-height:none;}
+    .right > section{min-height:340px;}
+  }
+
+  /* tablets / small laptops: tighten the header + ribbon */
+  @media (max-width: 900px){
+    header{gap:12px;padding:11px 16px;flex-wrap:wrap;}
+    .heartbeat,.members{font-size:10px;}
+    .fut{padding:10px 14px;gap:9px;}
+    .sess,.clock{font-size:10px;}
+  }
+
+  /* phones */
+  @media (max-width: 640px){
+    header{gap:8px 10px;padding:10px 13px;}
+    .brand .mark{font-size:16px;}
+    .brand .tagline{display:none;}              /* drop the sub-tagline on phones */
+    .heartbeat,.members,.sess{font-size:9.5px;}
+    .clock{font-size:9.5px;}
+    /* header chips wrap into rows cleanly */
+    header > *{flex:0 0 auto;}
+
+    /* ribbon: let it scroll horizontally (already overflow-x auto), shrink items */
+    .fut{padding:9px 12px;gap:7px;}
+    .fut .sym{font-size:12px;}
+    .fut .chg.big{font-size:13px;}
+
+    /* news cards: shrink rail + padding, keep readable */
+    main{padding:10px;gap:12px;}
+    .item{grid-template-columns:auto 1fr;gap:10px;padding:12px 12px 12px 10px;}
+    .rail{width:42px;}
+    .headline{font-size:13.5px;}
+    .summary{font-size:12px;}
+    .phead{padding:12px 14px;}
+    .phead h2{font-size:15px;}
+
+    /* Funds Watch + SMT rows: relax the fixed-px grids so they fit */
+    .wrow{grid-template-columns:46px 1fr 60px 52px;gap:6px;padding:7px 14px;font-size:11px;}
+    .crow{grid-template-columns:54px 1fr 64px;gap:8px;}
+    .grp{padding-left:14px;}
+
+    /* detail modal: full-width, comfortable on phones */
+    .modal.newsdetail{width:96vw;max-height:90vh;}
+    .ndtitle{font-size:17px;}
+
+    /* footer: stack the rows, smaller legal text */
+    footer{padding:10px 14px 12px;}
+    .frow{flex-wrap:wrap;gap:10px 14px;}
+    .legal{font-size:9px;}
+  }
+
+  /* very narrow phones */
+  @media (max-width: 380px){
+    .members{display:none;}        /* hide 'N on the desk' to save room */
+    .rail{width:36px;}
+    .item{padding:10px 10px 10px 8px;gap:8px;}
+  }
 </style>
 </head>
 <body>
