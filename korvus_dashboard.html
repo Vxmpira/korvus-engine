@@ -402,19 +402,30 @@
     .ptab.active{background:var(--panel-solid);color:var(--ink);border-color:rgba(255,255,255,.4);}
     .ptab:hover{color:var(--ink);}
 
-    /* only the active panel shows; it fills the screen and scrolls naturally */
+    /* only the active panel shows; give its scroll body a real height bound
+       so overflow-y:auto actually scrolls (instead of the panel growing
+       unbounded and clipping content with no scrollbar) */
     [data-panel].tabhidden,.right.tabhidden{display:none !important;}
-    .feed{max-height:none;}
-    .panel{min-height:60vh;}
+    .panel{min-height:0;height:auto;}
+    .feed,.watchbody,.smtbody{max-height:calc(100vh - 230px);overflow-y:auto;}
     .right .panel{margin-bottom:14px;}
   }
 
-  /* tablets / small laptops: tighten the header + ribbon */
+  /* tablets / small laptops: start shedding non-essential header chips so it
+     stays clean instead of cramming everything into one crowded row */
+  @media (max-width: 1200px){
+    .heartbeat{display:none;}              /* "ENGINE LIVE" — status also in footer */
+    header{gap:14px;}
+  }
+  @media (max-width: 1000px){
+    .members{display:none;}                /* "N on the desk" */
+    .econ{display:none;}                   /* "NO HIGH-IMPACT PRINTS" chip */
+  }
   @media (max-width: 900px){
     header{gap:12px;padding:11px 16px;flex-wrap:wrap;}
-    .heartbeat,.members{font-size:10px;}
-    .fut{padding:10px 14px;gap:9px;}
+    .discord{display:none;}                /* Eclipse-X chip — still in footer/legal */
     .sess,.clock{font-size:10px;}
+    .fut{padding:10px 14px;gap:9px;}
   }
 
   /* phones */
@@ -422,8 +433,7 @@
     header{gap:8px 10px;padding:10px 13px;}
     .brand .mark{font-size:16px;}
     .brand .tagline{display:none;}              /* drop the sub-tagline on phones */
-    .heartbeat,.members,.sess{font-size:9.5px;}
-    .clock{font-size:9.5px;}
+    .sess,.clock{font-size:9.5px;}
     /* header chips wrap into rows cleanly */
     header > *{flex:0 0 auto;}
 
@@ -458,7 +468,6 @@
 
   /* very narrow phones */
   @media (max-width: 380px){
-    .members{display:none;}        /* hide 'N on the desk' to save room */
     .rail{width:36px;}
     .item{padding:10px 10px 10px 8px;gap:8px;}
   }
