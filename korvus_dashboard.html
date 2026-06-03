@@ -238,7 +238,12 @@
   .phead .tag{font-family:var(--mono);font-size:9.5px;color:var(--ink-faint);letter-spacing:.14em;text-transform:uppercase;
     padding:3px 8px;border:1px solid rgba(255,255,255,.14);border-radius:999px;}
   .phead .meta{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-dim);}
-  /* Funds Watch OPEN/CLOSED market-status pill */
+  /* news category filter (All / Markets / Forex) */
+  .catfilter{display:flex;gap:3px;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:8px;padding:2px;}
+  .catbtn{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;
+    padding:4px 11px;border-radius:6px;border:none;background:transparent;color:var(--ink-faint);cursor:pointer;transition:all .15s;}
+  .catbtn:hover{color:var(--ink-dim);}
+  .catbtn.active{background:var(--crimson);color:#fff;box-shadow:0 0 14px -4px var(--crimson-glow);}
   .mktstatus{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
     padding:3px 9px 3px 8px;border-radius:999px;border:1px solid;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
   .mktstatus::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:none;}
@@ -605,6 +610,11 @@
     <section class="panel news" data-panel="news">
       <div class="phead">
         <h2>News &amp; Market Impact</h2>
+        <div class="catfilter">
+          <button class="catbtn active" data-cat="all" onclick="setNewsCat('all')">All</button>
+          <button class="catbtn" data-cat="general" onclick="setNewsCat('general')">Markets</button>
+          <button class="catbtn" data-cat="forex" onclick="setNewsCat('forex')">Forex</button>
+        </div>
         <span class="meta" id="feedMeta">— items</span>
       </div>
       <div class="feed" id="feed"></div>
@@ -808,12 +818,20 @@ function instTag(sym){
 }
 
 let _newsCache = [];
+let _newsCat = 'all';
+function setNewsCat(cat){
+  _newsCat = cat;
+  document.querySelectorAll('.catbtn').forEach(b=>b.classList.toggle('active', b.dataset.cat===cat));
+  renderNews(_newsCache);
+}
 function renderNews(list){
   _newsCache = list;
-  document.getElementById('feed').innerHTML = list.map((n,idx)=>{
+  const shown = _newsCat==='all' ? list : list.filter(n => (n.category||'general')===_newsCat);
+  document.getElementById('feed').innerHTML = shown.map((n,idx)=>{
+    const realIdx = _newsCache.indexOf(n);
     const [arrow,cls,label]=dirMeta[n.dir];
     const insts=n.inst.map(instTag).join('');
-    return `<article class="item" data-idx="${idx}" onclick="openNewsDetail(${idx})" title="Click for detail">
+    return `<article class="item" data-idx="${realIdx}" onclick="openNewsDetail(${realIdx})" title="Click for detail">
       <div class="rail">
         <div class="railtop"><span class="time">${n.time}</span><span class="impact ${n.impact}">${n.impact}</span></div>
         <div class="accent ${n.impact}"></div>
@@ -829,7 +847,8 @@ function renderNews(list){
       </div>
     </article>`;
   }).join('');
-  document.getElementById('feedMeta').textContent=list.length+' items';
+  const catLabel = _newsCat==='all' ? '' : (_newsCat==='forex' ? ' forex' : ' markets');
+  document.getElementById('feedMeta').textContent=shown.length+catLabel+' items';
 }
 
 /* ----- news detail modal (click-in) ----- */

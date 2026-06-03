@@ -158,6 +158,7 @@ def db_init():
             instruments  TEXT,               -- JSON list e.g. ["MNQ","MES"]
             confidence   INTEGER,            -- 0-100
             noise        INTEGER DEFAULT 0,  -- 1 = pure non-market junk, hidden from feed
+            category     TEXT DEFAULT 'general', -- 'general' | 'forex' (drives the news tab split)
             processed    INTEGER DEFAULT 0   -- 1 once Claude has scored it
         )
     """)
@@ -169,6 +170,9 @@ def db_init():
     if "noise" not in cols:
         conn.execute("ALTER TABLE items ADD COLUMN noise INTEGER DEFAULT 0")
         print("  [db] migrated: added noise column")
+    if "category" not in cols:
+        conn.execute("ALTER TABLE items ADD COLUMN category TEXT DEFAULT 'general'")
+        print("  [db] migrated: added category column")
     conn.commit()
     conn.close()
 
@@ -186,8 +190,8 @@ def insert_raw_item(conn, item: dict):
     """Insert a freshly-pulled item that hasn't been scored by Claude yet."""
     conn.execute("""
         INSERT OR IGNORE INTO items
-        (id, created_at, published_at, source, source_name, url, headline, raw_text, processed)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+        (id, created_at, published_at, source, source_name, url, headline, raw_text, category, processed)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
     """, (
         item["id"],
         dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -197,6 +201,7 @@ def insert_raw_item(conn, item: dict):
         item.get("url"),
         item["headline"],
         item.get("raw_text", ""),
+        item.get("category", "general"),
     ))
     conn.commit()
 
@@ -395,21 +400,28 @@ def fetch_x() -> list[dict]:
 # keep the timeline advancing. Parsed with the stdlib (no extra dependency).
 # Toggle/extend via RSS_FEEDS below.
 # ----------------------------------------------------------------------------
+# Each feed: (display_name, url, category). category is "forex" or "general"
+# and drives the News-panel tab split on the dashboard.
 RSS_FEEDS = [
-    ("CNBC Markets",  "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114"),
-    ("CNBC Top",      "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100727362"),
-    ("MarketWatch",   "https://feeds.content.dowjones.io/public/rss/mw_topstories"),
-    ("MW RealTime",   "https://feeds.content.dowjones.io/public/rss/mw_realtimeheadlines"),
-    ("Yahoo Finance", "https://finance.yahoo.com/news/rssindex"),
-    ("Investing.com", "https://www.investing.com/rss/news.rss"),
-    ("SeekingAlpha",  "https://seekingalpha.com/market_currents.xml"),
-    ("InvestingLive", "https://www.investinglive.com/feed"),
+    ("CNBC Markets",  "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114", "general"),
+    ("CNBC Top",      "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100727362", "general"),
+    ("MarketWatch",   "https://feeds.content.dowjones.io/public/rss/mw_topstories", "general"),
+    ("MW RealTime",   "https://feeds.content.dowjones.io/public/rss/mw_realtimeheadlines", "general"),
+    ("Yahoo Finance", "https://finance.yahoo.com/news/rssindex", "general"),
+    ("Investing.com", "https://www.investing.com/rss/news.rss", "general"),
+    ("SeekingAlpha",  "https://seekingalpha.com/market_currents.xml", "general"),
+    ("InvestingLive", "https://www.investinglive.com/feed", "general"),
+    # --- Forex / FX-focused feeds (engine logs+skips any that don't return 200) ---
+    ("FXStreet",      "https://www.fxstreet.com/rss/news", "forex"),
+    ("ForexLive",     "https://www.forexlive.com/feed", "forex"),
+    ("DailyForex",    "https://www.dailyforex.com/rss/forexnews.xml", "forex"),
+    ("Investing FX",  "https://www.investing.com/rss/news_1.rss", "forex"),
 ]
 
 def fetch_rss() -> list[dict]:
     import xml.etree.ElementTree as ET
     out = []
-    for name, url in RSS_FEEDS:
+    for name, url, category in RSS_FEEDS:
         try:
             r = requests.get(url, timeout=15, headers={"User-Agent": "korvus-engine/0.2"})
             if r.status_code != 200:
@@ -431,6 +443,7 @@ def fetch_rss() -> list[dict]:
                     "id": make_id("wire", title),       # same hash space → dedupes vs Benzinga dupes
                     "source": "wire",
                     "source_name": name,
+                    "category": category,               # 'general' | 'forex'
                     "url": link,
                     "published_at": pub,
                     "headline": title,

@@ -116,6 +116,7 @@ def api_news():
             "inst": json.loads(r["instruments"] or "[]"),
             "conf": r["confidence"] or 0,
             "url": r["url"] or "",
+            "category": (r["category"] if "category" in r.keys() else "general") or "general",
         })
     return jsonify({"items": items, "count": len(items)})
 
