@@ -9,23 +9,23 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#050608;--panel:#0e1116;--ink:#eef1f6;--ink-dim:#9aa4b2;--ink-faint:#5a6470;
-    --line:rgba(255,255,255,.08);--line-bright:rgba(255,255,255,.16);
-    --gold:#f0b45a;--gold-deep:#c99a45;--crown:#ff3a2f;--down:#ff5d57;
-    --candle-bull:#ffffff;--candle-bear:#c2185b;
+    --bg:#000000;--bg-2:#040406;--panel:#0c0d11;--ink:#f6f8ff;--ink-dim:#aab0c0;--ink-faint:#646b7d;
+    --line:rgba(255,255,255,.09);--line-bright:rgba(255,255,255,.18);
+    --gold:#ff1f44;--gold-deep:#d4112f;--crimson:#ff1f44;--crimson-deep:#d4112f;--crimson-bright:#ff3355;--crimson-glow:rgba(255,31,68,.6);--crown:#ff1f44;--up:#3ce594;--down:#ff2e4d;
+    --candle-bull:#f6f8ff;--candle-bear:#ff1f44;
     --mono:'IBM Plex Mono',monospace;--body:'Hanken Grotesk',system-ui,sans-serif;--disp:'Fraunces',Georgia,serif;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:var(--bg);color:var(--ink);font-family:var(--body);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;overflow-x:hidden;}
   #candles{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.45;}
   .glow{position:fixed;top:-20vh;left:50%;transform:translateX(-50%);width:80vw;height:60vh;z-index:0;pointer-events:none;
-    background:radial-gradient(ellipse at center,rgba(240,180,90,.10),rgba(255,58,47,.05) 40%,transparent 70%);filter:blur(30px);}
+    background:radial-gradient(ellipse at center,rgba(255,31,68,.13),rgba(255,31,68,.05) 40%,transparent 70%);filter:blur(30px);}
   .card{position:relative;z-index:2;width:100%;max-width:430px;background:rgba(14,17,22,.55);backdrop-filter:blur(16px);
     border:1px solid var(--line-bright);border-radius:18px;padding:40px 36px;box-shadow:0 30px 80px -30px #000;}
   .brand{display:flex;align-items:center;gap:11px;justify-content:center;margin-bottom:28px;}
   .crown{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
-    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);border:1px solid rgba(255,58,47,.38);box-shadow:0 0 22px -6px var(--crown);}
-  .crown svg{filter:drop-shadow(0 0 5px rgba(255,58,47,.6));}
+    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);border:1px solid rgba(255,31,68,.42);box-shadow:0 0 22px -6px var(--crown);}
+  .crown svg{filter:drop-shadow(0 0 5px rgba(255,31,68,.6));}
   .brand-name{font-family:var(--disp);font-weight:600;font-size:23px;}
   h1{font-family:var(--disp);font-weight:500;font-size:26px;text-align:center;margin-bottom:6px;letter-spacing:-.01em;}
   .sub{text-align:center;color:var(--ink-dim);font-size:14px;margin-bottom:28px;}
@@ -87,7 +87,7 @@
   (function(){
     const cv=document.getElementById('candles'),ctx=cv.getContext('2d');
     let W,H,candles=[],offset=0,price,momentum=0,runLeft=0,trendDir=1;
-    const BULL='#ffffff',BEAR='#c2185b',CW=9,GAP=8,STEP=CW+GAP;
+    const BULL='#f6f8ff',BEAR='#ff1f44',CW=9,GAP=8,STEP=CW+GAP;
     function nextCandle(){
       const vol=H*0.022;
       if(runLeft<=0){trendDir=Math.random()<0.5?-1:1;runLeft=4+Math.floor(Math.random()*9);}
@@ -106,7 +106,7 @@
       if(offset>=STEP){offset-=STEP;candles.shift();candles.push(nextCandle());}
       ctx.beginPath();
       candles.forEach((c,i)=>{const x=i*STEP-offset+CW/2;i===0?ctx.moveTo(x,c.c):ctx.lineTo(x,c.c);});
-      ctx.strokeStyle='rgba(240,180,90,.10)';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.strokeStyle='rgba(255,31,68,.12)';ctx.lineWidth=1.5;ctx.stroke();
       candles.forEach((c,i)=>{
         const x=i*STEP-offset+CW/2;if(x<-CW||x>W+CW)return;
         const up=c.bull,color=up?BULL:BEAR;
