@@ -145,23 +145,44 @@ def _alphavantage_quotes(symbols: list[str]) -> dict:
         print("  [quotes] no ALPHAVANTAGE_KEY — set it in .env")
         return {}
     out = {}
+
+    def _f(v):
+        try:
+            return float(str(v).replace("%", "").strip())
+        except Exception:
+            return 0.0
+
     try:
         # REALTIME_BULK_QUOTES is a premium endpoint; takes up to 100 symbols.
+        # IMPORTANT: without entitlement, Alpha Vantage returns HISTORICAL data.
+        # entitlement=realtime gives true real-time US market data (requires the
+        # one-time data-entitlement step on your Alpha X Terminal "Data" page).
         url = ("https://www.alphavantage.co/query"
                f"?function=REALTIME_BULK_QUOTES&symbol={','.join(symbols)}"
+               f"&entitlement=realtime"
                f"&apikey={ALPHAVANTAGE_KEY}")
         r = requests.get(url, timeout=20)
         data = r.json()
         rows = data.get("data", [])
-        if not rows and ("Information" in data or "Note" in data):
-            # usually means the key isn't premium yet
-            print(f"  [quotes] Alpha Vantage: {data.get('Information') or data.get('Note')}")
+        if not rows and ("Information" in data or "Note" in data or "Error Message" in data):
+            # usually means the key isn't premium yet, or entitlement isn't set up
+            print(f"  [quotes] Alpha Vantage: {data.get('Information') or data.get('Note') or data.get('Error Message')}")
             return {}
         for row in rows:
             sym = row.get("symbol")
-            price = float(row.get("close") or row.get("price") or 0)
-            chg = row.get("change_percent", "0").replace("%", "")
-            out[sym] = {"price": price, "chg_pct": float(chg or 0)}
+            if not sym:
+                continue
+            price = _f(row.get("close") or row.get("price") or 0)
+            # carry OHLC + prev close so the SMT range read and macro bands work
+            # on the live feed too (parsed defensively — keys may be absent).
+            out[sym] = {
+                "price": price,
+                "chg_pct": _f(row.get("change_percent", 0)),
+                "high": _f(row.get("high") or 0),
+                "low": _f(row.get("low") or 0),
+                "open": _f(row.get("open") or 0),
+                "prev_close": _f(row.get("previous_close") or row.get("prev_close") or 0),
+            }
     except Exception as e:
         print(f"  [quotes] Alpha Vantage error: {e}")
     return out

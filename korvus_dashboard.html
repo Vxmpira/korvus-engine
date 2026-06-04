@@ -108,7 +108,7 @@
             mask-image:radial-gradient(circle at 50% 35%,#000,transparent 95%);
   }
 
-  .app{display:flex;flex-direction:column;height:100vh;}
+  .app{display:flex;flex-direction:column;min-height:100vh;}
 
   /* ---------- header ---------- */
   header{
@@ -215,7 +215,7 @@
   .ownerlive .olv-tag{font-size:7.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--bull);
     border:1px solid rgba(60,229,148,.4);background:rgba(60,229,148,.08);border-radius:4px;padding:2px 6px;}
   .ownerlive .olv-eyes{font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);}
-  .chartwrap{height:340px;width:100%;}
+  .chartwrap{height:520px;width:100%;}
   .chartwrap iframe,.chartwrap .tradingview-widget-container{height:100% !important;width:100% !important;}
   .chartgate{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     text-align:center;padding:22px;background:rgba(4,6,10,.72);backdrop-filter:blur(7px);}
@@ -231,7 +231,7 @@
   @media (max-width:760px){
     .charthead{flex-wrap:wrap;}
     .ownerlive{margin-left:0;width:100%;border-left:none;border-top:1px solid var(--line-soft);}
-    .chartwrap{height:280px;}
+    .chartwrap{height:360px;}
   }
 
   /* macro confluence */
@@ -277,7 +277,7 @@
   .gopro:hover{background:var(--crimson-bright);transform:translateY(-1px);}
 
   /* ---------- layout ---------- */
-  main{flex:1;display:grid;grid-template-columns:1fr 384px;gap:16px;padding:16px;min-height:0;}
+  main{flex:1;display:grid;grid-template-columns:1fr 384px;gap:16px;padding:16px;min-height:600px;}
   .panel{
     background:var(--panel);
     border:1px solid rgba(255,255,255,.14);
@@ -1408,45 +1408,55 @@ function setupChart(){
   }
 }
 
+// Load tv.js once; resolves when the global TradingView object is ready.
+let _tvLib = null;
+function ensureTV(){
+  if(window.TradingView && window.TradingView.widget) return Promise.resolve();
+  if(_tvLib) return _tvLib;
+  _tvLib = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://s3.tradingview.com/tv.js';
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('tv.js failed to load'));
+    document.head.appendChild(s);
+  });
+  return _tvLib;
+}
+
 function loadTVChart(symbol){
   const wrap = document.getElementById('chartWrap');
   if(!wrap) return;
-  // Rebuild the TradingView Advanced Chart widget container each time so the
-  // symbol toggle takes effect (the embed script reads config on insert).
-  wrap.innerHTML = '';
-  const container = document.createElement('div');
-  container.className = 'tradingview-widget-container';
-  container.style.height = '100%';
-  container.style.width = '100%';
-  const inner = document.createElement('div');
-  inner.className = 'tradingview-widget-container__widget';
-  inner.style.height = '100%';
-  inner.style.width = '100%';
-  container.appendChild(inner);
-  const s = document.createElement('script');
-  s.type = 'text/javascript';
-  s.async = true;
-  s.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-  s.innerHTML = JSON.stringify({
-    autosize: true,
-    symbol: symbol,
-    interval: '15',
-    timezone: 'America/New_York',
-    theme: 'dark',
-    style: '1',
-    locale: 'en',
-    backgroundColor: 'rgba(6,8,12,0)',
-    gridColor: 'rgba(255,255,255,0.05)',
-    hide_top_toolbar: false,
-    hide_legend: false,
-    allow_symbol_change: false,
-    save_image: false,
-    calendar: false,
-    support_host: 'https://www.tradingview.com'
+  // Use the tv.js widget CONSTRUCTOR rather than the embed-script tag. The embed
+  // script reads its config from an adjacent <script> via document.currentScript,
+  // which is null when the script is injected dynamically — so it ignored our
+  // symbol and fell back to its built-in default (AAPL). The constructor takes
+  // the symbol directly, so MNQ/MES render correctly and the toggle works.
+  wrap.innerHTML = '<div id="tvchart_inner" style="height:100%;width:100%;"></div>';
+  ensureTV().then(() => {
+    try{
+      new TradingView.widget({
+        container_id: 'tvchart_inner',
+        autosize: true,
+        symbol: symbol,
+        interval: '15',
+        timezone: 'America/New_York',
+        theme: 'dark',
+        style: '1',
+        locale: 'en',
+        hide_side_toolbar: false,
+        allow_symbol_change: false,
+        save_image: false,
+        backgroundColor: 'rgba(6,8,12,0)',
+        gridColor: 'rgba(255,255,255,0.05)'
+      });
+      _tvLoaded = true;
+    }catch(e){ /* leave container in place; a refresh retries */ }
+  }).catch(() => {
+    wrap.innerHTML = '<div style="display:flex;height:100%;align-items:center;justify-content:center;'
+                   + 'color:var(--ink-faint);font-family:var(--mono);font-size:11px;">'
+                   + 'Chart failed to load — refresh to retry.</div>';
   });
-  container.appendChild(s);
-  wrap.appendChild(container);
-  _tvLoaded = true;
 }
 
 function setChartSym(btn){
