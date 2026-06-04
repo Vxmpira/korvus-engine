@@ -6,42 +6,218 @@
 <title>KORVUS · Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;500;700&family=Familjen+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
-  :root{--vanta:#050506;--ink:#0c0c0f;--ink-2:#121217;--white:#f4f5f7;--crimson:#ff2740;--yellow:#ffd400;--muted:#74747e;--line:rgba(255,255,255,.08);--line-strong:rgba(255,255,255,.16)}
+  :root{
+    --vanta:#050506;--ink:#0c0c0f;--ink-2:#121217;--white:#f4f5f7;
+    --crimson:#ff2740;--orange:#ff8a1f;--green:#39d353;--yellow:#ffd400;
+    --muted:#74747e;--line:rgba(255,255,255,.08);--line-strong:rgba(255,255,255,.16);
+  }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--vanta);color:var(--white);font-family:"JetBrains Mono",monospace;min-height:100vh;position:relative}
-  body::before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(900px 600px at 78% -10%,rgba(255,39,64,.16),transparent 60%)}
-  .wrap{position:relative;max-width:920px;margin:0 auto;padding:36px 22px}
-  .top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:26px}
-  .wordmark{font-family:"Anton",sans-serif;font-size:clamp(30px,5vw,48px);letter-spacing:2px;text-shadow:0 0 22px rgba(255,39,64,.55)}
+  html,body{background:var(--vanta);color:var(--white)}
+  body{font-family:"Familjen Grotesk",sans-serif;min-height:100vh;position:relative;-webkit-font-smoothing:antialiased}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:radial-gradient(900px 600px at 80% -10%,rgba(255,39,64,.16),transparent 60%)}
+  .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:30px 22px 70px}
+  header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:24px}
+  .brand{display:flex;align-items:baseline;gap:13px}
+  .wordmark{font-family:"Anton",sans-serif;font-size:clamp(30px,5vw,50px);letter-spacing:2px;line-height:.9;text-shadow:0 0 22px rgba(255,39,64,.55)}
   .wordmark span{color:var(--crimson)}
-  .tag{font-size:11px;letter-spacing:4px;color:var(--yellow);text-transform:uppercase}
-  .back{margin-left:auto;font-size:11px;color:var(--muted);text-decoration:none;align-self:center}
-  .back:hover{color:var(--crimson)}
-  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
-  .card{background:linear-gradient(180deg,var(--ink-2),var(--ink));border:1px solid var(--line);border-radius:10px;padding:20px;text-decoration:none;color:var(--white);transition:.15s;display:block}
-  .card:hover{border-color:var(--crimson)}
-  .card h3{font-family:"Anton",sans-serif;letter-spacing:1px;font-size:20px;margin-bottom:6px}
-  .card p{font-size:12px;color:var(--muted);line-height:1.6}
-  .card .arrow{color:var(--crimson);font-size:14px;margin-top:12px;display:inline-block}
-  .note{margin-top:26px;font-size:11px;color:var(--muted);line-height:1.9;border-top:1px solid var(--line);padding-top:16px}
+  .tag{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:4px;color:var(--yellow);text-transform:uppercase}
+  .toplinks{display:flex;gap:14px;align-items:center}
+  .toplinks a,.refresh{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:1px;color:var(--muted);text-decoration:none;background:none;border:none;cursor:pointer}
+  .toplinks a:hover,.refresh:hover{color:var(--crimson)}
+
+  .sec-lbl{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin:26px 0 12px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+  .stat{background:linear-gradient(180deg,var(--ink-2),var(--ink));border:1px solid var(--line);border-radius:10px;padding:18px 18px 16px}
+  .stat .k{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+  .stat .v{font-family:"Anton",sans-serif;font-size:38px;line-height:1;margin-top:8px}
+  .stat .v.sm{font-size:26px}
+  .stat.accent .v{color:var(--crimson)}
+  .stat.gold .v{color:var(--yellow)}
+  .stat .sub{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--muted);margin-top:6px}
+
+  .panel{background:linear-gradient(180deg,var(--ink-2),var(--ink));border:1px solid var(--line);border-radius:10px;padding:20px;margin-top:14px}
+  .panel h3{font-family:"Anton",sans-serif;letter-spacing:1px;font-size:20px;margin-bottom:4px}
+  .panel .desc{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:14px}
+
+  .pills{display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.5px;padding:8px 12px;border-radius:6px;border:1px solid var(--line-strong);display:flex;gap:8px;align-items:center}
+  .pill .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+  .pill.ok .dot{background:var(--green);box-shadow:0 0 8px var(--green)}
+  .pill.bad .dot{background:var(--crimson);box-shadow:0 0 8px var(--crimson)}
+  .pill .lab{color:var(--muted)}
+  .pill .val{color:var(--white)}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--line-strong)}
+  td{padding:9px 10px;border-bottom:1px solid var(--line);color:#dcdce0}
+  td.mono,th.mono{font-family:"JetBrains Mono",monospace}
+  tr:hover td{background:rgba(255,255,255,.02)}
+  .tierbadge{font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:1px;padding:2px 7px;border-radius:3px;text-transform:uppercase}
+  .tierbadge.pro{background:var(--crimson);color:#0a0a0a}
+  .tierbadge.free{background:rgba(255,255,255,.08);color:var(--muted);border:1px solid var(--line-strong)}
+
+  .rev{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .rev .big{font-family:"Anton",sans-serif;font-size:46px;color:var(--green)}
+  .rev .meta{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);line-height:1.7}
+  .estimate{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:1px;color:var(--yellow);border:1px solid rgba(255,212,0,.4);border-radius:3px;padding:2px 6px;text-transform:uppercase;margin-left:6px}
+
+  .studio{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  .studio a{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#0a0a0a;background:var(--crimson);padding:10px 16px;border-radius:6px;text-decoration:none;box-shadow:0 0 18px rgba(255,39,64,.4)}
+  .studio a:hover{filter:brightness(1.1)}
+
+  .loading,.err{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--muted);padding:30px;text-align:center;border:1px dashed var(--line-strong);border-radius:10px}
+  .err{color:#ffb3bd;border-color:var(--crimson)}
+  .foot{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);font-family:"JetBrains Mono",monospace;font-size:10.5px;color:#4c4c54;line-height:1.8}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="top">
-    <div class="wordmark">KOR<span>V</span>US</div>
-    <div class="tag">Admin</div>
-    <a class="back" href="/">‹ back to terminal</a>
-  </div>
-  <div class="cards">
-    <a class="card" href="/agent"><h3>Promo Studio</h3><p>Generate on-brand social posts from live market context.</p><span class="arrow">⟶ open</span></a>
-  </div>
-  <div class="note">
-    Admin area · visible only to designated admins (server-enforced).<br>
-    Add more tools here as you build them — user management, scoring controls, data-source status, etc.
+  <header class="top">
+    <div class="brand"><div class="wordmark">KOR<span>V</span>US</div><div class="tag">Admin</div></div>
+    <div class="toplinks">
+      <button class="refresh" id="refresh">↻ refresh</button>
+      <a href="/">‹ back to terminal</a>
+    </div>
+  </header>
+
+  <div id="root"><div class="loading">Loading owner analytics…</div></div>
+
+  <div class="foot">
+    Owner console · server-enforced. Figures read live from your database &amp; environment.
+    Revenue is an estimate derived from member counts — wire your billing module for exact billed totals.
+    API keys are shown as present/absent only, never the values.
   </div>
 </div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const money = n => "$" + (Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+function uptime(s){s=Number(s)||0;const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);
+  return (d?d+"d ":"")+(h?h+"h ":"")+m+"m";}
+function pill(label, ok, val){
+  return '<div class="pill '+(ok?"ok":"bad")+'"><span class="dot"></span><span class="lab">'+esc(label)+'</span>'+
+    (val!=null?'<span class="val">'+esc(val)+'</span>':'')+'</div>';
+}
+function infoPill(label, val){
+  return '<div class="pill"><span class="dot" style="background:var(--orange);box-shadow:0 0 8px var(--orange)"></span>'+
+    '<span class="lab">'+esc(label)+'</span><span class="val">'+esc(val)+'</span></div>';
+}
+
+async function load(){
+  $("#root").innerHTML = '<div class="loading">Loading owner analytics…</div>';
+  let stats={}, online={}, health={};
+  try{
+    [stats, online, health] = await Promise.all([
+      fetch('/api/admin/stats',{cache:'no-store',credentials:'same-origin'}).then(r=>r.json()),
+      fetch('/api/online',{cache:'no-store',credentials:'same-origin'}).then(r=>r.json()).catch(()=>({})),
+      fetch('/api/health',{cache:'no-store',credentials:'same-origin'}).then(r=>r.json()).catch(()=>({})),
+    ]);
+  }catch(e){
+    $("#root").innerHTML = '<div class="err">Couldn\'t load /api/admin/stats — '+esc(e.message||e)+
+      '<br>Make sure the server restarted after the korvus_admin.py update, and that you\'re the owner.</div>';
+    return;
+  }
+  render(stats, online, health);
+}
+
+function render(stats, online, health){
+  const u = stats.users || {};
+  const rev = stats.revenue || {};
+  const st = stats.status || {};
+  const activeNow = (online && online.online != null) ? online.online : "—";
+
+  let html = "";
+
+  // ---- top stat cards ----
+  html += '<div class="sec-lbl">Membership</div><div class="cards">';
+  html += statCard("Total users", u.total!=null?u.total:"—");
+  html += statCard("Pro", u.pro!=null?u.pro:"—", "accent");
+  html += statCard("Free", u.free!=null?u.free:"—");
+  html += statCard("Active now", activeNow, "gold");
+  if(u.verified!=null) html += statCard("Verified", u.verified);
+  if(u.new_7d!=null)   html += statCard("New · 7d", u.new_7d);
+  html += '</div>';
+
+  // ---- revenue ----
+  html += '<div class="sec-lbl">Revenue <span class="estimate">estimate</span></div>';
+  html += '<div class="panel"><div class="rev"><div class="big">'+money(rev.estimated_mrr)+'</div>'+
+    '<div class="meta">estimated MRR · '+esc(rev.paying_members!=null?rev.paying_members:"—")+' paying @ '+money(rev.monthly_price)+'/mo<br>'+
+    '≈ '+money(rev.estimated_arr)+' ARR · basis: '+esc(rev.basis||"—")+'<br>'+esc(rev.note||"")+'</div></div>';
+  if(stats.subscriptions){
+    html += '<div style="margin-top:14px" class="pills">';
+    Object.keys(stats.subscriptions).forEach(k=>{ html += infoPill(k, stats.subscriptions[k]); });
+    html += '</div>';
+  }
+  html += '</div>';
+
+  // ---- system / data status ----
+  html += '<div class="sec-lbl">System &amp; data sources</div><div class="panel"><div class="pills">';
+  html += pill("server", true, "online · up "+uptime(st.server_uptime_seconds));
+  html += pill("database", !!st.db_present, st.db_present?"present":"missing");
+  html += pill("Anthropic key", !!st.anthropic_key, st.anthropic_key?"set":"missing");
+  html += pill("Alpha Vantage key", !!st.alphavantage_key, st.alphavantage_key?"set":"missing");
+  html += pill("Finnhub key", !!st.finnhub_key, st.finnhub_key?"set":"missing");
+  html += infoPill("quotes provider", st.quotes_provider);
+  html += infoPill("news provider", st.news_provider);
+  html += infoPill("email", st.email_provider);
+  if(health && (health.last_update || health.scored!=null)){
+    html += infoPill("engine last update", health.last_update || "—");
+    if(health.scored!=null) html += infoPill("items scored", health.scored);
+  }
+  html += '</div></div>';
+
+  // ---- pro members ----
+  if(stats.pro_members){
+    html += '<div class="sec-lbl">Pro members · contact</div><div class="panel">';
+    if(stats.pro_members.length){
+      html += '<table><thead><tr><th>Username</th><th>Email</th><th>Joined</th>'+
+              (stats.pro_members[0].subscription_status!==undefined?'<th>Sub</th>':'')+'</tr></thead><tbody>';
+      stats.pro_members.forEach(m=>{
+        html += '<tr><td class="mono">'+esc(m.username)+'</td><td class="mono">'+esc(m.email)+'</td>'+
+          '<td class="mono">'+esc((m.created_at||"").slice(0,10))+'</td>'+
+          (m.subscription_status!==undefined?'<td class="mono">'+esc(m.subscription_status||"—")+'</td>':'')+'</tr>';
+      });
+      html += '</tbody></table>';
+    } else { html += '<div class="desc">No pro members yet.</div>'; }
+    html += '</div>';
+  }
+
+  // ---- recent signups ----
+  if(stats.recent_signups && stats.recent_signups.length){
+    html += '<div class="sec-lbl">Recent signups</div><div class="panel"><table>'+
+      '<thead><tr><th>Username</th><th>Email</th><th>Tier</th><th>Joined</th></tr></thead><tbody>';
+    stats.recent_signups.forEach(m=>{
+      const t=(m.tier||"free").toLowerCase();
+      html += '<tr><td class="mono">'+esc(m.username)+'</td><td class="mono">'+esc(m.email)+'</td>'+
+        '<td><span class="tierbadge '+(t==="pro"?"pro":"free")+'">'+esc(t)+'</span></td>'+
+        '<td class="mono">'+esc((m.created_at||"").slice(0,10))+'</td></tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+
+  // ---- tools ----
+  html += '<div class="sec-lbl">Tools</div><div class="panel studio">'+
+    '<div><h3>Promo Studio</h3><div class="desc" style="margin:0">Generate on-brand social posts from live market context.</div></div>'+
+    '<a href="/agent">⟶ open</a></div>';
+
+  if(stats.users_error)  html += '<div class="panel err" style="margin-top:14px">users query: '+esc(stats.users_error)+'</div>';
+  if(stats.revenue_error) html += '<div class="panel err" style="margin-top:14px">revenue: '+esc(stats.revenue_error)+'</div>';
+
+  $("#root").innerHTML = html;
+}
+
+function statCard(k, v, cls){
+  const big = String(v).length>6 ? ' sm' : '';
+  return '<div class="stat'+(cls?(' '+cls):'')+'"><div class="k">'+esc(k)+'</div><div class="v'+big+'">'+esc(v)+'</div></div>';
+}
+
+$("#refresh").addEventListener("click", load);
+load();
+setInterval(load, 30000);
+</script>
 </body>
 </html>
