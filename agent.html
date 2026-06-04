@@ -283,21 +283,33 @@ function wrapText(ctx,text,maxW){
     if(ctx.measureText(test).width>maxW&&line){lines.push(line);line=w;}else line=test;}
   if(line)lines.push(line);return lines;
 }
-async function makeCard(it){
+async function drawBranded(it, bg){
   try{if(document.fonts&&document.fonts.ready)await document.fonts.ready;}catch(e){}
   const video=VIDEO(state.platform),W=1080,H=video?1920:1080;
   const cv=document.createElement("canvas");cv.width=W;cv.height=H;
   const x=cv.getContext("2d");
-  x.fillStyle="#050506";x.fillRect(0,0,W,H);
-  const g=x.createRadialGradient(W*0.78,H*0.10,0,W*0.78,H*0.10,W*1.05);
-  g.addColorStop(0,"rgba(255,39,64,0.30)");g.addColorStop(0.55,"rgba(255,39,64,0.05)");g.addColorStop(1,"rgba(255,39,64,0)");
-  x.fillStyle=g;x.fillRect(0,0,W,H);
+  if(bg){
+    const r=Math.max(W/bg.width,H/bg.height),iw=bg.width*r,ih=bg.height*r;
+    x.drawImage(bg,(W-iw)/2,(H-ih)/2,iw,ih);
+    x.fillStyle="rgba(255,39,64,0.06)";x.fillRect(0,0,W,H);
+    const sc=x.createLinearGradient(0,0,0,H);
+    sc.addColorStop(0,"rgba(5,5,6,0.60)");sc.addColorStop(0.42,"rgba(5,5,6,0.12)");
+    sc.addColorStop(0.70,"rgba(5,5,6,0.62)");sc.addColorStop(1,"rgba(5,5,6,0.93)");
+    x.fillStyle=sc;x.fillRect(0,0,W,H);
+  }else{
+    x.fillStyle="#050506";x.fillRect(0,0,W,H);
+    const g=x.createRadialGradient(W*0.78,H*0.10,0,W*0.78,H*0.10,W*1.05);
+    g.addColorStop(0,"rgba(255,39,64,0.30)");g.addColorStop(0.55,"rgba(255,39,64,0.05)");g.addColorStop(1,"rgba(255,39,64,0)");
+    x.fillStyle=g;x.fillRect(0,0,W,H);
+  }
   x.fillStyle="#ff2740";x.fillRect(96,96,90,8);
   x.textBaseline="top";x.font="700 84px Anton, sans-serif";
   let wx=96;const wy=128;
+  if(bg){x.shadowColor="rgba(0,0,0,0.7)";x.shadowBlur=14;}
   x.fillStyle="#f4f5f7";x.fillText("KOR",wx,wy);wx+=x.measureText("KOR").width;
   x.fillStyle="#ff2740";x.fillText("V",wx,wy);wx+=x.measureText("V").width;
   x.fillStyle="#f4f5f7";x.fillText("US",wx,wy);
+  x.shadowColor="transparent";x.shadowBlur=0;
   x.font="500 24px 'JetBrains Mono', monospace";x.fillStyle="#ffd400";
   x.fillText("MARKET INTELLIGENCE",100,wy+96);
   const main=(video?(it.hook||it.caption||""):(it.post||it.caption||"")).trim();
@@ -306,18 +318,35 @@ async function makeCard(it){
   x.font="700 "+fs+"px Anton, sans-serif";
   let lines=wrapText(x,main,maxW);
   while(lines.length*(fs*1.16)>(H-720)&&fs>28){fs-=6;x.font="700 "+fs+"px Anton, sans-serif";lines=wrapText(x,main,maxW);}
-  const lh=fs*1.16;let ty=Math.max(wy+220,(H-lines.length*lh)/2-60);
+  const lh=fs*1.16;
+  let ty=bg?(H-lines.length*lh-250):Math.max(wy+220,(H-lines.length*lh)/2-60);
+  if(bg){x.shadowColor="rgba(0,0,0,0.9)";x.shadowBlur=20;x.shadowOffsetY=2;}
   x.fillStyle="#f4f5f7";
   for(const ln of lines){x.fillText(ln,100,ty);ty+=lh;}
+  x.shadowColor="transparent";x.shadowBlur=0;x.shadowOffsetY=0;
   x.font="700 30px 'JetBrains Mono', monospace";x.fillStyle="#ffd400";
   x.fillText("BlackCrownVxJ.LLC",100,H-152);
-  x.font="500 26px 'JetBrains Mono', monospace";x.fillStyle="#9a9aa2";
+  x.font="500 26px 'JetBrains Mono', monospace";x.fillStyle=bg?"#dcdce0":"#9a9aa2";
   x.fillText("korvus.industries",100,H-110);
-  x.font="500 18px 'JetBrains Mono', monospace";x.fillStyle="#5a5a62";
+  x.font="500 18px 'JetBrains Mono', monospace";x.fillStyle=bg?"#9a9aa2":"#5a5a62";
   x.fillText("Market intelligence \u2014 not financial advice.",100,H-66);
+  const tag=bg?"ai":"card";
   await new Promise(res=>cv.toBlob(b=>{const a=document.createElement("a");a.href=URL.createObjectURL(b);
-    a.download="korvus-"+state.platform.toLowerCase()+"-"+Date.now()+".png";a.click();
+    a.download="korvus-"+tag+"-"+state.platform.toLowerCase()+"-"+Date.now()+".png";a.click();
     setTimeout(()=>URL.revokeObjectURL(a.href),2000);res();},"image/png"));
+}
+async function makeCard(it){ return drawBranded(it,null); }
+async function makeAIImage(it){
+  const body={platform:state.platform,angle:state.angle,
+    topic:(VIDEO(state.platform)?(it.hook||it.caption):(it.post||it.caption))||"",
+    hook:it.hook||"",caption:it.caption||"",post:it.post||""};
+  try{const head=($("m-head")&&$("m-head").value||"").trim(),smt=($("m-smt")&&$("m-smt").value||"").trim();if(head||smt)body.context={headline:head,smt:smt};}catch(e){}
+  const r=await fetch("/api/promo-image",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(body)});
+  let j={};try{j=await r.json();}catch(e){}
+  if(!r.ok||j.error)throw new Error(j.error||("HTTP "+r.status));
+  const img=new Image();
+  await new Promise((res,rej)=>{img.onload=res;img.onerror=()=>rej(new Error("image decode failed"));img.src="data:image/png;base64,"+j.b64;});
+  await drawBranded(it,img);
 }
 
 function renderItems(items){
@@ -331,14 +360,15 @@ function renderItems(items){
         (it.caption?'<div class="field cap"><div class="flbl">Caption</div><div class="fv">'+escapeHtml(it.caption)+'</div></div>':"")+
         (it.script?'<div class="field script"><div class="flbl">Reel script</div><div class="fv">'+escapeHtml(it.script)+'</div></div>':"");}
     const primary=video?'<button data-act="copycap">Copy caption</button><button data-act="copyall">Copy all</button>':'<button data-act="copyall">Copy</button>';
-    return '<div class="card">'+body+'<div class="actions">'+primary+'<button data-act="img">🎨 Image</button><button data-act="save">★ Save</button></div></div>';
+    return '<div class="card">'+body+'<div class="actions">'+primary+'<button data-act="card">🎨 Card</button><button data-act="aiimg">✨ AI Image</button><button data-act="save">★ Save</button></div></div>';
   }).join("");
   out.querySelectorAll(".card").forEach((card,idx)=>{const it=items[idx],all=flat(it);
     const cp=(btn,txt)=>{navigator.clipboard.writeText(txt).then(()=>{const o=btn.textContent;btn.textContent="Copied";btn.classList.add("done");setTimeout(()=>{btn.textContent=o;btn.classList.remove("done")},1300);});};
     const ca=card.querySelector('[data-act="copyall"]');if(ca)ca.addEventListener("click",e=>cp(e.target,all));
     const cc=card.querySelector('[data-act="copycap"]');if(cc)cc.addEventListener("click",e=>cp(e.target,it.caption||all));
     card.querySelector('[data-act="save"]').addEventListener("click",e=>{savePost(all);e.target.textContent="Saved ✓";e.target.classList.add("done");setTimeout(()=>{e.target.textContent="★ Save";e.target.classList.remove("done")},1300);});
-    const ig=card.querySelector('[data-act="img"]');if(ig)ig.addEventListener("click",e=>{const b=e.target,o=b.textContent;b.textContent="Rendering…";makeCard(it).then(()=>{b.textContent="Saved ✓";b.classList.add("done");setTimeout(()=>{b.textContent=o;b.classList.remove("done")},1400);}).catch(()=>{b.textContent="Failed";setTimeout(()=>b.textContent=o,1400);});});
+    const cb=card.querySelector('[data-act="card"]');if(cb)cb.addEventListener("click",e=>{const b=e.target,o=b.textContent;b.textContent="Rendering…";makeCard(it).then(()=>{b.textContent="Saved ✓";b.classList.add("done");setTimeout(()=>{b.textContent=o;b.classList.remove("done")},1400);}).catch(()=>{b.textContent="Failed";setTimeout(()=>b.textContent=o,1400);});});
+    const ai=card.querySelector('[data-act="aiimg"]');if(ai)ai.addEventListener("click",e=>{const b=e.target,o=b.textContent;b.disabled=true;b.textContent="Generating…";const n0=card.querySelector(".imgerr");if(n0)n0.remove();makeAIImage(it).then(()=>{b.disabled=false;b.textContent="Saved ✓";b.classList.add("done");setTimeout(()=>{b.textContent=o;b.classList.remove("done")},1500);}).catch(err=>{b.disabled=false;b.textContent="✕ failed";b.title=err.message||String(err);let n=document.createElement("div");n.className="imgerr";n.style.cssText="font-family:'JetBrains Mono',monospace;font-size:11px;color:#ffb3bd;margin-top:8px;line-height:1.5";n.textContent=err.message||String(err);card.appendChild(n);setTimeout(()=>b.textContent=o,1800);});});
   });
 }
 

@@ -30,6 +30,8 @@ Response: { "items": [ ... ] }  or  { "error": "..." }
 
 import os
 import json
+import urllib.request
+import urllib.error
 from flask import Blueprint, request, jsonify
 import anthropic
 
@@ -164,3 +166,91 @@ def promo_generate():
         return jsonify({"error": str(e)}), 502
 
     return jsonify({"items": items})
+
+
+# ============================================================================
+# AI IMAGE GENERATION  —  POST /api/promo-image  (admin only)
+# ============================================================================
+# Uses OpenAI's image API (stdlib only, no extra pip install). Set the key on
+# the SERVER to enable; the feature stays dark until you do.
+#
+#     OPENAI_API_KEY=sk-...        # required to turn AI images on
+#     IMAGE_MODEL=gpt-image-1      # optional; bump to a newer model anytime
+#     IMAGE_QUALITY=medium         # optional; low | medium | high
+#
+# We ask the model for an ON-BRAND SCENE WITH NO TEXT. The page composites the
+# KORVUS wordmark + hook text on top, so we never depend on the image model to
+# render letters (which it does poorly).
+#
+# Response: { "b64": "<base64 png>", "model": "...", "size": "..." }
+# ----------------------------------------------------------------------------
+
+IMAGE_ENDPOINT = "https://api.openai.com/v1/images/generations"
+
+
+def build_image_prompt(d):
+    ctx = d.get("context") or {}
+    topic = (d.get("topic") or d.get("hook") or d.get("caption")
+             or ctx.get("headline") or "").strip()
+    mood = (d.get("angle") or "").strip()
+    bits = [
+        "Cinematic, premium social-media key visual for a 24/7 market-intelligence "
+        "trading brand. Abstract financial-markets scene: glowing candlestick charts, "
+        "streaming ticker data, a night-time city skyline or a dark high-end trading "
+        "desk lit by screens.",
+        "Aesthetic: deep vanta-black background, intense neon crimson (#ff2740) glow and "
+        "rim light, sleek high-end fintech, dramatic volumetric lighting, fine haze, "
+        "razor-sharp detail, photoreal-meets-graphic, 8k.",
+    ]
+    if topic:
+        bits.append("Visual mood should evoke: " + topic + ".")
+    if mood:
+        bits.append("Energy: " + mood + ".")
+    bits.append("Absolutely NO text, NO words, NO letters, NO numbers, NO logos and NO "
+                "watermark anywhere in the image. Keep the lower third clean and uncluttered "
+                "for captioning.")
+    return " ".join(bits)
+
+
+@korvus_promo_api.route("/api/promo-image", methods=["POST"])
+@admin_required
+def promo_image():
+    key = os.environ.get("OPENAI_API_KEY")
+    if not key:
+        return jsonify({"error": "OPENAI_API_KEY is not set on the server. "
+                                 "Add it to your .env (and restart) to enable AI images."}), 400
+
+    d = request.get_json(force=True, silent=True) or {}
+    platform = d.get("platform", "X")
+    portrait = platform in ("TikTok", "Instagram")
+    size = "1024x1536" if portrait else "1024x1024"
+    model = os.environ.get("IMAGE_MODEL", "gpt-image-1")
+    quality = os.environ.get("IMAGE_QUALITY", "medium")
+
+    payload = json.dumps({
+        "model": model,
+        "prompt": build_image_prompt(d),
+        "size": size,
+        "quality": quality,
+        "n": 1,
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        IMAGE_ENDPOINT, data=payload,
+        headers={"Authorization": "Bearer " + key,
+                 "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+        b64 = body["data"][0]["b64_json"]
+        return jsonify({"b64": b64, "model": model, "size": size})
+    except urllib.error.HTTPError as e:
+        try:
+            err = json.loads(e.read().decode("utf-8")).get("error", {}).get("message", str(e))
+        except Exception:
+            err = "HTTP %s from image API" % getattr(e, "code", "?")
+        return jsonify({"error": err}), 502
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
