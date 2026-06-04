@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KORVUS · Promo Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;500;700&family=Familjen+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --vanta:#050506;--ink:#0c0c0f;--ink-2:#121217;--white:#f4f5f7;
+    --crimson:#ff2740;--crimson-deep:#c8102e;--orange:#ff8a1f;--yellow:#ffd400;
+    --muted:#74747e;--line:rgba(255,255,255,.08);--line-strong:rgba(255,255,255,.16);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--vanta);color:var(--white)}
+  body{font-family:"Familjen Grotesk",sans-serif;min-height:100vh;position:relative;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:radial-gradient(900px 600px at 78% -10%,rgba(255,39,64,.18),transparent 60%),radial-gradient(700px 500px at -10% 110%,rgba(255,39,64,.07),transparent 55%)}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.05;
+    background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:46px 46px}
+  .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:30px 22px 80px}
+
+  header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:22px}
+  .brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .wordmark{font-family:"Anton",sans-serif;font-size:clamp(34px,6vw,58px);letter-spacing:2px;line-height:.9;color:var(--white);text-shadow:0 0 22px rgba(255,39,64,.55)}
+  .wordmark span{color:var(--crimson)}
+  .studio-tag{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:4px;color:var(--crimson);text-transform:uppercase;padding:5px 9px;border:1px solid rgba(255,39,64,.35);border-radius:3px;background:rgba(255,39,64,.06)}
+  .llc{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:2px;color:var(--yellow);align-self:center}
+  .pulse{display:inline-flex;align-items:center;gap:8px;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);letter-spacing:1px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--crimson);position:relative}
+  .dot::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:1px solid var(--crimson);animation:ring 1.8s ease-out infinite}
+  @keyframes ring{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.8);opacity:0}}
+
+  /* ---- live data bar ---- */
+  .databar{background:linear-gradient(180deg,var(--ink-2),var(--ink));border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:20px}
+  .databar .row1{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .ctx{display:flex;gap:22px;flex-wrap:wrap;align-items:center}
+  .ctx .blk{display:flex;flex-direction:column;gap:3px;max-width:560px}
+  .ctx .k{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+  .ctx .v{font-size:14px;color:#ececed;line-height:1.35}
+  .ctx .v .desc{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+  .impact{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:1px;padding:2px 7px;border-radius:3px;margin-left:7px;vertical-align:middle}
+  .impact.HIGH{color:#0a0a0a;background:var(--crimson);box-shadow:0 0 12px rgba(255,39,64,.6)}
+  .impact.MED{color:#0a0a0a;background:var(--orange);box-shadow:0 0 12px rgba(255,138,31,.5)}
+  .impact.LOW{color:var(--white);background:rgba(255,255,255,.08);border:1px solid var(--line-strong)}
+  .src-status{display:inline-flex;align-items:center;gap:7px;font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase}
+  .sdot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+  .sdot.live{background:#39d353;box-shadow:0 0 8px #39d353}
+  .sdot.manual{background:var(--yellow);box-shadow:0 0 8px var(--yellow)}
+  .sdot.blocked{background:var(--crimson);box-shadow:0 0 8px var(--crimson)}
+  .minibtn{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;background:rgba(255,255,255,.04);border:1px solid var(--line-strong);color:var(--white);border-radius:5px;padding:6px 10px;cursor:pointer;transition:.15s}
+  .minibtn:hover{border-color:var(--crimson)}
+  .src-err{font-family:"JetBrains Mono",monospace;font-size:11px;color:#ffb3bd;margin-top:8px;line-height:1.6;display:none}
+  .src-cfg{margin-top:12px;border-top:1px solid var(--line);padding-top:12px;display:none;gap:10px;flex-wrap:wrap}
+  .src-cfg.show,.manual.show{display:flex}
+  .src-cfg .f,.manual .f{display:flex;flex-direction:column;gap:5px;flex:1;min-width:150px}
+  .src-cfg label,.manual label{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
+  .manual{margin-top:12px;border-top:1px solid var(--line);padding-top:12px;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  input[type=text],textarea,select{width:100%;background:var(--vanta);border:1px solid var(--line-strong);border-radius:6px;color:var(--white);font-family:"Familjen Grotesk",sans-serif;font-size:13px;padding:8px 10px}
+  select{font-family:"JetBrains Mono",monospace;font-size:12px}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--crimson)}
+  input::placeholder,textarea::placeholder{color:#4c4c54}
+
+  .grid{display:grid;grid-template-columns:340px 1fr;gap:22px;align-items:start}
+  @media(max-width:860px){.grid{grid-template-columns:1fr}}
+  .panel{background:linear-gradient(180deg,var(--ink-2),var(--ink));border:1px solid var(--line);border-radius:10px;padding:20px}
+  .panel.controls{position:sticky;top:20px}
+  @media(max-width:860px){.panel.controls{position:static}}
+  .lbl{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:2.5px;color:var(--muted);text-transform:uppercase;display:block;margin:18px 0 9px}
+  .lbl:first-of-type{margin-top:0}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button,.chip{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.5px;color:var(--white);background:rgba(255,255,255,.03);border:1px solid var(--line-strong);border-radius:5px;padding:8px 11px;cursor:pointer;transition:.15s}
+  .seg button:hover,.chip:hover{border-color:var(--crimson);color:#fff}
+  .seg button.active{background:var(--crimson);border-color:var(--crimson);color:#0a0a0a;font-weight:700;box-shadow:0 0 16px rgba(255,39,64,.5)}
+  .chips{display:flex;gap:7px;flex-wrap:wrap}
+  .chip.active{background:rgba(255,39,64,.14);border-color:var(--crimson);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,39,64,.4)}
+  .toggles{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+  .tog{display:flex;align-items:center;justify-content:space-between;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--white)}
+  .switch{width:42px;height:23px;border-radius:20px;background:rgba(255,255,255,.1);position:relative;cursor:pointer;border:1px solid var(--line-strong);transition:.2s;flex:0 0 auto}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:50%;background:var(--muted);transition:.2s}
+  .switch.on{background:rgba(255,39,64,.25);border-color:var(--crimson)}
+  .switch.on::after{transform:translateX(19px);background:var(--crimson);box-shadow:0 0 10px var(--crimson)}
+  .generate{width:100%;margin-top:22px;font-family:"Anton",sans-serif;letter-spacing:2px;font-size:18px;color:#0a0a0a;background:var(--crimson);border:none;border-radius:7px;padding:15px;cursor:pointer;text-transform:uppercase;transition:.15s;box-shadow:0 0 26px rgba(255,39,64,.45)}
+  .generate:hover{background:#ff3d54;box-shadow:0 0 34px rgba(255,39,64,.7)}
+  .generate:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
+
+  .out-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .out-head h2{font-family:"JetBrains Mono",monospace;font-size:13px;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+  .loading{display:flex;flex-direction:column;align-items:center;gap:14px;padding:60px 20px;text-align:center}
+  .scan{width:60px;height:60px;border:2px solid var(--line);border-top-color:var(--crimson);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loadmsg{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:1px;color:var(--crimson)}
+  .empty{padding:54px 24px;text-align:center;color:var(--muted);font-family:"JetBrains Mono",monospace;font-size:13px;line-height:1.9;border:1px dashed var(--line-strong);border-radius:10px}
+  .empty b{color:var(--yellow)}
+  .card{background:linear-gradient(180deg,var(--ink-2),var(--ink));border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px;animation:rise .4s ease both}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .card .tagrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .vnum{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:2px;color:var(--crimson)}
+  .ccount{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted)}
+  .ccount.over{color:var(--crimson);font-weight:700}
+  .ccount.over::after{content:" · over"}
+  .post{font-size:15.5px;line-height:1.6;white-space:pre-wrap;color:#ececed}
+  .field{margin-bottom:11px}
+  .field .flbl{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:2px;color:var(--crimson);text-transform:uppercase;margin-bottom:4px;display:flex;justify-content:space-between}
+  .field .fv{font-size:14.5px;line-height:1.55;white-space:pre-wrap;color:#ececed}
+  .field.cap .fv{background:rgba(255,255,255,.02);border-left:2px solid var(--line-strong);padding:8px 11px;border-radius:0 5px 5px 0}
+  .field.script .fv{color:#c9c9d0;font-size:13.5px}
+  .actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+  .actions button{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;background:rgba(255,255,255,.04);border:1px solid var(--line-strong);color:var(--white);border-radius:5px;padding:7px 12px;cursor:pointer;transition:.15s}
+  .actions button:hover{border-color:var(--crimson);color:#fff}
+  .actions button.done{border-color:var(--yellow);color:var(--yellow)}
+  .err{padding:18px;border:1px solid var(--crimson);border-radius:8px;background:rgba(255,39,64,.08);color:#ffb3bd;font-family:"JetBrains Mono",monospace;font-size:12px;line-height:1.7}
+
+  .shelf{margin-top:30px}
+  .shelf summary{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+  .shelf summary::-webkit-details-marker{display:none}
+  .shelf summary::before{content:"▸";color:var(--crimson)}
+  .shelf[open] summary::before{content:"▾"}
+  .saved-item{background:var(--ink);border:1px solid var(--line);border-left:2px solid var(--yellow);border-radius:6px;padding:12px 14px;margin-bottom:10px;font-size:14px;line-height:1.55;white-space:pre-wrap;position:relative}
+  .saved-item .meta{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:1px;color:var(--muted);margin-bottom:7px;display:flex;justify-content:space-between;align-items:center}
+  .saved-item .meta button{background:none;border:none;color:var(--crimson);cursor:pointer;font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:1px}
+  .saved-empty{color:var(--muted);font-family:"JetBrains Mono",monospace;font-size:12px;padding:8px 0}
+  .foot{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.5px;color:#4c4c54;line-height:1.9}
+  .foot b{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="wordmark">KOR<span>V</span>US</div>
+      <div class="studio-tag">Promo Studio</div>
+      <div class="llc">BlackCrownVxJ.LLC</div>
+    </div>
+    <div class="pulse"><span class="dot"></span> agent online</div>
+  </header>
+
+  <!-- LIVE DATA BAR -->
+  <div class="databar">
+    <div class="row1">
+      <div class="ctx">
+        <div class="blk"><span class="k">📰 Top market driver</span><span class="v" id="ctx-news">—</span></div>
+        <div class="blk"><span class="k">⚖ SMT read · NQ/ES/YM</span><span class="v" id="ctx-smt">—</span></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span class="src-status"><span class="sdot" id="sdot"></span><span id="sstatus">no data</span></span>
+        <button class="minibtn" id="pull">↻ Pull live</button>
+        <button class="minibtn" id="editctx">✎ Edit</button>
+        <button class="minibtn" id="cfgbtn">⚙</button>
+      </div>
+    </div>
+    <div class="src-err" id="src-err"></div>
+
+    <!-- editable context (manual / override) -->
+    <div class="manual" id="manual">
+      <div class="f" style="flex:2 1 320px"><label>Top headline</label><input type="text" id="m-head" placeholder="e.g. CPI comes in hot, indices roll over" /></div>
+      <div class="f" style="flex:0 0 130px"><label>Impact</label>
+        <select id="m-impact"><option value="">—</option><option>HIGH</option><option>MED</option><option>LOW</option></select></div>
+      <div class="f" style="flex:2 1 320px"><label>SMT read</label><input type="text" id="m-smt" placeholder="e.g. NQ making new highs, ES lagging — bearish divergence" /></div>
+    </div>
+
+    <!-- endpoint config -->
+    <div class="src-cfg" id="cfg">
+      <div class="f" style="flex:2 1 240px"><label>Base URL</label><input type="text" id="c-base" value="https://korvus.industries" /></div>
+      <div class="f"><label>SMT path</label><input type="text" id="c-smt" value="/api/smt" /></div>
+      <div class="f"><label>News path</label><input type="text" id="c-news" value="/api/news" /></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel controls">
+      <span class="lbl">Platform</span>
+      <div class="seg" id="platform">
+        <button data-v="TikTok" class="active">TikTok</button>
+        <button data-v="Instagram">Instagram</button>
+        <button data-v="X">X</button>
+        <button data-v="Discord">Discord</button>
+        <button data-v="LinkedIn">LinkedIn</button>
+      </div>
+
+      <span class="lbl">Angle</span>
+      <div class="chips" id="angle">
+        <button class="chip active" data-v="Don't get blindsided — the emotional relief of always knowing what's moving markets">Don't get blindsided</button>
+        <button class="chip" data-v="Know why while the world sleeps — the overnight / 24-7 edge of being informed first">World sleeps</button>
+        <button class="chip" data-v="SMT divergence edge across NQ / ES / YM — spotting when the indices disagree">SMT divergence</button>
+        <button class="chip" data-v="The news scoring engine that rates real market impact and filters out the noise">News scoring</button>
+        <button class="chip" data-v="One live dashboard — news impact, divergence signals, and funds/session status in real time">All-in-one terminal</button>
+        <button class="chip" data-v="Build-in-public / founder voice — building Korvus in the open for serious day traders">Build-in-public</button>
+        <button class="chip" data-v="React to the current market driver shown in the live context — make today's news the whole hook">Today's driver</button>
+      </div>
+
+      <span class="lbl">Tone</span>
+      <div class="seg" id="tone">
+        <button data-v="punchy, scroll-stopping, a little outlaw/nocturnal but credible" class="active">Punchy</button>
+        <button data-v="grounded and professional, value-led, calm confidence">Grounded</button>
+        <button data-v="high-energy and bold, hype but never cheesy or spammy">Bold</button>
+      </div>
+
+      <span class="lbl">Extra note <span style="color:#3f3f46">(optional)</span></span>
+      <input type="text" id="extra" placeholder="anything else to weave in…" />
+
+      <div class="toggles">
+        <div class="tog"><span>Use live market context</span><div class="switch on" id="tg-ctx" data-on="1"></div></div>
+        <div class="tog"><span># Hashtags</span><div class="switch on" id="tg-hash" data-on="1"></div></div>
+        <div class="tog"><span>CTA / link</span><div class="switch on" id="tg-cta" data-on="1"></div></div>
+      </div>
+
+      <button class="generate" id="gen">⟶ Generate</button>
+    </div>
+
+    <div>
+      <div class="out-head"><h2>Output</h2><span class="ccount" id="ctx-label"></span></div>
+      <div id="output">
+        <div class="empty">
+          The agent writes <b>3 on-brand variants</b> for your platform, angle &amp; tone —<br>
+          and weaves in <b>today's real market driver</b> when live context is on.<br>
+          TikTok &amp; Instagram return <b>hook + caption + a Reel script</b>.<br><br>
+          Intelligence &amp; awareness only — never profit promises or advice.
+        </div>
+      </div>
+      <details class="shelf" id="shelf"><summary>Saved posts</summary><div id="saved"></div></details>
+    </div>
+  </div>
+
+  <div class="foot">
+    <b>KORVUS PROMO STUDIO</b> · drafts only — review before publishing.<br>
+    Guardrails: no guaranteed returns / win-rates / advice framing, no fabricated numbers. Korvus is market intelligence, not a recommendation to trade. Index-futures trading carries substantial risk.
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const state={platform:"TikTok",angle:document.querySelector("#angle .chip.active").dataset.v,tone:document.querySelector("#tone button.active").dataset.v};
+const VIDEO=p=>p==="TikTok"||p==="Instagram";
+const limits={X:280,Discord:2000,LinkedIn:3000,Instagram:2200,TikTok:2200};
+
+function wireSeg(id,key,after){const r=$(id);r.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;r.querySelectorAll("button").forEach(x=>x.classList.remove("active"));b.classList.add("active");state[key]=b.dataset.v;after&&after();});}
+wireSeg("platform","platform",ctxLine);wireSeg("angle","angle");wireSeg("tone","tone");
+document.querySelectorAll(".switch").forEach(sw=>sw.addEventListener("click",()=>{const on=sw.dataset.on==="1";sw.dataset.on=on?"0":"1";sw.classList.toggle("on",!on);}));
+$("editctx").addEventListener("click",()=>$("manual").classList.toggle("show"));
+$("cfgbtn").addEventListener("click",()=>$("cfg").classList.toggle("show"));
+
+function ctxLine(){const p=state.platform;$("ctx-label").textContent=p+" · "+(VIDEO(p)?"caption limit ":"limit ")+limits[p];}
+ctxLine();
+
+/* ---------- LIVE DATA ---------- */
+function getField(o,names){if(!o||typeof o!=="object")return null;for(const n of names){if(o[n]!=null&&o[n]!=="")return o[n];}return null;}
+function normImpact(v){if(v==null)return "";const s=String(v).toUpperCase();if(s.includes("HIGH")||s==="3")return "HIGH";if(s.includes("MED")||s==="2")return "MED";if(s.includes("LOW")||s==="1")return "LOW";const n=Number(v);if(!isNaN(n)){if(n>=0.66)return "HIGH";if(n>=0.33)return "MED";return "LOW";}return "";}
+function asList(x){if(Array.isArray(x))return x;if(!x||typeof x!=="object")return [];for(const k of["news","items","data","articles","results","markets"]){if(Array.isArray(x[k]))return x[k];}const vals=Object.values(x).filter(Array.isArray);return vals.length?vals.flat():[];}
+function rank(it){const i=normImpact(getField(it,["impact","impact_level","score","impactScore","rating"]));return i==="HIGH"?3:i==="MED"?2:i==="LOW"?1:0;}
+
+function parseNews(raw){
+  const list=asList(raw).filter(it=>it&&typeof it==="object").filter(it=>getField(it,["noise"])!==true);
+  if(!list.length)return null;
+  list.sort((a,b)=>{const r=rank(b)-rank(a);if(r)return r;const ta=getField(a,["time","published","date","ts","created_at"])||0,tb=getField(b,["time","published","date","ts","created_at"])||0;return new Date(tb)-new Date(ta);});
+  const top=list[0];
+  return{headline:getField(top,["title","headline","head","summary"])||"(untitled)",impact:normImpact(getField(top,["impact","impact_level","score","impactScore","rating"])),desc:getField(top,["impact_desc","description","impactDesc","detail","blurb"])||""};
+}
+function parseSMT(raw){
+  if(!raw)return null;
+  let v=getField(raw,["verdict","status","signal","summary","state","message","read","result"]);
+  if(typeof v==="string"&&v.trim())return v.trim();
+  const div=getField(raw,["divergence","divergent","isDivergence"]);
+  if(div===true)return "Divergence detected across NQ / ES / YM";
+  if(div===false||getField(raw,["aligned"])===true)return "NQ / ES / YM aligned — no clear divergence";
+  if(typeof raw==="object"){const s=JSON.stringify(raw);return s.length>180?s.slice(0,177)+"…":s;}
+  return String(raw);
+}
+
+const live={news:null,smt:null,mode:"none"};
+function setStatus(mode,label){live.mode=mode;const d=$("sdot");d.className="sdot "+(mode==="none"?"":mode);$("sstatus").textContent=label;}
+
+function renderCtx(){
+  const head=$("m-head").value.trim(),imp=$("m-impact").value,smt=$("m-smt").value.trim();
+  $("ctx-news").innerHTML = head?(escapeHtml(head)+(imp?'<span class="impact '+imp+'">'+imp+'</span>':"")+(live.news&&live.news.desc&&head===live.news.headline?'<span class="desc">'+escapeHtml(live.news.desc)+'</span>':"")):"—";
+  $("ctx-smt").textContent = smt||"—";
+}
+["m-head","m-impact","m-smt"].forEach(id=>$(id).addEventListener("input",renderCtx));
+
+async function fetchJSON(url){const r=await fetch(url,{headers:{"Accept":"application/json"}});if(!r.ok)throw new Error("HTTP "+r.status);return r.json();}
+
+async function pullLive(){
+  const base=$("c-base").value.replace(/\/$/,"");
+  setStatus("","pulling…");$("src-err").style.display="none";
+  let okAny=false,errs=[];
+  try{const n=parseNews(await fetchJSON(base+$("c-news").value));if(n){live.news=n;$("m-head").value=n.headline;$("m-impact").value=n.impact||"";okAny=true;}}catch(e){errs.push("news ("+$("c-news").value+"): "+e.message);}
+  try{const s=parseSMT(await fetchJSON(base+$("c-smt").value));if(s){live.smt=s;$("m-smt").value=s;okAny=true;}}catch(e){errs.push("smt ("+$("c-smt").value+"): "+e.message);}
+  renderCtx();
+  if(okAny){setStatus("live","live · korvus.industries");}
+  else{setStatus("blocked","blocked — using manual");$("manual").classList.add("show");
+    $("src-err").style.display="block";
+    $("src-err").innerHTML="Couldn't read live data:<br>"+errs.map(escapeHtml).join("<br>")+
+      "<br><br>Likely cross-origin (CORS) or the path needs confirming. Set paths with ⚙, type context by hand above, or add the server endpoint from the chat. The generator still works on manual context.";}
+}
+$("pull").addEventListener("click",pullLive);
+
+/* ---------- PROMPT ---------- */
+function liveContextBlock(){
+  if($("tg-ctx").dataset.on!=="1")return "";
+  const head=$("m-head").value.trim(),imp=$("m-impact").value,smt=$("m-smt").value.trim();
+  if(!head&&!smt)return "";
+  let b="LIVE MARKET CONTEXT (real and current — weave in naturally; do NOT invent any number, price, or fact beyond these lines):";
+  if(head)b+="\n- Top market driver: "+head+(imp?" (impact: "+imp+")":"");
+  if(smt)b+="\n- SMT read across NQ/ES/YM: "+smt;
+  return b;
+}
+
+function buildPrompt(){
+  const p=state.platform,video=VIDEO(p);
+  const wantHash=$("tg-hash").dataset.on==="1",wantCta=$("tg-cta").dataset.on==="1",extra=$("extra").value.trim();
+  const ctx=liveContextBlock();
+  const platformRules={
+    TikTok:"Native TikTok energy for retail index-futures day traders. HOOK = on-screen text for the first 1-2 seconds that stops the scroll. CAPTION = short, casual, real. SCRIPT = a 15-30s concept in 3-5 fast beats (what's on screen / what's said), each beat on its own line starting with a dash.",
+    Instagram:"Instagram Reel format. HOOK = bold on-screen opening text. CAPTION = punchy with one clear value line, line breaks ok. SCRIPT = a 3-5 beat Reel concept, each beat on its own line starting with a dash. Visual and confident.",
+    X:"Strong X/Twitter post: scroll-stopping first line then 1-3 short lines, under 280 characters, line breaks welcome.",
+    Discord:"Community announcement for the Eclipse-X / Korvus Discord. Casual but sharp, a few short lines, for traders already in the room. No @everyone/@here.",
+    LinkedIn:"Credible LinkedIn post: tight hook line then a short paragraph or 3-4 punchy value lines. Professional, minimal emojis."
+  }[p];
+  const schema=video
+    ?'Return ONLY a raw JSON array of exactly 3 objects, each {"hook":"...","caption":"...","script":"..."}. No markdown, no code fences, no commentary.'
+    :'Return ONLY a raw JSON array of exactly 3 objects, each {"post":"..."}. No markdown, no code fences, no commentary.';
+  const cta=wantCta?(video?"End the caption with a soft CTA — 'link in bio' or korvus.industries.":"End with a soft CTA pointing to korvus.industries."):"No links or CTA.";
+  const hash=wantHash?(video?"Put 3-6 relevant non-spammy hashtags in the caption (e.g. #daytrading #futures #NQ #ES #trading).":"Include 2-4 relevant non-spammy hashtags where the platform expects them."):"No hashtags.";
+  return{
+    system:"You are the promo copywriter for KORVUS — a 24/7 market-intelligence platform for index-futures day traders (korvus.industries), by BlackCrownVxJ.LLC. Korvus puts three things on one live dashboard: (1) a NEWS SCORING engine rating the real market impact of headlines and filtering noise, (2) SMT DIVERGENCE signals across NQ/ES/YM that flag when the indices disagree, (3) FUNDS & SESSION status in real time. Core promise: AWARENESS — knowing what's moving markets and WHY, including overnight while most traders sleep, so you're never blindsided. Voice: sharp, confident, nocturnal, a touch outlaw, always credible. You sell a feeling: relief from being caught off guard and the quiet edge of being informed first. HARD RULES, never broken: never promise profits, returns, win-rates, or guaranteed outcomes; never frame it as financial advice or signals to act on (it is intelligence/awareness); never invent statistics, prices, or testimonials, and never go beyond any live context you're given; keep feature claims accurate; index-futures trading carries real risk and you never imply otherwise.",
+    user:[
+      "Write 3 distinct "+p+" promo "+(video?"concepts":"posts")+" for Korvus.",
+      ctx,
+      "ANGLE: "+state.angle+".",
+      "TONE: "+state.tone+".",
+      extra?"ALSO WEAVE IN: "+extra+".":"",
+      "PLATFORM RULES: "+platformRules,
+      hash,cta,
+      ctx?"":"No live context provided — keep it evergreen and do not reference specific current events.",
+      "The 3 variants must differ genuinely in hook and structure, not three rewrites of one line.",
+      schema
+    ].filter(Boolean).join("\n")
+  };
+}
+
+const loadMsgs=["scanning the tape…","reading overnight flow…","pricing the narrative…","sharpening the hook…","cutting the noise…"];
+async function generate(){
+  const btn=$("gen"),out=$("output");btn.disabled=true;let i=0;
+  out.innerHTML='<div class="loading"><div class="scan"></div><div class="loadmsg" id="lm">'+loadMsgs[0]+'</div></div>';
+  const lm=$("lm"),tick=setInterval(()=>{i=(i+1)%loadMsgs.length;if(lm)lm.textContent=loadMsgs[i];},1100);
+  const {system,user}=buildPrompt();
+  try{
+    const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system,messages:[{role:"user",content:user}]})});
+    const data=await res.json();
+    const text=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
+    let items;try{items=JSON.parse(text.replace(/```json|```/g,"").trim());}catch(_){items=null;}
+    clearInterval(tick);
+    if(Array.isArray(items)&&items.length)renderItems(items);
+    else if(text)renderItems([{post:text}]);
+    else throw new Error("Empty response");
+  }catch(err){clearInterval(tick);
+    out.innerHTML='<div class="err">Couldn\'t reach the writing engine.<br>'+(err.message||err)+'<br><br>This calls the model from inside Claude.ai — if you\'re previewing elsewhere it won\'t complete. Try again from the artifact view.</div>';
+  }finally{btn.disabled=false;}
+}
+
+function escapeHtml(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+function flat(it){return it.post?it.post:[it.hook?"HOOK: "+it.hook:"",it.caption?"\nCAPTION:\n"+it.caption:"",it.script?"\nSCRIPT:\n"+it.script:""].filter(Boolean).join("\n");}
+
+function renderItems(items){
+  const out=$("output"),lim=limits[state.platform],video=VIDEO(state.platform);
+  out.innerHTML=items.map((it,idx)=>{
+    let body;
+    if(it.post!=null){const len=String(it.post).length;
+      body='<div class="tagrow"><span class="vnum">VARIANT '+(idx+1)+'</span><span class="ccount'+(len>lim?' over':'')+'">'+len+' / '+lim+'</span></div><div class="post">'+escapeHtml(it.post)+'</div>';
+    }else{const cap=it.caption||"",len=cap.length;
+      body='<div class="tagrow"><span class="vnum">VARIANT '+(idx+1)+'</span><span class="ccount'+(len>lim?' over':'')+'">caption '+len+' / '+lim+'</span></div>'+
+        (it.hook?'<div class="field"><div class="flbl">Hook · on-screen</div><div class="fv">'+escapeHtml(it.hook)+'</div></div>':"")+
+        (it.caption?'<div class="field cap"><div class="flbl">Caption</div><div class="fv">'+escapeHtml(it.caption)+'</div></div>':"")+
+        (it.script?'<div class="field script"><div class="flbl">Reel script</div><div class="fv">'+escapeHtml(it.script)+'</div></div>':"");
+    }
+    const primary=video?'<button data-act="copycap">Copy caption</button><button data-act="copyall">Copy all</button>':'<button data-act="copyall">Copy</button>';
+    return '<div class="card">'+body+'<div class="actions">'+primary+'<button data-act="save">★ Save</button></div></div>';
+  }).join("");
+  out.querySelectorAll(".card").forEach((card,idx)=>{
+    const it=items[idx],all=flat(it);
+    const cp=(btn,txt)=>{navigator.clipboard.writeText(txt).then(()=>{const o=btn.textContent;btn.textContent="Copied";btn.classList.add("done");setTimeout(()=>{btn.textContent=o;btn.classList.remove("done")},1300);});};
+    const ca=card.querySelector('[data-act="copyall"]');if(ca)ca.addEventListener("click",e=>cp(e.target,all));
+    const cc=card.querySelector('[data-act="copycap"]');if(cc)cc.addEventListener("click",e=>cp(e.target,it.caption||all));
+    card.querySelector('[data-act="save"]').addEventListener("click",e=>{savePost(all);e.target.textContent="Saved ✓";e.target.classList.add("done");setTimeout(()=>{e.target.textContent="★ Save";e.target.classList.remove("done")},1300);});
+  });
+}
+
+/* ---------- SAVED ---------- */
+const SKEY="korvus_saved_posts";
+async function readSaved(){try{const r=await window.storage.get(SKEY);if(r&&r.value)return JSON.parse(r.value);}catch(_){}return [];}
+async function loadSaved(){const arr=await readSaved(),box=$("saved");
+  if(!arr.length){box.innerHTML='<div class="saved-empty">Nothing saved yet.</div>';return;}
+  box.innerHTML=arr.map((o,i)=>'<div class="saved-item"><div class="meta"><span>'+o.platform+' · '+o.when+'</span><button data-del="'+i+'">delete</button></div>'+escapeHtml(o.text)+'</div>').join("");
+  box.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>delPost(+b.dataset.del)));}
+async function savePost(text){const arr=await readSaved();arr.unshift({text,platform:state.platform,when:new Date().toLocaleDateString()});try{await window.storage.set(SKEY,JSON.stringify(arr.slice(0,50)));}catch(_){}$("shelf").open=true;loadSaved();}
+async function delPost(i){const arr=await readSaved();arr.splice(i,1);try{await window.storage.set(SKEY,JSON.stringify(arr));}catch(_){}loadSaved();}
+
+$("gen").addEventListener("click",generate);
+loadSaved();renderCtx();
+pullLive(); /* attempt live pull on load */
+</script>
+</body>
+</html>
