@@ -172,6 +172,17 @@
     backdrop-filter:blur(8px);scrollbar-width:none;animation:fadeDown .7s .05s ease both;
   }
   .ribbon::-webkit-scrollbar{display:none;}
+  /* ribbon header: section label + a live/delayed/closed feed badge so members
+     can see at a glance whether the board is real-time (Pro), delayed, or closed */
+  .ribbonhead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 16px 7px;border-bottom:1px solid var(--line-soft);}
+  .ribbonhead .rbtitle{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);}
+  .ribbonhead .rbtitle small{opacity:.65;text-transform:none;letter-spacing:.03em;margin-left:7px;}
+  .feedbadge{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+    padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--ink-faint);white-space:nowrap;transition:color .25s,border-color .25s,background .25s,box-shadow .25s;}
+  .feedbadge.fb-live{color:var(--bull);border-color:var(--bull-dim);background:rgba(70,209,127,.08);box-shadow:0 0 12px -4px rgba(70,209,127,.55);}
+  .feedbadge.fb-delayed{color:#ffb547;border-color:rgba(255,181,71,.34);background:rgba(255,181,71,.08);}
+  .feedbadge.fb-globex{color:#ffb547;border-color:rgba(255,181,71,.30);background:rgba(255,181,71,.06);}
+  .feedbadge.fb-closed{color:var(--ink-faint);border-color:var(--line);background:transparent;}
   .fut{display:flex;align-items:center;gap:12px;padding:11px 20px;border-right:1px solid var(--line-soft);white-space:nowrap;
     transition:background .2s;cursor:default;}
   .fut:hover{background:rgba(255,31,68,.05);}
@@ -667,6 +678,10 @@
   </header>
 
   <!-- FUTURES BOARD — more instruments -->
+  <div class="ribbonhead">
+    <span class="rbtitle">Futures Board <small>via ETF proxies</small></span>
+    <span class="feedbadge" id="feedBadge">● —</span>
+  </div>
   <div class="ribbonwrap">
     <div class="ribbon" id="ribbon"></div>
   </div>
@@ -1172,8 +1187,9 @@ function collectWatchSymbols(groups){
 }
 
 async function loadLiveQuotes(){
-  // reflect the session on the Funds Watch dot right away (no "—" flash)
+  // reflect the session on the Funds Watch dot + ribbon badge right away
   _setWatchStatus(_futuresStateET());
+  setFeedBadge(_futuresStateET());
   // gather every symbol we need: proxies for futures + SMT, plus watchlist
   const futProxies = Object.values(FUT_PROXY);
   const smtProxies = ['QQQ','SPY','DIA'];
@@ -1185,7 +1201,7 @@ async function loadLiveQuotes(){
     if(!res.ok) throw new Error('no quotes');
     const data = await res.json();
     const q = data.quotes || {};
-    if(Object.keys(q).length === 0){ _setWatchStatus(_futuresStateET()); return; } // provider 'off' or no key / after hours: keep samples, but show real session
+    if(Object.keys(q).length === 0){ _setWatchStatus(_futuresStateET()); setFeedBadge(_futuresStateET()); return; } // provider 'off' or no key / after hours: keep samples, but show real session
     const open = data.meta && data.meta.market_open;
 
     // 1) Futures Board — show the proxy's % move (accurate for index direction).
@@ -1225,8 +1241,10 @@ async function loadLiveQuotes(){
 
     // Funds Watch status pill — tells users why prices are / aren't moving
     _setWatchStatus(fs);
+    setFeedBadge(fs);
   }catch(e){ /* server/quotes offline: panels stay on sample numbers */
     _setWatchStatus(_futuresStateET());
+    setFeedBadge(_futuresStateET());
   }
 }
 
@@ -1243,6 +1261,24 @@ function _setWatchStatus(fs){
   } else {
     ws.textContent = 'OPEN'; ws.className = 'mktstatus open';
   }
+}
+
+// Sets the ribbon feed badge so members can SEE the data state on the board:
+//   RTH + Pro  -> LIVE · REAL-TIME (green)   RTH + Free -> DELAYED 15 MIN (amber)
+//   Globex     -> GLOBEX · LAST CLOSE        Closed     -> CLOSED (muted)
+// Pro/Free is decided server-side in /api/quotes; this only mirrors it visually.
+function setFeedBadge(fs){
+  const b = document.getElementById('feedBadge');
+  if(!b) return;
+  let txt, cls;
+  if(fs === 'closed'){ txt = '● CLOSED'; cls = 'fb-closed'; }
+  else if(fs === 'globex'){ txt = '● GLOBEX · LAST CLOSE'; cls = 'fb-globex'; }
+  else { // 'rth' — proxies trading live
+    if(USER_TIER === 'pro'){ txt = '● LIVE · REAL-TIME'; cls = 'fb-live'; }
+    else { txt = '● DELAYED 15 MIN'; cls = 'fb-delayed'; }
+  }
+  b.className = 'feedbadge ' + cls;
+  b.textContent = txt;
 }
 
 /* ----- personal watchlist import (falls back to default groups) ----- */
@@ -1360,6 +1396,7 @@ async function loadMe(){
       if(gp) gp.style.display = (USER_TIER === 'pro') ? 'none' : 'inline-flex';
       setTierLabel();
       setImportLock();
+      setFeedBadge(_futuresStateET());
     }
   }catch(e){/* ignore */}
 }
