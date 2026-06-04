@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KORVUS · Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{--vanta:#050506;--ink:#0c0c0f;--ink-2:#121217;--white:#f4f5f7;--crimson:#ff2740;--yellow:#ffd400;--muted:#74747e;--line:rgba(255,255,255,.08);--line-strong:rgba(255,255,255,.16)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--vanta);color:var(--white);font-family:"JetBrains Mono",monospace;min-height:100vh;position:relative}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(900px 600px at 78% -10%,rgba(255,39,64,.16),transparent 60%)}
+  .wrap{position:relative;max-width:920px;margin:0 auto;padding:36px 22px}
+  .top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:26px}
+  .wordmark{font-family:"Anton",sans-serif;font-size:clamp(30px,5vw,48px);letter-spacing:2px;text-shadow:0 0 22px rgba(255,39,64,.55)}
+  .wordmark span{color:var(--crimson)}
+  .tag{font-size:11px;letter-spacing:4px;color:var(--yellow);text-transform:uppercase}
+  .back{margin-left:auto;font-size:11px;color:var(--muted);text-decoration:none;align-self:center}
+  .back:hover{color:var(--crimson)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+  .card{background:linear-gradient(180deg,var(--ink-2),var(--ink));border:1px solid var(--line);border-radius:10px;padding:20px;text-decoration:none;color:var(--white);transition:.15s;display:block}
+  .card:hover{border-color:var(--crimson)}
+  .card h3{font-family:"Anton",sans-serif;letter-spacing:1px;font-size:20px;margin-bottom:6px}
+  .card p{font-size:12px;color:var(--muted);line-height:1.6}
+  .card .arrow{color:var(--crimson);font-size:14px;margin-top:12px;display:inline-block}
+  .note{margin-top:26px;font-size:11px;color:var(--muted);line-height:1.9;border-top:1px solid var(--line);padding-top:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="wordmark">KOR<span>V</span>US</div>
+    <div class="tag">Admin</div>
+    <a class="back" href="/">‹ back to terminal</a>
+  </div>
+  <div class="cards">
+    <a class="card" href="/agent"><h3>Promo Studio</h3><p>Generate on-brand social posts from live market context.</p><span class="arrow">⟶ open</span></a>
+  </div>
+  <div class="note">
+    Admin area · visible only to designated admins (server-enforced).<br>
+    Add more tools here as you build them — user management, scoring controls, data-source status, etc.
+  </div>
+</div>
+</body>
+</html>

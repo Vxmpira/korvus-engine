@@ -1,89 +1,66 @@
 """
-Korvus — admin gating + agent access
-=====================================
+Korvus — admin gating + agent/admin pages
+==========================================
 
-Drop this file next to app.py and register it once, near where you create `app`:
+Matched to your actual stack: single-file Flask (korvus_server.py), Flask-Login
+(`current_user`), pages served as STATIC files from the project root via
+send_from_directory. No Jinja, no sessions-by-hand.
 
-    from korvus_admin import korvus_admin
+Wire-up — in korvus_server.py, after `app` and `login_manager` are created:
+
+    from korvus_admin import korvus_admin, is_admin
     app.register_blueprint(korvus_admin)
 
-That gives you:
-  - /agent   -> Promo Studio  (admin only)
-  - /admin   -> Admin panel    (admin only)
-  - a `viewer_is_admin` flag available in every Jinja template
-  - an `admin_required` decorator you can reuse on any other route
+Then add  is_admin()  to the /api/me response (see chat for the one-line edit)
+so the static dashboard can show the buttons.
 
-The ONLY place admin access is defined is ADMIN_USERS below, and the ONLY
-real security boundary is `admin_required` on the routes. The buttons in the
-profile template are just UX so non-admins never see a dead/forbidden link.
+This gives you:
+  /agent   -> serves agent.html   (admin only, 403 otherwise)
+  /admin   -> serves admin.html   (admin only, 403 otherwise)
+  is_admin()        -> use in /api/me
+  admin_required    -> reused by korvus_promo_api.py to lock /api/promo-generate
 """
 
+import os
 from functools import wraps
-from flask import Blueprint, session, abort, render_template
+from flask import Blueprint, abort, send_from_directory
+from flask_login import current_user
 
+HERE = os.path.dirname(os.path.abspath(__file__))
 
-# --------------------------------------------------------------------------
-# WHO IS ADMIN
-# --------------------------------------------------------------------------
-# Add usernames here. Matching is case-insensitive so a capitalization
-# mismatch can't lock you out — but confirm this matches the value actually
-# stored for your account at signup (memory shows it as "Vxmpira.n").
+# The ONLY place admin access is defined. Match is case-insensitive so a casing
+# slip can't lock you out — but put your EXACT signup username here. Your auth
+# stores usernames case-sensitively, so confirm what you actually registered as.
 ADMIN_USERS = {"vxmpira.n"}
 
 
-def current_username():
-    """
-    Return the logged-in user's username, or None.
-
-    >>> INTEGRATION POINT — match this to how YOUR app tracks login. <<<
-
-    Plain Flask sessions (most likely your setup):
-        return session.get("username")
-
-    Flask-Login:
-        from flask_login import current_user
-        return current_user.username if current_user.is_authenticated else None
-    """
-    return session.get("username")
-
-
-def is_admin(username=None):
-    u = username if username is not None else current_username()
-    return bool(u) and u.strip().lower() in ADMIN_USERS
+def is_admin():
+    if not getattr(current_user, "is_authenticated", False):
+        return False
+    uname = (getattr(current_user, "username", "") or "").strip().lower()
+    return uname in ADMIN_USERS
 
 
 def admin_required(view):
-    """Server-side gate. This is the actual lock — not the hidden button."""
+    """Server-side gate — the real lock. The hidden button is only UX."""
     @wraps(view)
     def wrapped(*args, **kwargs):
         if not is_admin():
-            abort(403)  # swap for redirect(url_for('login')) if you prefer
+            abort(403)
         return view(*args, **kwargs)
     return wrapped
 
 
-# --------------------------------------------------------------------------
-# ROUTES
-# --------------------------------------------------------------------------
 korvus_admin = Blueprint("korvus_admin", __name__)
 
 
 @korvus_admin.route("/agent")
 @admin_required
-def agent():
-    # Renders the Promo Studio page (templates/agent.html).
-    # NOTE: the studio's AI calls + saved-posts storage need a small
-    # server-side adaptation to run on korvus.industries — see the chat.
-    return render_template("agent.html")
+def agent_page():
+    return send_from_directory(HERE, "agent.html")
 
 
 @korvus_admin.route("/admin")
 @admin_required
-def admin_panel():
-    return render_template("admin.html")
-
-
-# Makes `viewer_is_admin` usable in any template, including the profile page.
-@korvus_admin.app_context_processor
-def inject_admin_flag():
-    return {"viewer_is_admin": is_admin()}
+def admin_page():
+    return send_from_directory(HERE, "admin.html")
