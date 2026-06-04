@@ -126,6 +126,7 @@
           <li><span class="ck">✓</span>Everything in Free, the moment it happens</li>
           <li><span class="ck">✓</span>Cancel anytime from your billing portal</li>
         </ul>
+        <div class="ctanote" style="margin:-4px 0 14px;">Live price panels stream during US market hours (9:30 AM–4:00 PM ET); outside those hours they show a clear CLOSED state. The 24/7 scored news, SMT read &amp; alerts run around the clock.</div>
         <button class="btn" id="cta">Go Pro</button>
         <div class="ctanote" id="ctaNote">Secure checkout by Stripe · cancel anytime</div>
       </div>
@@ -144,7 +145,7 @@ const ctaNote = document.getElementById('ctaNote');
 function banner(kind, msg){ bannerEl.className = 'banner ' + kind; bannerEl.textContent = msg; }
 
 const st = params.get('status');
-if(st === 'success') banner('ok', 'Welcome to Pro — your terminal is now on live data. It may take a few seconds to reflect.');
+if(st === 'success') banner('ok', 'Welcome to Pro — your terminal goes live during US market hours (9:30 AM–4:00 PM ET). Outside those hours the price panels show a CLOSED state.');
 else if(st === 'cancel') banner('info', "Checkout canceled — you weren't charged.");
 
 function fmtDate(iso){
