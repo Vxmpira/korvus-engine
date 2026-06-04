@@ -120,8 +120,18 @@ def get_quotes(symbols: list[str], force_delayed: bool = False) -> dict:
         return _cache["data"][cache_key]
 
     if force_delayed:
-        # free tier: always delayed, never the premium live feed
-        out = _finnhub_quotes(symbols) if FINNHUB_KEY else {}
+        # free tier / logged-out / public landing ticker: always delayed,
+        # never the premium live feed. Prefer Finnhub if configured; otherwise
+        # fall back to Alpha Vantage with entitlement=delayed so the public
+        # ticker still shows real (15-min delayed) prices using the same key.
+        if FINNHUB_KEY:
+            out = _finnhub_quotes(symbols)
+        elif ALPHAVANTAGE_KEY:
+            out = _alphavantage_quotes(symbols, delayed=True)
+        else:
+            out = {}
+        _delayed_provider = ("finnhub" if FINNHUB_KEY
+                             else ("alphavantage-delayed" if ALPHAVANTAGE_KEY else "none"))
     elif QUOTES_PROVIDER == "alphavantage":
         out = _alphavantage_quotes(symbols)
     elif QUOTES_PROVIDER == "finnhub":
@@ -131,7 +141,7 @@ def get_quotes(symbols: list[str], force_delayed: bool = False) -> dict:
     else:
         out = {}  # 'off' -> dashboard keeps its sample numbers
 
-    out["_meta"] = {"provider": ("finnhub" if force_delayed else QUOTES_PROVIDER),
+    out["_meta"] = {"provider": (_delayed_provider if force_delayed else QUOTES_PROVIDER),
                     "market_open": market_is_open(),
                     "futures_session": futures_session()}
     _cache["data"][cache_key] = out
@@ -140,7 +150,7 @@ def get_quotes(symbols: list[str], force_delayed: bool = False) -> dict:
 
 
 # --- Alpha Vantage PREMIUM (true live; bulk endpoint, up to 100 symbols) ----
-def _alphavantage_quotes(symbols: list[str]) -> dict:
+def _alphavantage_quotes(symbols: list[str], delayed: bool = False) -> dict:
     if not ALPHAVANTAGE_KEY:
         print("  [quotes] no ALPHAVANTAGE_KEY — set it in .env")
         return {}
@@ -155,11 +165,14 @@ def _alphavantage_quotes(symbols: list[str]) -> dict:
     try:
         # REALTIME_BULK_QUOTES is a premium endpoint; takes up to 100 symbols.
         # IMPORTANT: without entitlement, Alpha Vantage returns HISTORICAL data.
-        # entitlement=realtime gives true real-time US market data (requires the
-        # one-time data-entitlement step on your Alpha X Terminal "Data" page).
+        #   entitlement=realtime -> true real-time US data (Pro members)
+        #   entitlement=delayed  -> 15-min delayed (free / logged-out / public
+        #                           landing ticker). Never serves real-time to
+        #                           non-paying users even though the key is premium.
+        entitlement = "delayed" if delayed else "realtime"
         url = ("https://www.alphavantage.co/query"
                f"?function=REALTIME_BULK_QUOTES&symbol={','.join(symbols)}"
-               f"&entitlement=realtime"
+               f"&entitlement={entitlement}"
                f"&apikey={ALPHAVANTAGE_KEY}")
         r = requests.get(url, timeout=20)
         data = r.json()

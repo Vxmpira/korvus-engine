@@ -194,11 +194,13 @@
 
   <header class="hero">
     <div class="container">
-      <div class="eyebrow">Market intelligence · News · Impact · SMT</div>
+      <div class="eyebrow">Always-on market intelligence · News · Impact · SMT</div>
       <h1>Your edge while<br>the world <em>sleeps</em>.</h1>
-      <p>While everyone else scrambles to figure out what just happened, you already know.
-         Korvus reads the market around the clock and puts the <em>why</em> in front of you:
-         clear, scored, and one click away. The hard part of trading, made simple.</p>
+      <p>The market never stops moving — and the headline that decides tomorrow's open
+         is breaking <em>right now</em>, while most traders are asleep. Korvus reads the
+         wires around the clock, weighs what each story actually means, and puts the
+         <em>why</em> in front of you: scored, in plain English, one glance away.
+         You stop reacting to the market. You start walking in already knowing.</p>
       <div class="hero-cta">
         <a href="/signup" class="btn btn-gold">Claim your free edge</a>
         <a href="#how" class="btn btn-ghost">See how it works</a>
@@ -217,18 +219,28 @@
       <div class="features">
         <div class="feature">
           <div class="fnum">01 / NEVER MISS</div>
-          <h3>It never sleeps, so you can</h3>
-          <p>A 24/7 engine watches the financial newswires and market chatter the instant they break, across every instrument that actually moves the indices. The story that would've blindsided you at the open? You already saw it last night.</p>
+          <h3>It watches so you don't have to</h3>
+          <p>A 24/7 engine reads the financial wires and market chatter the instant they
+             break — across every instrument that actually moves the indices. The print
+             that would've caught you flat-footed at the open? You saw it last night, while
+             the desk that's about to chase it was offline. That quiet head start is the
+             whole point.</p>
         </div>
         <div class="feature">
           <div class="fnum">02 / KNOW WHY</div>
-          <h3>Signal, not noise</h3>
-          <p>Every item is read, summarized in plain English, and scored for real market impact, direction, and confidence, with the pure noise filtered out entirely. You stop drowning in headlines and start seeing the few that matter.</p>
+          <h3>The story behind the move</h3>
+          <p>Every item is read, summarized in plain English, and scored for real market
+             impact, direction, and confidence — with the pure noise stripped out. No more
+             drowning in fifty headlines wondering which one matters. You see the few that
+             do, and exactly <em>why</em> they do, before the candle prints.</p>
         </div>
         <div class="feature">
           <div class="fnum">03 / ONE DESK</div>
-          <h3>Clarity in one glance</h3>
-          <p>It all lands on a single dark terminal: a scored news feed that runs around the clock, a live SMT-divergence read on NQ/ES/YM through US market hours, and a funds board you make your own. No twelve tabs. No second-guessing. Just the why, in front of you.</p>
+          <h3>Clarity, in one glance</h3>
+          <p>It all lands on a single dark terminal: a scored news feed that runs around the
+             clock, a live SMT-divergence read on NQ/ES/YM through US market hours, and a
+             funds board you make your own. No twelve tabs. No second-guessing at 6 a.m.
+             Just the <em>why</em>, sitting in front of you when it counts.</p>
         </div>
       </div>
     </div>
@@ -328,12 +340,51 @@
   </footer>
 
 <script>
-  // demo ticker strip · purely decorative on the landing page
-  const syms = [['MNQ','+0.37','u'],['MES','+0.25','u'],['MYM','+0.74','u'],['M2K','-0.54','d'],
-    ['NVDA','-1.44','d'],['MSFT','+0.61','u'],['QQQ','+0.41','u'],['SPY','+0.10','u'],
-    ['GC','+1.06','u'],['CL','-1.28','d'],['TAN','+1.84','u'],['VX','-1.74','d']];
-  const row = syms.map(s=>`<span><b>${s[0]}</b> <span class="${s[2]}">${s[1]}%</span></span>`).join('');
-  document.getElementById('ticker').innerHTML = row + row; // doubled for seamless scroll
+  // ===== LIVE ticker strip ===================================================
+  // Pulls real DELAYED quotes from the PUBLIC /api/quotes endpoint. Logged-out
+  // visitors are always served the 15-min delayed feed (never real-time), so
+  // this is compliant to show publicly. Futures are shown via liquid ETF
+  // proxies (MNQ->QQQ, MES->SPY, etc.). If the feed is unavailable (weekend,
+  // provider hiccup) it falls back to a neutral demo strip so the hero never
+  // looks broken.
+  const TICKER = [
+    ['MNQ','QQQ'], ['MES','SPY'], ['MYM','DIA'], ['M2K','IWM'],
+    ['NVDA','NVDA'], ['MSFT','MSFT'], ['AAPL','AAPL'], ['AMZN','AMZN'],
+    ['GC','GLD'], ['CL','USO'], ['TAN','TAN'], ['VX','VIXY']
+  ];
+  const TICKER_DEMO = [
+    ['MNQ','+0.37','u'],['MES','+0.25','u'],['MYM','+0.74','u'],['M2K','-0.54','d'],
+    ['NVDA','-1.44','d'],['MSFT','+0.61','u'],['AAPL','+0.22','u'],['AMZN','+0.48','u'],
+    ['GC','+1.06','u'],['CL','-1.28','d'],['TAN','+1.84','u'],['VX','-1.74','d']
+  ];
+  function _renderTicker(rows){
+    const row = rows.map(s=>`<span><b>${s[0]}</b> <span class="${s[2]}">${s[1]}%</span></span>`).join('');
+    const el = document.getElementById('ticker');
+    if(el) el.innerHTML = row + row; // doubled for a seamless scroll loop
+  }
+  async function loadTicker(){
+    const proxies = [...new Set(TICKER.map(t=>t[1]))];
+    try{
+      const res = await fetch('/api/quotes?symbols=' + proxies.join(','), {cache:'no-store'});
+      const data = await res.json();
+      const q = (data && data.quotes) || {};
+      const rows = TICKER.map(([label, sym]) => {
+        const item = q[sym];
+        if(!item || typeof item.chg_pct !== 'number') return null;
+        const pct = item.chg_pct;
+        const cls = pct > 0 ? 'u' : (pct < 0 ? 'd' : '');
+        const sign = pct > 0 ? '+' : '';
+        return [label, sign + pct.toFixed(2), cls];
+      }).filter(Boolean);
+      // need a reasonable number of real rows or we fall back to demo
+      _renderTicker(rows.length >= 4 ? rows : TICKER_DEMO);
+    }catch(e){
+      _renderTicker(TICKER_DEMO);
+    }
+  }
+  _renderTicker(TICKER_DEMO);     // paint instantly, then upgrade to live data
+  loadTicker();
+  setInterval(loadTicker, 60000); // refresh the strip every minute
 
   // ===== animated candlestick field · realistic horizontal price chart =====
   (function(){

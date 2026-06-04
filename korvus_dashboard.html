@@ -426,6 +426,10 @@
     color:var(--gold);background:var(--gold-soft);border:1px solid var(--gold-line);border-radius:999px;
     padding:3px 10px;cursor:pointer;transition:background .2s;}
   .importbtn:hover{background:rgba(255,31,68,.18);}
+  /* free-tier: import is a Pro feature — render it as a clearly-locked affordance */
+  .importbtn.locked{color:var(--gold);background:transparent;border:1px dashed var(--gold-line);opacity:.9;}
+  .importbtn.locked:hover{background:var(--gold-soft);opacity:1;}
+  .importbtn.locked svg{vertical-align:-1px;margin-right:4px;}
   .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);z-index:200;
     display:none;align-items:center;justify-content:center;}
   .modal-bg.show{display:flex;}
@@ -1274,7 +1278,11 @@ function parseWatchlistText(text){
 }
 
 const modal = document.getElementById('importModal');
-document.getElementById('importBtn').onclick = () => modal.classList.add('show');
+document.getElementById('importBtn').onclick = () => {
+  // Personal watchlist imports are Pro-only — free users go to upgrade.
+  if(USER_TIER === 'pro'){ modal.classList.add('show'); }
+  else { window.location.href = '/upgrade'; }
+};
 document.getElementById('importCancel').onclick = () => modal.classList.remove('show');
 modal.onclick = (e) => { if(e.target === modal) modal.classList.remove('show'); };
 
@@ -1283,16 +1291,22 @@ document.getElementById('importSave').onclick = async () => {
   if(!text){ modal.classList.remove('show'); return; }
   const wl = parseWatchlistText(text);
   try{
-    await fetch('/api/watchlist', {
+    const res = await fetch('/api/watchlist', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify(wl)
     });
-    // apply immediately
+    if(!res.ok){
+      // server rejected the save (e.g., Pro-only) — do NOT apply it.
+      modal.classList.remove('show');
+      if(res.status === 403) window.location.href = '/upgrade';
+      return;
+    }
+    // applied + persisted
     SAMPLE_WATCH.length = 0; wl.groups.forEach(g => SAMPLE_WATCH.push(g));
     renderWatch(SAMPLE_WATCH);
     loadLiveQuotes();
   }catch(e){
-    // no server (static mode): still apply locally for this session
+    // genuine network/static mode (no server) — apply locally for this session
     SAMPLE_WATCH.length = 0; wl.groups.forEach(g => SAMPLE_WATCH.push(g));
     renderWatch(SAMPLE_WATCH);
   }
@@ -1345,9 +1359,33 @@ async function loadMe(){
       const gp = document.getElementById('goProBtn');
       if(gp) gp.style.display = (USER_TIER === 'pro') ? 'none' : 'inline-flex';
       setTierLabel();
+      setImportLock();
     }
   }catch(e){/* ignore */}
 }
+// Lock glyph shown on the Import control for free users (Pro-only feature).
+const LOCK_SVG = '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" '
+  + 'xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+  + '<path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8'
+  + 'a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 0 1 6 0v3H9z"/></svg>';
+// Personal watchlist imports are Pro-only. Free users see a locked control that
+// routes to /upgrade (the click handler already enforces this); Pro users get
+// the normal "+ Import". This keeps the gate obvious in the UI, on top of the
+// server-side 403 that blocks any save from a non-Pro account.
+function setImportLock(){
+  const b = document.getElementById('importBtn');
+  if(!b) return;
+  if(USER_TIER === 'pro'){
+    b.className = 'importbtn';
+    b.innerHTML = '+ Import';
+    b.title = 'Import a personal watchlist';
+  }else{
+    b.className = 'importbtn locked';
+    b.innerHTML = LOCK_SVG + 'Import · Pro';
+    b.title = 'Personal watchlist imports are a Pro feature — upgrade to Operator';
+  }
+}
+setImportLock();   // start locked by default; loadMe() unlocks it for Pro members
 function setTierLabel(){
   const hb = document.querySelector('.heartbeat');
   if(!hb) return;
