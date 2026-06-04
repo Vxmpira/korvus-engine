@@ -33,6 +33,14 @@ import korvus_billing as billing
 # Empty by default, which means nobody is an admin until you set it.
 ADMIN_USERNAMES = {u.strip() for u in os.getenv("ADMIN_USERNAMES", "").split(",") if u.strip()}
 
+# Tradovate live-feed gate — ONLY this single username ever receives the real
+# CME quotes from your own Tradovate entitlement. Set TRADOVATE_OWNER=Vxmpira.N
+# in .env. Empty by default, which means the live feed is served to nobody.
+# This is what keeps the real-time data personal-use: it never reaches a member.
+TRADOVATE_OWNER = os.getenv("TRADOVATE_OWNER", "").strip()
+TRADOVATE_ROOTS = ["MNQ", "MES"]
+_tv_started = False
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "korvus.db")
 
@@ -287,6 +295,7 @@ def api_me():
                         "subscription_status": u.get("subscription_status"),
                         "current_period_end": u.get("current_period_end"),
                         "alert_opt_in": int(u.get("alert_opt_in") if u.get("alert_opt_in") is not None else 1),
+                        "is_owner": bool(TRADOVATE_OWNER and u.get("username") == TRADOVATE_OWNER),
                         "billing_enabled": billing.billing_enabled(),
                         "price_display": billing.price_display(),
                         "yearly_enabled": billing.yearly_enabled(),
@@ -415,6 +424,14 @@ def _is_admin():
     return current_user.is_authenticated and current_user.username in ADMIN_USERNAMES
 
 
+def _is_tradovate_owner():
+    """True only for the single owner account named in TRADOVATE_OWNER.
+    Used to gate the live CME feed so it never reaches a paying member —
+    the real-time data stays the owner's own personal-use entitlement."""
+    return (current_user.is_authenticated and TRADOVATE_OWNER
+            and current_user.username == TRADOVATE_OWNER)
+
+
 @app.route("/admin")
 @login_required
 def admin_page():
@@ -512,6 +529,42 @@ def legal():
 from flask import request
 
 WATCHLIST_PATH = os.path.join(HERE, "watchlist.json")
+
+
+@app.route("/api/tradovate")
+@login_required
+def api_tradovate():
+    """OWNER-ONLY live CME quotes (MNQ/MES) from the owner's own Tradovate feed.
+
+    Hard-gated to TRADOVATE_OWNER: any other account gets 403, so the
+    real-time exchange data is NEVER served to a member. That gate is what
+    keeps this personal-use rather than redistribution. The background socket
+    starts lazily on the first owner request and only if TRADOVATE_* creds are
+    set in .env (and the account holds a CME data entitlement)."""
+    if not _is_tradovate_owner():
+        return jsonify({"error": "forbidden"}), 403
+    try:
+        import korvus_tradovate as tv
+    except Exception as e:
+        return jsonify({"configured": False, "quotes": {}, "note": f"module unavailable: {e}"})
+
+    configured = bool(tv.TRADOVATE_USERNAME and tv.TRADOVATE_PASSWORD and tv.TRADOVATE_SECRET)
+    if not configured:
+        return jsonify({"configured": False, "quotes": {},
+                        "note": "set TRADOVATE_* in .env (and hold a CME data subscription)"})
+
+    global _tv_started
+    client = tv.get_client()
+    if not _tv_started:
+        try:
+            client.start(TRADOVATE_ROOTS)   # idempotent; spins up one bg socket
+            _tv_started = True
+        except Exception as e:
+            return jsonify({"configured": True, "quotes": {}, "note": f"start error: {e}"})
+
+    return jsonify({"configured": True,
+                    "env": tv.TRADOVATE_ENV,
+                    "quotes": client.get(TRADOVATE_ROOTS)})
 
 
 @app.route("/api/quotes")

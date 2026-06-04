@@ -194,6 +194,46 @@
   .ctxlabel .t{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);}
   .ctxlabel .s{font-family:var(--mono);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);}
 
+  /* ---------- futures chart band (Pro-gated TradingView; owner live chip) ---------- */
+  .chartband{position:relative;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(12,16,22,.5),rgba(6,8,12,.28));backdrop-filter:blur(8px);
+    animation:fadeDown .7s .08s ease both;}
+  .charthead{display:flex;align-items:center;gap:0;border-bottom:1px solid var(--line-soft);}
+  .chartsyms{display:flex;gap:6px;padding:7px 14px;border-right:1px solid var(--line-soft);flex:none;}
+  .csymbtn{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-dim);background:transparent;border:1px solid var(--line);border-radius:5px;
+    padding:4px 11px;cursor:pointer;transition:all .15s ease;}
+  .csymbtn:hover{color:var(--ink);border-color:var(--line-soft);}
+  .csymbtn.active{color:var(--ink);border-color:rgba(255,31,68,.45);background:rgba(255,31,68,.08);
+    box-shadow:0 0 10px -3px var(--crimson-glow);}
+  .ownerlive{margin-left:auto;display:flex;align-items:center;gap:9px;padding:7px 16px;
+    border-left:1px solid var(--line-soft);white-space:nowrap;flex:none;
+    font-family:var(--mono);font-size:11px;}
+  .ownerlive .olv-sym{color:var(--ink-dim);letter-spacing:.08em;}
+  .ownerlive .olv-px{color:var(--ink);font-weight:600;font-size:12.5px;}
+  .ownerlive .olv-chg.up{color:var(--bull);} .ownerlive .olv-chg.dn{color:var(--bear);}
+  .ownerlive .olv-tag{font-size:7.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--bull);
+    border:1px solid rgba(60,229,148,.4);background:rgba(60,229,148,.08);border-radius:4px;padding:2px 6px;}
+  .ownerlive .olv-eyes{font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);}
+  .chartwrap{height:340px;width:100%;}
+  .chartwrap iframe,.chartwrap .tradingview-widget-container{height:100% !important;width:100% !important;}
+  .chartgate{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    text-align:center;padding:22px;background:rgba(4,6,10,.72);backdrop-filter:blur(7px);}
+  .chartgate .cg-inner{max-width:430px;display:flex;flex-direction:column;align-items:center;gap:9px;}
+  .chartgate .cg-lock{color:var(--crimson);font-size:15px;filter:drop-shadow(0 0 10px var(--crimson-glow));}
+  .chartgate .cg-title{font-family:var(--disp);font-weight:800;font-size:16px;color:var(--ink);}
+  .chartgate .cg-sub{font-family:var(--mono);font-size:10.5px;line-height:1.5;color:var(--ink-dim);}
+  .chartgate .cg-btn{margin-top:6px;display:inline-flex;align-items:center;gap:6px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:#0a0a0a;font-weight:700;
+    background:linear-gradient(180deg,#ff6a5d,#e01023);border-radius:7px;padding:9px 18px;
+    text-decoration:none;box-shadow:0 6px 20px -6px var(--crimson-glow);transition:transform .15s ease;}
+  .chartgate .cg-btn:hover{transform:translateY(-1px);}
+  @media (max-width:760px){
+    .charthead{flex-wrap:wrap;}
+    .ownerlive{margin-left:0;width:100%;border-left:none;border-top:1px solid var(--line-soft);}
+    .chartwrap{height:280px;}
+  }
+
   /* macro confluence */
   .mfac{display:flex;align-items:center;gap:9px;padding:8px 15px;border-right:1px solid var(--line-soft);white-space:nowrap;}
   .mfac .nm{font-family:var(--disp);font-weight:700;font-size:12px;color:var(--ink);line-height:1.05;}
@@ -682,6 +722,29 @@
     <div class="kznow" id="kzNow"></div>
     <div id="sessionLevels" style="display:flex;"></div>
   </div>
+
+  <!-- LIVE FUTURES CHART — real MNQ/MES via TradingView's licensed widget (10-min
+       delayed CME data). Pro-gated. The OWNER additionally sees a real-time price
+       chip from their own Tradovate entitlement (their eyes only — never a member's). -->
+  <section class="chartband" id="chartBand" style="display:none;">
+    <div class="charthead">
+      <div class="ctxlabel"><span class="t">Futures Chart</span><span class="s" id="chartSub">CME · 10-min delayed</span></div>
+      <div class="chartsyms" id="chartSyms">
+        <button class="csymbtn active" data-tvsym="CME_MINI:MNQ1!" data-lbl="MNQ" onclick="setChartSym(this)">MNQ</button>
+        <button class="csymbtn" data-tvsym="CME_MINI:MES1!" data-lbl="MES" onclick="setChartSym(this)">MES</button>
+      </div>
+      <div class="ownerlive" id="ownerLive" style="display:none;"></div>
+    </div>
+    <div class="chartwrap" id="chartWrap"></div>
+    <div class="chartgate" id="chartGate" style="display:none;">
+      <div class="cg-inner">
+        <div class="cg-lock">◆</div>
+        <div class="cg-title">Live futures charts are an Operator (Pro) feature</div>
+        <div class="cg-sub">Pro members get real MNQ &amp; MES charts on the terminal — 10-minute-delayed CME data — alongside the full scored feed, SMT divergence, and personal watchlists.</div>
+        <a class="cg-btn" id="cgBtn" href="/upgrade">⬆ Go Pro</a>
+      </div>
+    </div>
+  </section>
 
   <!-- panel tabs (shown on narrower screens so all panels stay reachable) -->
   <div class="paneltabs" id="panelTabs">
@@ -1280,12 +1343,16 @@ document.getElementById('importReset').onclick = async () => {
 
 // ---- who's logged in + their tier (drives the header label) ----
 let USER_TIER = 'free';   // default; loadMe() updates it
+let IS_OWNER = false;     // only the TRADOVATE_OWNER account; gates the live feed
+let PRICE_DISPLAY = '';   // monthly price string from billing (e.g. "$3.99")
 async function loadMe(){
   try{
     const res = await fetch('/api/me', {cache:'no-store'});
     const me = await res.json();
+    PRICE_DISPLAY = me.price_display || '';
     if(me.auth){
       USER_TIER = me.tier || 'free';
+      IS_OWNER = !!me.is_owner;
       const lo = document.getElementById('logoutBtn');
       if(lo) lo.style.display = 'inline-block';
       const ac = document.getElementById('acctBtn');
@@ -1293,6 +1360,7 @@ async function loadMe(){
       const gp = document.getElementById('goProBtn');
       if(gp) gp.style.display = (USER_TIER === 'pro') ? 'none' : 'inline-flex';
       setTierLabel();
+      setupChart();
     }
   }catch(e){/* ignore */}
 }
@@ -1305,6 +1373,130 @@ function setTierLabel(){
     hb.innerHTML = '<span class="hb" style="background:var(--gold);box-shadow:0 0 10px -2px var(--gold)"></span>'
                  + 'ENGINE LIVE · DELAYED 15 MIN';
   }
+}
+
+/* ============================================================================
+   FUTURES CHART — real MNQ/MES via TradingView's licensed embeddable widget.
+   The widget shows 10-minute-DELAYED CME data; TradingView holds the display
+   license, so embedding it does NOT make us a CME redistributor. Real-time on
+   a public site would require an exchange redistribution license, which the
+   free/embedded widget cannot provide regardless of any paid plan.
+   Access: Pro (Operator) members and the owner see the chart; Free members see
+   the upgrade gate. The OWNER also gets a real-time price chip fed from their
+   own Tradovate entitlement (/api/tradovate) — their eyes only, never a member.
+   ========================================================================== */
+let CHART_SYM = 'CME_MINI:MNQ1!';
+let _tvLoaded = false;
+let _ownerTimer = null;
+
+function setupChart(){
+  const band = document.getElementById('chartBand');
+  const gate = document.getElementById('chartGate');
+  if(!band) return;
+  band.style.display = 'block';
+
+  const hasChart = (USER_TIER === 'pro') || IS_OWNER;
+  if(hasChart){
+    if(gate) gate.style.display = 'none';
+    loadTVChart(CHART_SYM);
+    if(IS_OWNER) startOwnerLive();
+  }else{
+    // Free: show the upgrade gate, don't load the widget.
+    if(gate) gate.style.display = 'flex';
+    const btn = document.getElementById('cgBtn');
+    if(btn) btn.textContent = '⬆ Go Pro' + (PRICE_DISPLAY ? (' — ' + PRICE_DISPLAY + '/mo') : '');
+  }
+}
+
+function loadTVChart(symbol){
+  const wrap = document.getElementById('chartWrap');
+  if(!wrap) return;
+  // Rebuild the TradingView Advanced Chart widget container each time so the
+  // symbol toggle takes effect (the embed script reads config on insert).
+  wrap.innerHTML = '';
+  const container = document.createElement('div');
+  container.className = 'tradingview-widget-container';
+  container.style.height = '100%';
+  container.style.width = '100%';
+  const inner = document.createElement('div');
+  inner.className = 'tradingview-widget-container__widget';
+  inner.style.height = '100%';
+  inner.style.width = '100%';
+  container.appendChild(inner);
+  const s = document.createElement('script');
+  s.type = 'text/javascript';
+  s.async = true;
+  s.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+  s.innerHTML = JSON.stringify({
+    autosize: true,
+    symbol: symbol,
+    interval: '15',
+    timezone: 'America/New_York',
+    theme: 'dark',
+    style: '1',
+    locale: 'en',
+    backgroundColor: 'rgba(6,8,12,0)',
+    gridColor: 'rgba(255,255,255,0.05)',
+    hide_top_toolbar: false,
+    hide_legend: false,
+    allow_symbol_change: false,
+    save_image: false,
+    calendar: false,
+    support_host: 'https://www.tradingview.com'
+  });
+  container.appendChild(s);
+  wrap.appendChild(container);
+  _tvLoaded = true;
+}
+
+function setChartSym(btn){
+  const sym = btn.getAttribute('data-tvsym');
+  if(!sym || sym === CHART_SYM) {
+    // still update active state for the matching button
+  }
+  CHART_SYM = sym;
+  document.querySelectorAll('#chartSyms .csymbtn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if((USER_TIER === 'pro') || IS_OWNER) loadTVChart(CHART_SYM);
+}
+
+/* Owner-only: poll the real-time Tradovate price for the active symbol and show
+   a small "LIVE · your eyes only" chip. 403 for anyone else (server-enforced). */
+function startOwnerLive(){
+  const el = document.getElementById('ownerLive');
+  if(!el) return;
+  el.style.display = 'flex';
+  const tick = async () => {
+    try{
+      const r = await fetch('/api/tradovate', {cache:'no-store'});
+      if(!r.ok){ el.style.display = 'none'; return; }
+      const d = await r.json();
+      if(!d.configured){
+        el.innerHTML = '<span class="olv-eyes">Tradovate feed not configured — set TRADOVATE_* in .env</span>';
+        return;
+      }
+      const root = CHART_SYM.indexOf('MNQ') >= 0 ? 'MNQ' : 'MES';
+      const q = (d.quotes || {})[root];
+      if(q && typeof q.price === 'number'){
+        const chg = (typeof q.chg_pct === 'number') ? q.chg_pct : 0;
+        const cls = chg >= 0 ? 'up' : 'dn';
+        const arw = chg >= 0 ? '▲' : '▼';
+        el.innerHTML =
+          '<span class="olv-sym">' + root + '</span>' +
+          '<span class="olv-px">' + q.price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span>' +
+          '<span class="olv-chg ' + cls + '">' + arw + ' ' + Math.abs(chg).toFixed(2) + '%</span>' +
+          '<span class="olv-tag">● Live</span>' +
+          '<span class="olv-eyes">your eyes only</span>';
+      }else{
+        el.innerHTML = '<span class="olv-sym">' + root + '</span>'
+                     + '<span class="olv-eyes">awaiting live tick…</span>'
+                     + '<span class="olv-eyes">your eyes only</span>';
+      }
+    }catch(e){ /* keep last shown */ }
+  };
+  tick();
+  if(_ownerTimer) clearInterval(_ownerTimer);
+  _ownerTimer = setInterval(tick, 5000);
 }
 
 /* ============================================================================
