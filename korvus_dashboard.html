@@ -655,7 +655,6 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>
       Forex News
     </a>
-    <span class="econ clear" id="econChip">● NO HIGH-IMPACT PRINTS TODAY</span>
     <div class="sess" id="sess">SESSION <b>—</b></div>
     <div class="clock"><span id="clock">--:--:--</span><small>New York / ET</small></div>
     <a class="logoutbtn" href="/account" id="acctBtn" style="display:none;">Account</a>
@@ -865,7 +864,15 @@ function spark(series,up){
 
 /* ----------------------------- render: ribbon ----------------------------- */
 function renderRibbon(list){
+  const live = _proxiesLive();
   document.getElementById('ribbon').innerHTML = list.map(f=>{
+    if(!live){
+      return `<div class="fut">
+        <div class="sym">${f.sym}<small>${f.name}</small></div>
+        <div class="chg big" style="color:var(--ink-faint);letter-spacing:.06em">CLOSED</div>
+        <div class="viaproxy">via ${f.proxy}</div>
+      </div>`;
+    }
     const up=f.chg>=0;
     return `<div class="fut">
       <div class="sym">${f.sym}<small>${f.name}</small></div>
@@ -1018,21 +1025,25 @@ async function loadSMT(){
 }
 function renderSMT(d){
   const v=d.verdict;
+  const live=_proxiesLive();
   const legs=d.legs.map(l=>{
     const up=l.chg>=0;
     // bar reflects POSITION IN TODAY'S RANGE (0..1) when we have it, centered at 50%
     let fill;
-    if(l.pos!=null){
+    if(live && l.pos!=null){
       const w=Math.round(l.pos*100);
       const col = l.pos>=0.66 ? 'var(--bull)' : l.pos<=0.33 ? 'var(--bear)' : 'var(--med)';
       fill=`left:0;width:${w}%;background:linear-gradient(90deg,transparent,${col})`;
     } else {
       fill=`left:0;width:0`;
     }
+    const chgCell = live
+      ? `<div class="cchg ${up?'up':'down'}">${sign(l.chg)}${l.chg.toFixed(2)}%</div><div class="swing">${l.swing}</div>`
+      : `<div class="cchg" style="color:var(--ink-faint);letter-spacing:.06em">CLOSED</div><div class="swing">—</div>`;
     return `<div class="crow">
       <div class="csym">${l.sym}<small>via ${l.proxy}</small></div>
       <div class="track"><i style="${fill}"></i></div>
-      <div><div class="cchg ${up?'up':'down'}">${sign(l.chg)}${l.chg.toFixed(2)}%</div><div class="swing">${l.swing}</div></div>
+      <div>${chgCell}</div>
     </div>`;
   }).join('');
   const icon = v.state==='warn' ? '⚠' : '✓';
@@ -1043,9 +1054,15 @@ function renderSMT(d){
 
 /* ----------------------------- render: watchlist ----------------------------- */
 function renderWatch(groups){
+  const live = _proxiesLive();
   let total=0;
   document.getElementById('watch').innerHTML = groups.map(g=>{
-    const rows=g.rows.map(r=>{total++;const up=r.chg>=0;
+    const rows=g.rows.map(r=>{total++;
+      if(!live){
+        return `<div class="wrow"><span class="wsym">${r.sym}</span><span class="wname">${r.name}</span>
+          <span class="wpx" style="color:var(--ink-faint)">—</span><span class="wchg" style="color:var(--ink-faint);letter-spacing:.06em">CLOSED</span></div>`;
+      }
+      const up=r.chg>=0;
       return `<div class="wrow"><span class="wsym">${r.sym}</span><span class="wname">${r.name}</span>
         <span class="wpx">${r.px.toFixed(2)}</span><span class="wchg ${up?'up':'down'}">${sign(r.chg)}${r.chg.toFixed(2)}%</span></div>`;
     }).join('');
@@ -1151,6 +1168,8 @@ function collectWatchSymbols(groups){
 }
 
 async function loadLiveQuotes(){
+  // reflect the session on the Funds Watch dot right away (no "—" flash)
+  _setWatchStatus(_futuresStateET());
   // gather every symbol we need: proxies for futures + SMT, plus watchlist
   const futProxies = Object.values(FUT_PROXY);
   const smtProxies = ['QQQ','SPY','DIA'];
@@ -1162,7 +1181,7 @@ async function loadLiveQuotes(){
     if(!res.ok) throw new Error('no quotes');
     const data = await res.json();
     const q = data.quotes || {};
-    if(Object.keys(q).length === 0) return; // provider 'off' or no key: keep samples
+    if(Object.keys(q).length === 0){ _setWatchStatus(_futuresStateET()); return; } // provider 'off' or no key / after hours: keep samples, but show real session
     const open = data.meta && data.meta.market_open;
 
     // 1) Futures Board — show the proxy's % move (accurate for index direction).
@@ -1201,17 +1220,25 @@ async function loadLiveQuotes(){
     if(rt) rt.textContent = tag;
 
     // Funds Watch status pill — tells users why prices are / aren't moving
-    const ws = document.getElementById('watchStatus');
-    if(ws){
-      if(fs === 'closed'){
-        ws.textContent = 'CLOSED'; ws.className = 'mktstatus closed';
-      } else if(fs === 'globex'){
-        ws.textContent = 'GLOBEX · LAST CLOSE'; ws.className = 'mktstatus globex';
-      } else {
-        ws.textContent = 'OPEN'; ws.className = 'mktstatus open';
-      }
-    }
-  }catch(e){ /* server/quotes offline: panels stay on sample numbers */ }
+    _setWatchStatus(fs);
+  }catch(e){ /* server/quotes offline: panels stay on sample numbers */
+    _setWatchStatus(_futuresStateET());
+  }
+}
+
+// Sets the Funds Watch market-status dot (OPEN / GLOBEX / CLOSED). Pulled out so
+// it can run even when the live feed is empty (after hours / no key), instead of
+// leaving the dot stuck on "—".
+function _setWatchStatus(fs){
+  const ws = document.getElementById('watchStatus');
+  if(!ws) return;
+  if(fs === 'closed'){
+    ws.textContent = 'CLOSED'; ws.className = 'mktstatus closed';
+  } else if(fs === 'globex'){
+    ws.textContent = 'GLOBEX · LAST CLOSE'; ws.className = 'mktstatus globex';
+  } else {
+    ws.textContent = 'OPEN'; ws.className = 'mktstatus open';
+  }
 }
 
 /* ----- personal watchlist import (falls back to default groups) ----- */
@@ -1282,6 +1309,16 @@ document.getElementById('importReset').onclick = async () => {
 let USER_TIER = 'free';   // default; loadMe() updates it
 let IS_OWNER = false;     // only the TRADOVATE_OWNER account; gates the live feed
 let PRICE_DISPLAY = '';   // monthly price string from billing (e.g. "$3.99")
+// Gold crown shown beside the Account button for Pro (Operator) members.
+const PRO_CROWN_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" '
+  + 'xmlns="http://www.w3.org/2000/svg" aria-label="Pro" '
+  + 'style="margin-right:6px;vertical-align:-1px;filter:drop-shadow(0 0 5px rgba(255,205,80,.8));">'
+  + '<defs><linearGradient id="goldcrwn" x1="0" y1="0" x2="0" y2="1">'
+  + '<stop offset="0" stop-color="#ffeeb0"/><stop offset="0.55" stop-color="#ffcf5a"/>'
+  + '<stop offset="1" stop-color="#e0a516"/></linearGradient></defs>'
+  + '<path d="M2.6 17.6 L4.4 8.4 L8.7 12.4 L12 4.6 L15.3 12.4 L19.6 8.4 L21.4 17.6 Z" '
+  + 'fill="url(#goldcrwn)" stroke="#fff3d0" stroke-width="0.5" stroke-linejoin="round"/>'
+  + '<rect x="3" y="18.4" width="18" height="2.5" rx="1.1" fill="url(#goldcrwn)"/></svg>';
 async function loadMe(){
   try{
     const res = await fetch('/api/me', {cache:'no-store'});
@@ -1293,7 +1330,18 @@ async function loadMe(){
       const lo = document.getElementById('logoutBtn');
       if(lo) lo.style.display = 'inline-block';
       const ac = document.getElementById('acctBtn');
-      if(ac) ac.style.display = 'inline-block';
+      if(ac){
+        ac.style.display = 'inline-flex';
+        ac.style.alignItems = 'center';
+        // Pro members get a gold crown next to Account as a membership marker.
+        if(USER_TIER === 'pro'){
+          ac.innerHTML = PRO_CROWN_SVG + '<span>Account</span>';
+          ac.title = 'Korvus Pro · Operator';
+        }else{
+          ac.innerHTML = '<span>Account</span>';
+          ac.removeAttribute('title');
+        }
+      }
       const gp = document.getElementById('goProBtn');
       if(gp) gp.style.display = (USER_TIER === 'pro') ? 'none' : 'inline-flex';
       setTierLabel();
@@ -1333,6 +1381,14 @@ function _mdir(p){ return p > 0.05 ? 1 : (p < -0.05 ? -1 : 0); }
 
 function renderMacroBand(q){
   const facsEl = document.getElementById('macroFacs'); if(!facsEl) return;
+  if(!_proxiesLive()){
+    facsEl.innerHTML = MACRO_FACS.map(f =>
+      `<div class="mfac"><span class="nm">${f.nm}<small>${f.sub}</small></span>`
+      + `<span class="mv" style="color:var(--ink-faint)">—</span></div>`).join('');
+    const vEl0 = document.getElementById('macroVerdict');
+    if(vEl0) vEl0.innerHTML = `<span class="lbl">Backdrop</span><span class="val mixed">CLOSED</span><span class="read">US cash session closed — macro proxies resume at 9:30 ET.</span>`;
+    return;
+  }
   const has = s => q && q[s] && typeof q[s].chg_pct === 'number';
   const idxHas = has('QQQ');
   const idxDir = idxHas ? _mdir(q.QQQ.chg_pct) : null;
@@ -1404,6 +1460,10 @@ function _futuresStateET(){
   if(t>=17 && t<18) return 'closed';                     // daily maintenance break
   return 'globex';
 }
+// The board/macro/SMT/watchlist all price off US equity ETF proxies, which only
+// trade during the cash session (9:30a–4p ET). Outside that, any number we'd show
+// is stale/placeholder — so we render an honest CLOSED state instead.
+function _proxiesLive(){ return _futuresStateET() === 'rth'; }
 function renderSessions(){
   const kzEl = document.getElementById('killzones'); if(!kzEl) return;
   const t = _etNow(); const openNames = [];
@@ -1424,12 +1484,18 @@ function renderSessions(){
 // key levels for MNQ (priced via the QQQ proxy) — honest snapshot O/H/L/prev/current
 function renderSessionLevels(q){
   const el = document.getElementById('sessionLevels'); if(!el) return;
+  const item = (k,v) => `<div class="lvl"><span class="lk">${k}</span><span class="lv">${v}</span></div>`;
+  if(!_proxiesLive()){
+    el.innerHTML = item('MNQ','—') + item('Open','—') + item('High','—')
+      + item('Low','—') + item('Prev','—')
+      + `<div class="ctxnote">market closed — levels resume at 9:30 ET</div>`;
+    return;
+  }
   const d = (q && q.QQQ) ? q.QQQ : null;
   const fx = v => (typeof v==='number' && v>0 ? v.toFixed(2) : '—');
   const price = d && typeof d.price==='number' ? d.price : null;
   const hasOHLC = d && ['open','high','low'].every(k=>typeof d[k]==='number' && d[k]>0);
   const pos = (hasOHLC && d.high>d.low && price!=null) ? Math.min(100,Math.max(0,(price-d.low)/(d.high-d.low)*100)) : null;
-  const item = (k,v) => `<div class="lvl"><span class="lk">${k}</span><span class="lv">${v}</span></div>`;
   el.innerHTML = item('MNQ', price!=null?fx(price):'—')
     + item('Open', fx(d&&d.open)) + item('High', fx(d&&d.high))
     + item('Low', fx(d&&d.low)) + item('Prev', fx(d&&d.prev_close))
