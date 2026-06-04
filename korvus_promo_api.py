@@ -188,6 +188,12 @@ def promo_generate():
 IMAGE_ENDPOINT = "https://api.openai.com/v1/images/generations"
 
 
+def _clean_env(v, default):
+    # tolerate accidental inline "# comments", quotes, and stray whitespace in .env
+    v = (v or "").split("#")[0].strip().strip('"').strip("'")
+    return v or default
+
+
 def build_image_prompt(d):
     ctx = d.get("context") or {}
     topic = (d.get("topic") or d.get("hook") or d.get("caption")
@@ -215,7 +221,7 @@ def build_image_prompt(d):
 @korvus_promo_api.route("/api/promo-image", methods=["POST"])
 @admin_required
 def promo_image():
-    key = os.environ.get("OPENAI_API_KEY")
+    key = (os.environ.get("OPENAI_API_KEY") or "").strip().strip('"').strip("'")
     if not key:
         return jsonify({"error": "OPENAI_API_KEY is not set on the server. "
                                  "Add it to your .env (and restart) to enable AI images."}), 400
@@ -224,8 +230,8 @@ def promo_image():
     platform = d.get("platform", "X")
     portrait = platform in ("TikTok", "Instagram")
     size = "1024x1536" if portrait else "1024x1024"
-    model = os.environ.get("IMAGE_MODEL", "gpt-image-1")
-    quality = os.environ.get("IMAGE_QUALITY", "medium")
+    model = _clean_env(os.environ.get("IMAGE_MODEL"), "gpt-image-2")
+    quality = _clean_env(os.environ.get("IMAGE_QUALITY"), "medium")
 
     payload = json.dumps({
         "model": model,
