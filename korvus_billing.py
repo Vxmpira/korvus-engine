@@ -183,7 +183,15 @@ def handle_webhook(payload: bytes, sig_header: str):
             customer = obj.get("customer")
             status   = "canceled" if typ.endswith("deleted") else obj.get("status")
             sub_id   = obj.get("id")
-            cpe      = _iso(obj.get("current_period_end"))
+            # Newer Stripe API versions moved current_period_end off the
+            # subscription object onto its line items — fall back to the item.
+            cpe_ts = obj.get("current_period_end")
+            if cpe_ts is None:
+                try:
+                    cpe_ts = obj["items"]["data"][0].get("current_period_end")
+                except (KeyError, IndexError, TypeError):
+                    cpe_ts = None
+            cpe      = _iso(cpe_ts)
             updated  = auth.apply_subscription(customer, status, sub_id, cpe)
             print(f"  [billing] {typ} -> {status} for {updated or customer}")
     except Exception as e:

@@ -10,50 +10,86 @@
 <style>
   :root{
     --bg:#000000;--panel:#0c0d11;--ink:#f6f8ff;--ink-dim:#aab0c0;--ink-faint:#646b7d;
-    --line:rgba(255,255,255,.09);--line-bright:rgba(255,255,255,.18);
+    --line:rgba(255,255,255,.08);--line-bright:rgba(255,255,255,.16);
     --gold:#ff1f44;--gold-deep:#d4112f;--crimson:#ff1f44;--crimson-bright:#ff3355;
-    --crimson-glow:rgba(255,31,68,.55);--up:#3ce594;
+    --crimson-glow:rgba(255,31,68,.55);--up:#3ce594;--amber:#ff9d2e;
     --mono:'IBM Plex Mono',monospace;--body:'Hanken Grotesk',system-ui,sans-serif;--disp:'Fraunces',Georgia,serif;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
   body{background:var(--bg);color:var(--ink);font-family:var(--body);min-height:100vh;
-    display:flex;flex-direction:column;align-items:center;padding:40px 24px 56px;overflow-x:hidden;}
-  .glow{position:fixed;top:-22vh;left:50%;transform:translateX(-50%);width:90vw;height:60vh;z-index:0;pointer-events:none;
-    background:radial-gradient(ellipse at center,rgba(255,31,68,.12),rgba(255,31,68,.04) 42%,transparent 72%);filter:blur(30px);}
-  .wrap{position:relative;z-index:2;width:100%;max-width:620px;}
-  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:30px;}
+    display:flex;flex-direction:column;align-items:center;padding:44px 22px 64px;overflow-x:hidden;
+    background-image:radial-gradient(circle at 50% -10%,rgba(255,31,68,.10),transparent 55%);}
+  .glow{position:fixed;top:-26vh;left:50%;transform:translateX(-50%);width:92vw;height:60vh;z-index:0;pointer-events:none;
+    background:radial-gradient(ellipse at center,rgba(255,31,68,.13),rgba(255,31,68,.03) 44%,transparent 72%);filter:blur(34px);}
+  .wrap{position:relative;z-index:2;width:100%;max-width:600px;}
+
+  /* header */
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:34px;}
   .brand{display:flex;align-items:center;gap:11px;}
-  .crown{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
+  .crown{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;
     background:radial-gradient(circle at 30% 25%,#1a1012,#070405);border:1px solid rgba(255,31,68,.42);box-shadow:0 0 22px -6px var(--crimson);}
-  .brand-name{font-family:var(--disp);font-weight:600;font-size:22px;}
+  .brand-name{font-family:var(--disp);font-weight:600;font-size:23px;letter-spacing:-.01em;}
   .navlinks{display:flex;gap:9px;}
   .navlinks a{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);
-    text-decoration:none;border:1px solid var(--line-bright);border-radius:8px;padding:8px 12px;transition:border-color .2s,color .2s;}
-  .navlinks a:hover{border-color:var(--crimson);color:var(--ink);}
-  h1{font-family:var(--disp);font-weight:500;font-size:30px;margin-bottom:6px;letter-spacing:-.01em;}
-  .hello{color:var(--ink-dim);font-size:14.5px;margin-bottom:26px;}
-  .card{background:rgba(14,17,22,.55);backdrop-filter:blur(14px);border:1px solid var(--line-bright);
-    border-radius:16px;padding:24px 22px;margin-bottom:18px;}
-  .card h2{font-family:var(--disp);font-weight:500;font-size:18px;margin-bottom:4px;}
-  .card .desc{color:var(--ink-faint);font-size:12.5px;margin-bottom:18px;line-height:1.5;}
-  label{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 6px 2px;}
+    text-decoration:none;border:1px solid var(--line-bright);border-radius:9px;padding:8px 13px;transition:border-color .2s,color .2s,background .2s;}
+  .navlinks a:hover{border-color:var(--crimson);color:var(--ink);background:rgba(255,31,68,.06);}
+
+  h1{font-family:var(--disp);font-weight:500;font-size:38px;line-height:1.05;letter-spacing:-.02em;margin-bottom:8px;}
+  .hello{font-family:var(--mono);color:var(--ink-dim);font-size:12.5px;letter-spacing:.02em;margin-bottom:30px;}
+
+  /* cards */
+  .card{background:linear-gradient(180deg,rgba(18,20,26,.62),rgba(10,12,16,.5));backdrop-filter:blur(16px);
+    border:1px solid var(--line-bright);border-radius:18px;padding:26px 24px;margin-bottom:16px;
+    animation:rise .55s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0s);}
+  @keyframes rise{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:none;}}
+  @media (prefers-reduced-motion: reduce){.card{animation:none;}}
+  .eyebrow{font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--crimson);margin-bottom:11px;opacity:.9;}
+  .card h2{font-family:var(--disp);font-weight:500;font-size:20px;margin-bottom:5px;letter-spacing:-.01em;}
+  .card .desc{color:var(--ink-faint);font-size:12.5px;margin-bottom:20px;line-height:1.55;}
+
+  /* forms */
+  label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 7px 2px;}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-  @media(max-width:520px){ .row2{grid-template-columns:1fr;} }
-  input{width:100%;background:#0a0d12;border:1px solid var(--line-bright);border-radius:10px;color:var(--ink);
-    font-family:var(--body);font-size:14.5px;padding:12px 13px;margin-bottom:15px;transition:border-color .2s;}
-  input:focus{outline:none;border-color:var(--crimson);}
-  input:disabled{color:var(--ink-faint);background:#070a0e;cursor:not-allowed;}
-  .btn{background:var(--crimson);color:#0a0d12;font-weight:700;font-size:14px;padding:11px 20px;border:none;border-radius:10px;
-    cursor:pointer;font-family:var(--body);transition:background .2s,transform .15s;box-shadow:0 0 18px -6px var(--crimson-glow);}
-  .btn:hover:not(:disabled){background:var(--crimson-bright);transform:translateY(-1px);}
-  .btn:disabled{opacity:.5;cursor:not-allowed;box-shadow:none;}
-  .btn.ghost{background:transparent;border:1px solid var(--line-bright);color:var(--ink);box-shadow:none;}
-  .btn.ghost:hover:not(:disabled){border-color:var(--crimson);background:rgba(255,31,68,.06);}
-  .msg{font-family:var(--mono);font-size:11.5px;margin-top:4px;min-height:15px;line-height:1.4;}
+  @media(max-width:520px){.row2{grid-template-columns:1fr;}}
+  input{width:100%;background:#08090d;border:1px solid var(--line-bright);border-radius:11px;color:var(--ink);
+    font-family:var(--body);font-size:14.5px;padding:13px 14px;margin-bottom:16px;transition:border-color .2s,box-shadow .2s;}
+  input:focus{outline:none;border-color:var(--crimson);box-shadow:0 0 0 3px rgba(255,31,68,.13);}
+  input:disabled{color:var(--ink-faint);background:#06070a;cursor:not-allowed;}
+
+  .btn{background:var(--crimson);color:#0a0d12;font-weight:700;font-size:14px;padding:12px 22px;border:none;border-radius:11px;
+    cursor:pointer;font-family:var(--body);transition:background .2s,transform .15s,box-shadow .2s;box-shadow:0 0 20px -7px var(--crimson-glow);}
+  .btn:hover:not(:disabled){background:var(--crimson-bright);transform:translateY(-1px);box-shadow:0 0 26px -6px var(--crimson-glow);}
+  .btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;}
+  .btn.block{width:100%;}
+
+  .msg{font-family:var(--mono);font-size:11.5px;margin-top:6px;min-height:15px;line-height:1.4;}
   .msg.ok{color:#9fe9bd;} .msg.err{color:#ffb3af;}
-  .planrow{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
-  .hr{height:1px;background:rgba(255,255,255,.08);margin:18px 0;}
-  .alertrow{display:flex;align-items:flex-start;gap:14px;}
+  .hr{height:1px;background:var(--line);margin:22px 0;}
+  .btnrow{display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
+
+  .vbadge{font-family:var(--mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:5px;margin-left:7px;vertical-align:middle;}
+  .vbadge.ok{color:#9fe9bd;background:rgba(60,229,148,.12);}
+  .vbadge.no{color:#ffb3af;background:rgba(255,46,77,.12);}
+  .resend{font-family:var(--mono);font-size:11px;color:var(--crimson);text-decoration:none;}
+  .resend:hover{text-decoration:underline;}
+
+  /* membership / billing */
+  .billhead{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:6px;}
+  .planname{font-family:var(--disp);font-size:24px;font-weight:500;letter-spacing:-.01em;}
+  .plansub{font-size:12.5px;color:var(--ink-dim);margin-top:3px;}
+  .sb{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;padding:5px 10px;border-radius:7px;white-space:nowrap;font-weight:500;}
+  .sb.ok{color:#9fe9bd;background:rgba(60,229,148,.12);border:1px solid rgba(60,229,148,.28);}
+  .sb.warn{color:#ffd27a;background:rgba(255,157,46,.12);border:1px solid rgba(255,157,46,.3);}
+  .sb.bad{color:#ffb3af;background:rgba(255,46,77,.12);border:1px solid rgba(255,46,77,.3);}
+  .sb.free{color:var(--ink-dim);border:1px solid var(--line-bright);}
+  .dgrid{margin:18px 0 20px;border-top:1px solid var(--line);}
+  .drow{display:flex;justify-content:space-between;align-items:center;padding:12px 2px;border-bottom:1px solid var(--line);}
+  .dk{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-faint);}
+  .dv{font-size:14.5px;color:var(--ink);font-weight:500;}
+
+  /* alerts toggle */
+  .alertrow{display:flex;align-items:flex-start;gap:15px;}
   .switch{position:relative;display:inline-block;width:46px;height:26px;flex:0 0 auto;cursor:pointer;}
   .switch input{opacity:0;width:0;height:0;}
   .slider{position:absolute;inset:0;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);border-radius:999px;transition:.2s;}
@@ -61,26 +97,18 @@
   .switch input:checked + .slider{background:var(--crimson);border-color:var(--crimson);box-shadow:0 0 14px rgba(255,31,68,.5);}
   .switch input:checked + .slider:before{transform:translateX(20px);}
   .switch input:disabled + .slider{opacity:.4;cursor:not-allowed;}
-  .alabel{font-weight:600;color:var(--ink);font-size:.95rem;}
-  .anote{color:var(--ink-dim);font-size:.82rem;margin-top:3px;line-height:1.45;}
-  .pill{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:5px 11px;border-radius:7px;font-weight:600;}
-  .pill.pro{color:#0a0d12;background:var(--up);}
-  .pill.free{color:var(--ink-dim);border:1px solid var(--line-bright);}
-  .planmeta{font-size:13px;color:var(--ink-dim);margin-top:3px;}
-  .contact{display:flex;flex-direction:column;gap:12px;}
+  .alabel{font-weight:600;color:var(--ink);font-size:14.5px;}
+  .anote{color:var(--ink-dim);font-size:12.5px;margin-top:3px;line-height:1.45;}
+
+  /* support */
+  .contact{display:flex;flex-direction:column;gap:13px;}
   .crow{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;}
-  .crow .clabel{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);min-width:92px;}
+  .crow .clabel{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-faint);min-width:92px;}
   .crow .cval{font-size:14px;color:var(--ink-dim);}
   .crow a.cval{color:var(--crimson);text-decoration:none;}
   .crow a.cval:hover{text-decoration:underline;}
-  .hr{height:1px;background:var(--line);margin:18px 0;}
-  .btnrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
-  .vbadge{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:5px;margin-left:6px;}
-  .vbadge.ok{color:#9fe9bd;background:rgba(60,229,148,.12);}
-  .vbadge.no{color:#ffb3af;background:rgba(255,46,77,.12);}
-  .resend{font-family:var(--mono);font-size:11px;color:var(--crimson);text-decoration:none;}
-  .resend:hover{text-decoration:underline;}
-  .foot{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);margin-top:8px;line-height:1.6;text-align:center;}
+
+  .foot{font-family:var(--mono);font-size:10px;color:var(--ink-faint);margin-top:14px;line-height:1.7;text-align:center;}
   .foot a{color:var(--gold-deep);text-decoration:none;}
 </style>
 </head>
@@ -90,7 +118,7 @@
     <div class="top">
       <div class="brand">
         <span class="crown">
-          <svg viewBox="0 0 48 48" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg viewBox="0 0 48 48" width="21" height="21" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs><linearGradient id="c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a6e"/><stop offset="1" stop-color="#c2160c"/></linearGradient></defs>
             <path d="M5 35 L8.2 16.5 L17 23.5 L24 9 L31 23.5 L39.8 16.5 L43 35 Z" fill="url(#c)" stroke="#ff8a7e" stroke-width="0.7" stroke-linejoin="round"/>
             <rect x="6" y="34.5" width="36" height="5" rx="1.2" fill="url(#c)"/>
@@ -106,12 +134,13 @@
     </div>
 
     <h1>Account</h1>
-    <p class="hello" id="hello">Manage your login, profile, and membership.</p>
+    <p class="hello" id="hello">Manage your login, security, and membership.</p>
 
-    <!-- Login / username -->
-    <div class="card">
-      <h2>Login</h2>
-      <p class="desc">Your username is how you sign in. Changing your email re-sends a verification link to the new address.</p>
+    <!-- Identity -->
+    <div class="card" style="--d:.05s">
+      <div class="eyebrow">01 — Identity</div>
+      <h2>Login &amp; email</h2>
+      <p class="desc">Your username is how you sign in. Updating your email re-sends a verification link to the new address.</p>
       <label for="username">Username</label>
       <input id="username" type="text" autocomplete="username" />
       <button class="btn" id="saveUser">Save username</button>
@@ -126,8 +155,9 @@
       <div class="msg" id="emailMsg"></div>
     </div>
 
-    <!-- Password -->
-    <div class="card">
+    <!-- Security -->
+    <div class="card" style="--d:.13s">
+      <div class="eyebrow">02 — Security</div>
       <h2>Password</h2>
       <p class="desc">Choose a strong password — at least 8 characters.</p>
       <label for="curpw">Current password</label>
@@ -146,8 +176,38 @@
       <div class="msg" id="pwMsg"></div>
     </div>
 
-    <!-- Contact Korvus -->
-    <div class="card">
+    <!-- Membership & billing -->
+    <div class="card" style="--d:.21s">
+      <div class="eyebrow">03 — Membership</div>
+      <h2>Membership &amp; billing</h2>
+      <div class="billhead">
+        <div>
+          <div class="planname" id="planName">Observer</div>
+          <div class="plansub" id="planSub">Free · 15-minute delayed data</div>
+        </div>
+        <span class="sb free" id="statusBadge">Free</span>
+      </div>
+      <div class="dgrid">
+        <div class="drow"><span class="dk">Plan</span><span class="dv" id="dPlan">Free</span></div>
+        <div class="drow"><span class="dk">Status</span><span class="dv" id="dStatus">—</span></div>
+        <div class="drow"><span class="dk">Price</span><span class="dv" id="dPrice">$0</span></div>
+        <div class="drow"><span class="dk">Renews</span><span class="dv" id="dRenews">—</span></div>
+      </div>
+      <button class="btn block" id="billBtn">Go Pro</button>
+      <div class="msg" id="billMsg"></div>
+      <div class="hr"></div>
+      <div class="alertrow">
+        <label class="switch"><input type="checkbox" id="alertToggle" /><span class="slider"></span></label>
+        <div>
+          <div class="alabel">High-impact email alerts</div>
+          <div class="anote" id="alertNote">An email the moment the engine flags a high-impact event.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Support -->
+    <div class="card" style="--d:.29s">
+      <div class="eyebrow">04 — Support</div>
       <h2>Contact Korvus</h2>
       <p class="desc">Questions about your account, billing, or the platform? Here's how to reach the team behind Korvus.</p>
       <div class="contact">
@@ -158,69 +218,76 @@
       </div>
     </div>
 
-    <!-- Billing -->
-    <div class="card">
-      <h2>Membership &amp; billing</h2>
-      <p class="desc">Your current plan and payment management.</p>
-      <div class="planrow">
-        <div>
-          <span class="pill free" id="planPill">FREE</span>
-          <div class="planmeta" id="planMeta">Delayed market data.</div>
-        </div>
-        <button class="btn" id="billBtn">Go Pro</button>
-      </div>
-      <div class="hr"></div>
-      <div class="alertrow">
-        <label class="switch"><input type="checkbox" id="alertToggle" /><span class="slider"></span></label>
-        <div>
-          <div class="alabel">High-impact email alerts</div>
-          <div class="anote" id="alertNote">An email the moment the engine flags a high-impact event.</div>
-        </div>
-      </div>
-      <div class="msg" id="billMsg"></div>
-    </div>
-
     <p class="foot">Payments are handled by Stripe — your card details never touch Korvus servers.<br>
-      Questions? <a href="mailto:BlackCrownVxJ.LLC@outlook.com">BlackCrownVxJ.LLC@outlook.com</a> · <a href="/legal">Legal &amp; disclosures</a></p>
+      Manage billing opens the secure Stripe portal for your payment method, invoices, and cancellation.</p>
   </div>
 
 <script>
 function setMsg(id, kind, text){ const e=document.getElementById(id); e.className='msg '+kind; e.textContent=text; }
-function fmtDate(iso){ try{ return new Date(iso).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}); }catch(e){ return ''; } }
+function fmtDate(iso){ try{ return new Date(iso).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}); }catch(e){ return '—'; } }
+function statusBadge(s){
+  s = (s||'').toLowerCase();
+  if(s==='active')   return {cls:'ok',   text:'Active',   label:'Active'};
+  if(s==='trialing') return {cls:'ok',   text:'Trial',    label:'Trialing'};
+  if(s==='past_due'||s==='unpaid'||s==='incomplete'||s==='incomplete_expired')
+                     return {cls:'warn', text:s.replace(/_/g,' '), label:s.replace(/_/g,' ')};
+  if(s==='canceled'||s==='cancelled')
+                     return {cls:'bad',  text:'Canceled', label:'Canceled'};
+  return {cls:'ok', text:'Active', label:'Active'};
+}
 
 let ME = {};
 async function load(){
   try{ ME = await (await fetch('/api/me',{cache:'no-store'})).json(); }catch(e){ ME = {}; }
   if(ME.auth === false){ location.href='/login'; return; }
 
-  document.getElementById('hello').textContent =
-    'Signed in as ' + (ME.username || '—') + '.';
+  document.getElementById('hello').textContent = 'Signed in as ' + (ME.username || '—');
   document.getElementById('username').value = ME.username || '';
   document.getElementById('email').value = ME.email || '';
+
   const vb = document.getElementById('verifBadge');
   const rl = document.getElementById('resendLink');
   if(ME.verified){ vb.className='vbadge ok'; vb.textContent='verified'; rl.style.display='none'; }
   else { vb.className='vbadge no'; vb.textContent='unverified'; rl.style.display='inline'; }
 
-  const pill = document.getElementById('planPill');
-  const meta = document.getElementById('planMeta');
-  const billBtn = document.getElementById('billBtn');
-  if(ME.tier === 'pro'){
-    pill.className='pill pro'; pill.textContent='PRO';
-    meta.textContent = 'Real-time data' + (ME.current_period_end ? ' · renews ' + fmtDate(ME.current_period_end) : '') + '.';
-    billBtn.textContent = 'Manage billing'; billBtn.dataset.action = 'portal';
+  // ---- membership / billing details ----
+  const isPro = ME.tier === 'pro';
+  const planName = document.getElementById('planName');
+  const planSub  = document.getElementById('planSub');
+  const sb       = document.getElementById('statusBadge');
+  const dPlan    = document.getElementById('dPlan');
+  const dStatus  = document.getElementById('dStatus');
+  const dPrice   = document.getElementById('dPrice');
+  const dRenews  = document.getElementById('dRenews');
+  const billBtn  = document.getElementById('billBtn');
+
+  if(isPro){
+    const b = statusBadge(ME.subscription_status);
+    planName.textContent = 'Operator';
+    planSub.textContent  = 'Pro · real-time data on every panel';
+    sb.className = 'sb ' + b.cls; sb.textContent = b.text;
+    dPlan.textContent   = 'Operator (Pro)';
+    dStatus.textContent = b.label;
+    dPrice.textContent  = ME.price_display || '$3.99/mo';
+    dRenews.textContent = ME.current_period_end ? fmtDate(ME.current_period_end) : '—';
+    billBtn.textContent = 'Manage billing'; billBtn.dataset.action = 'portal'; billBtn.disabled = false;
   } else {
-    pill.className='pill free'; pill.textContent='FREE';
-    meta.textContent = 'Market data on a 15-minute delay.';
-    if(ME.billing_enabled){ billBtn.textContent='Go Pro'; billBtn.dataset.action='upgrade'; }
-    else { billBtn.textContent='Memberships soon'; billBtn.disabled=true; }
+    planName.textContent = 'Observer';
+    planSub.textContent  = 'Free · 15-minute delayed data';
+    sb.className = 'sb free'; sb.textContent = 'Free';
+    dPlan.textContent   = 'Observer (Free)';
+    dStatus.textContent = 'No active subscription';
+    dPrice.textContent  = '$0';
+    dRenews.textContent = '—';
+    if(ME.billing_enabled){ billBtn.textContent='Go Pro'; billBtn.dataset.action='upgrade'; billBtn.disabled=false; }
+    else { billBtn.textContent='Memberships open soon'; billBtn.disabled=true; }
   }
 
-  // high-impact email alerts toggle
+  // ---- high-impact email alerts toggle ----
   const at = document.getElementById('alertToggle');
   const an = document.getElementById('alertNote');
   at.checked = (ME.alert_opt_in !== 0);
-  if(ME.tier === 'pro'){
+  if(isPro){
     at.disabled = false;
     an.textContent = 'An email the moment the engine flags a high-impact event.';
   } else {
@@ -240,6 +307,7 @@ document.getElementById('saveUser').onclick = async () => {
   const v = document.getElementById('username').value.trim();
   const {ok, data} = await post('/api/account/username', {username: v});
   setMsg('userMsg', ok?'ok':'err', data.message || (ok?'Saved.':'Could not save.'));
+  if(ok) document.getElementById('hello').textContent = 'Signed in as ' + v;
 };
 
 document.getElementById('savePw').onclick = async () => {
