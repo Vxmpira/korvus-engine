@@ -10,7 +10,7 @@
 <style>
   :root{
     --vanta:#050506;--ink:#0c0c0f;--ink-2:#121217;--white:#f4f5f7;
-    --crimson:#ff2740;--orange:#ff8a1f;--green:#39d353;--yellow:#ffd400;
+    --crimson:#ff2740;--orange:#ff8a1f;--green:#39d353;--yellow:#ffd400;--info:#5b8bf5;
     --muted:#74747e;--line:rgba(255,255,255,.08);--line-strong:rgba(255,255,255,.16);
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -89,6 +89,10 @@
     Owner console · server-enforced. Figures read live from your database &amp; environment.
     Revenue is an estimate derived from member counts — wire your billing module for exact billed totals.
     API keys are shown as present/absent only, never the values.
+    <br><br>
+    <span style="color:var(--green)">●</span> ok &nbsp;
+    <span style="color:var(--crimson)">●</span> needs attention &nbsp;
+    <span style="color:var(--info)">●</span> info
   </div>
 </div>
 
@@ -103,7 +107,7 @@ function pill(label, ok, val){
     (val!=null?'<span class="val">'+esc(val)+'</span>':'')+'</div>';
 }
 function infoPill(label, val){
-  return '<div class="pill"><span class="dot" style="background:var(--orange);box-shadow:0 0 8px var(--orange)"></span>'+
+  return '<div class="pill"><span class="dot" style="background:var(--info);box-shadow:0 0 8px var(--info)"></span>'+
     '<span class="lab">'+esc(label)+'</span><span class="val">'+esc(val)+'</span></div>';
 }
 

@@ -276,6 +276,50 @@ async function generate(){
 
 function escapeHtml(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
 function flat(it){return it.post?it.post:[it.hook?"HOOK: "+it.hook:"",it.caption?"\nCAPTION:\n"+it.caption:"",it.script?"\nSCRIPT:\n"+it.script:""].filter(Boolean).join("\n");}
+/* ---------- BRANDED IMAGE CARD (canvas → PNG, no external service) ---------- */
+function wrapText(ctx,text,maxW){
+  const words=String(text).split(/\s+/),lines=[];let line="";
+  for(const w of words){const test=line?line+" "+w:w;
+    if(ctx.measureText(test).width>maxW&&line){lines.push(line);line=w;}else line=test;}
+  if(line)lines.push(line);return lines;
+}
+async function makeCard(it){
+  try{if(document.fonts&&document.fonts.ready)await document.fonts.ready;}catch(e){}
+  const video=VIDEO(state.platform),W=1080,H=video?1920:1080;
+  const cv=document.createElement("canvas");cv.width=W;cv.height=H;
+  const x=cv.getContext("2d");
+  x.fillStyle="#050506";x.fillRect(0,0,W,H);
+  const g=x.createRadialGradient(W*0.78,H*0.10,0,W*0.78,H*0.10,W*1.05);
+  g.addColorStop(0,"rgba(255,39,64,0.30)");g.addColorStop(0.55,"rgba(255,39,64,0.05)");g.addColorStop(1,"rgba(255,39,64,0)");
+  x.fillStyle=g;x.fillRect(0,0,W,H);
+  x.fillStyle="#ff2740";x.fillRect(96,96,90,8);
+  x.textBaseline="top";x.font="700 84px Anton, sans-serif";
+  let wx=96;const wy=128;
+  x.fillStyle="#f4f5f7";x.fillText("KOR",wx,wy);wx+=x.measureText("KOR").width;
+  x.fillStyle="#ff2740";x.fillText("V",wx,wy);wx+=x.measureText("V").width;
+  x.fillStyle="#f4f5f7";x.fillText("US",wx,wy);
+  x.font="500 24px 'JetBrains Mono', monospace";x.fillStyle="#ffd400";
+  x.fillText("MARKET INTELLIGENCE",100,wy+96);
+  const main=(video?(it.hook||it.caption||""):(it.post||it.caption||"")).trim();
+  const maxW=W-200;
+  let fs=main.length<70?96:main.length<140?72:main.length<240?56:44;
+  x.font="700 "+fs+"px Anton, sans-serif";
+  let lines=wrapText(x,main,maxW);
+  while(lines.length*(fs*1.16)>(H-720)&&fs>28){fs-=6;x.font="700 "+fs+"px Anton, sans-serif";lines=wrapText(x,main,maxW);}
+  const lh=fs*1.16;let ty=Math.max(wy+220,(H-lines.length*lh)/2-60);
+  x.fillStyle="#f4f5f7";
+  for(const ln of lines){x.fillText(ln,100,ty);ty+=lh;}
+  x.font="700 30px 'JetBrains Mono', monospace";x.fillStyle="#ffd400";
+  x.fillText("BlackCrownVxJ.LLC",100,H-152);
+  x.font="500 26px 'JetBrains Mono', monospace";x.fillStyle="#9a9aa2";
+  x.fillText("korvus.industries",100,H-110);
+  x.font="500 18px 'JetBrains Mono', monospace";x.fillStyle="#5a5a62";
+  x.fillText("Market intelligence \u2014 not financial advice.",100,H-66);
+  await new Promise(res=>cv.toBlob(b=>{const a=document.createElement("a");a.href=URL.createObjectURL(b);
+    a.download="korvus-"+state.platform.toLowerCase()+"-"+Date.now()+".png";a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),2000);res();},"image/png"));
+}
+
 function renderItems(items){
   const out=$("output"),lim=limits[state.platform],video=VIDEO(state.platform);
   out.innerHTML=items.map((it,idx)=>{let body;
@@ -287,13 +331,14 @@ function renderItems(items){
         (it.caption?'<div class="field cap"><div class="flbl">Caption</div><div class="fv">'+escapeHtml(it.caption)+'</div></div>':"")+
         (it.script?'<div class="field script"><div class="flbl">Reel script</div><div class="fv">'+escapeHtml(it.script)+'</div></div>':"");}
     const primary=video?'<button data-act="copycap">Copy caption</button><button data-act="copyall">Copy all</button>':'<button data-act="copyall">Copy</button>';
-    return '<div class="card">'+body+'<div class="actions">'+primary+'<button data-act="save">★ Save</button></div></div>';
+    return '<div class="card">'+body+'<div class="actions">'+primary+'<button data-act="img">🎨 Image</button><button data-act="save">★ Save</button></div></div>';
   }).join("");
   out.querySelectorAll(".card").forEach((card,idx)=>{const it=items[idx],all=flat(it);
     const cp=(btn,txt)=>{navigator.clipboard.writeText(txt).then(()=>{const o=btn.textContent;btn.textContent="Copied";btn.classList.add("done");setTimeout(()=>{btn.textContent=o;btn.classList.remove("done")},1300);});};
     const ca=card.querySelector('[data-act="copyall"]');if(ca)ca.addEventListener("click",e=>cp(e.target,all));
     const cc=card.querySelector('[data-act="copycap"]');if(cc)cc.addEventListener("click",e=>cp(e.target,it.caption||all));
     card.querySelector('[data-act="save"]').addEventListener("click",e=>{savePost(all);e.target.textContent="Saved ✓";e.target.classList.add("done");setTimeout(()=>{e.target.textContent="★ Save";e.target.classList.remove("done")},1300);});
+    const ig=card.querySelector('[data-act="img"]');if(ig)ig.addEventListener("click",e=>{const b=e.target,o=b.textContent;b.textContent="Rendering…";makeCard(it).then(()=>{b.textContent="Saved ✓";b.classList.add("done");setTimeout(()=>{b.textContent=o;b.classList.remove("done")},1400);}).catch(()=>{b.textContent="Failed";setTimeout(()=>b.textContent=o,1400);});});
   });
 }
 
