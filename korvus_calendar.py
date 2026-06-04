@@ -51,7 +51,12 @@ CALENDAR_PROVIDER = os.getenv("CALENDAR_PROVIDER", "auto").lower().strip()
 FMP_KEY           = os.getenv("FMP_KEY", "").strip()
 
 FF_URL  = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
-FMP_URL = "https://financialmodelingprep.com/api/v3/economic_calendar"
+# FMP moved the economic calendar to the /stable/ path; the old /api/v3/ route
+# now returns 403 for newer keys. Try stable first, fall back to legacy v3.
+FMP_URLS = [
+    "https://financialmodelingprep.com/stable/economic-calendar",   # current
+    "https://financialmodelingprep.com/api/v3/economic_calendar",   # legacy fallback
+]
 
 UA = "Mozilla/5.0 (compatible; korvus-engine/0.2; +https://korvus.industries)"
 
@@ -104,6 +109,20 @@ def _forexfactory() -> list:
     return out
 
 
+# Normalize FMP's "YYYY-MM-DD HH:MM:SS" (UTC, no offset) into an unambiguous
+# ISO-8601 string so the browser converts it to ET correctly. Forex Factory
+# already sends an offset, so its dates pass through untouched.
+def _fmp_date_iso(s: str) -> str:
+    s = (s or "").strip()
+    if not s:
+        return ""
+    if "T" in s:                       # already ISO-ish (has offset/Z) — leave it
+        return s
+    if " " in s:                       # "YYYY-MM-DD HH:MM:SS" in UTC
+        return s.replace(" ", "T", 1) + "+00:00"
+    return s                           # date-only (holidays / all-day)
+
+
 # ----------------------------------------------------------------------------
 # Provider: Financial Modeling Prep (licensed; includes ACTUAL values)
 # ----------------------------------------------------------------------------
@@ -115,14 +134,35 @@ def _fmp() -> list:
     frm = today - dt.timedelta(days=today.weekday())     # Monday of this week
     to  = frm + dt.timedelta(days=6)                      # Sunday
     params = {"from": frm.isoformat(), "to": to.isoformat(), "apikey": FMP_KEY}
-    r = requests.get(FMP_URL, params=params, timeout=20, headers={"User-Agent": UA})
-    if r.status_code != 200:
-        print(f"  [calendar] FMP returned {r.status_code} — skipping")
+
+    raw = None
+    for url in FMP_URLS:
+        tag = url.rsplit("/", 1)[-1]
+        try:
+            r = requests.get(url, params=params, timeout=20, headers={"User-Agent": UA})
+        except Exception as e:
+            print(f"  [calendar] FMP {tag} request error: {e} — trying next")
+            continue
+        if r.status_code != 200:
+            print(f"  [calendar] FMP {tag} returned {r.status_code} — trying next")
+            continue
+        try:
+            j = r.json()
+        except Exception:
+            print(f"  [calendar] FMP {tag} returned non-JSON — trying next")
+            continue
+        if isinstance(j, dict) and (j.get("Error Message") or j.get("error")):
+            print(f"  [calendar] FMP {tag} error: {str(j.get('Error Message') or j.get('error'))[:140]}")
+            continue
+        if isinstance(j, list):
+            raw = j
+            print(f"  [calendar] FMP via {tag}: {len(j)} raw rows")
+            break
+        print(f"  [calendar] FMP {tag} unexpected response: {str(j)[:120]}")
+
+    if raw is None:
         return []
-    raw = r.json()
-    if not isinstance(raw, list):
-        print(f"  [calendar] FMP unexpected response: {str(raw)[:120]}")
-        return []
+
     out = []
     for e in raw:
         code = (e.get("country") or "").strip().upper()
@@ -131,7 +171,7 @@ def _fmp() -> list:
             "title":    (e.get("event") or "").strip(),
             "country":  (ccy or "").strip().upper(),
             "impact":   _norm_impact(e.get("impact")),
-            "date":     e.get("date") or "",
+            "date":     _fmp_date_iso(e.get("date")),
             "forecast": str(e.get("estimate") if e.get("estimate") is not None else ""),
             "previous": str(e.get("previous") if e.get("previous") is not None else ""),
             "actual":   str(e.get("actual") if e.get("actual") is not None else ""),
