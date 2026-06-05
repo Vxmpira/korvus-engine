@@ -54,6 +54,17 @@ auth.init_auth_db()
 login_manager = LoginManager(app)
 login_manager.login_view = "login_page"
 
+# Owner v2 console + Promo Studio live in blueprints. Registering them here wires:
+#   /admin               -> admin.html  (hardened v2 console)
+#   /agent               -> agent.html  (Promo Studio)
+#   /api/admin/stats     -> hardened, self-sufficient stats
+#   /api/promo-generate, /api/promo-image  -> owner-gated generation
+# Both gate themselves server-side (korvus_admin.is_admin / admin_required).
+from korvus_admin import korvus_admin
+from korvus_promo_api import korvus_promo_api
+app.register_blueprint(korvus_admin)
+app.register_blueprint(korvus_promo_api)
+
 
 class KorvusUser(UserMixin):
     """Thin wrapper so Flask-Login can track the logged-in member."""
@@ -430,91 +441,6 @@ def _is_tradovate_owner():
     the real-time data stays the owner's own personal-use entitlement."""
     return (current_user.is_authenticated and TRADOVATE_OWNER
             and current_user.username == TRADOVATE_OWNER)
-
-
-@app.route("/admin")
-@login_required
-def admin_page():
-    if not _is_admin():
-        return redirect("/")
-    return send_from_directory(HERE, "korvus_admin.html")
-
-
-@app.route("/api/admin/stats")
-@login_required
-def admin_stats():
-    if not _is_admin():
-        return jsonify({"error": "forbidden"}), 403
-
-    out = {"members": {}, "engine": {}, "online": 0,
-           "mrr_est": None, "price_display": billing.price_display(),
-           "subscribers": []}
-
-    if not os.path.exists(DB_PATH):
-        return jsonify(out)
-
-    conn = db()
-    # --- members (users table) ---
-    try:
-        m = {}
-        m["total"]    = conn.execute("SELECT COUNT(*) c FROM users").fetchone()["c"]
-        m["pro"]      = conn.execute("SELECT COUNT(*) c FROM users WHERE tier='pro'").fetchone()["c"]
-        m["free"]     = m["total"] - m["pro"]
-        m["verified"] = conn.execute("SELECT COUNT(*) c FROM users WHERE email_verified=1").fetchone()["c"]
-        m["active_subs"] = conn.execute(
-            "SELECT COUNT(*) c FROM users WHERE subscription_status IN ('active','trialing')"
-        ).fetchone()["c"]
-        now = dt.datetime.now(dt.timezone.utc)
-        d7  = (now - dt.timedelta(days=7)).isoformat()
-        d30 = (now - dt.timedelta(days=30)).isoformat()
-        m["signups_7d"]  = conn.execute("SELECT COUNT(*) c FROM users WHERE created_at >= ?", (d7,)).fetchone()["c"]
-        m["signups_30d"] = conn.execute("SELECT COUNT(*) c FROM users WHERE created_at >= ?", (d30,)).fetchone()["c"]
-        out["members"] = m
-        subs = conn.execute(
-            "SELECT username, subscription_status, current_period_end, created_at "
-            "FROM users WHERE tier='pro' ORDER BY created_at DESC LIMIT 50"
-        ).fetchall()
-        out["subscribers"] = [
-            {"username": r["username"],
-             "status": r["subscription_status"] or "—",
-             "renews": to_et(r["current_period_end"]) if r["current_period_end"] else "—",
-             "joined": to_et(r["created_at"]) if r["created_at"] else "—"}
-            for r in subs]
-    except Exception as e:
-        out["members"] = {"error": str(e)}
-
-    # --- MRR estimate: active subs x parsed monthly price (honest estimate) ---
-    try:
-        import re as _re
-        mt = _re.search(r"(\d+(?:\.\d+)?)", billing.price_display() or "")
-        if mt and isinstance(out["members"].get("active_subs"), int):
-            out["mrr_est"] = round(float(mt.group(1)) * out["members"]["active_subs"], 2)
-    except Exception:
-        pass
-
-    # --- engine health (items table) ---
-    try:
-        e = {}
-        e["total"]  = conn.execute("SELECT COUNT(*) c FROM items").fetchone()["c"]
-        e["scored"] = conn.execute("SELECT COUNT(*) c FROM items WHERE processed=1").fetchone()["c"]
-        e["high_impact"] = conn.execute(
-            "SELECT COUNT(*) c FROM items WHERE impact='high' AND processed=1"
-        ).fetchone()["c"]
-        row = conn.execute("SELECT created_at FROM items ORDER BY created_at DESC LIMIT 1").fetchone()
-        e["last_update"] = to_et(row["created_at"]) if row else ""
-        out["engine"] = e
-    except Exception as e:
-        out["engine"] = {"error": str(e)}
-    conn.close()
-
-    # --- online now (recent heartbeats) ---
-    try:
-        cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(minutes=5)
-        out["online"] = sum(1 for seen in _online.values() if seen >= cutoff)
-    except Exception:
-        out["online"] = 0
-
-    return jsonify(out)
 
 
 @app.route("/legal")
