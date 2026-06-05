@@ -183,6 +183,16 @@
   html[data-theme="light"] .themetoggle .ic-sun{display:none;}
   html[data-theme="light"] .themetoggle .ic-moon{display:block;}
 
+  /* owner-only header tools (Promo Studio + Admin) — revealed for Vxmpira.N */
+  .ownerbtn{margin-left:8px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+    text-decoration:none;padding:7px 13px;border-radius:999px;align-self:center;white-space:nowrap;
+    display:inline-flex;align-items:center;gap:5px;transition:filter .18s,transform .15s,border-color .2s,background .2s;
+    color:#0a0d12;background:var(--crimson);border:1px solid var(--crimson);}
+  .ownerbtn:hover{filter:brightness(1.08);transform:translateY(-1px);}
+  .ownerbtn.admin{color:var(--gold);background:transparent;border:1px solid var(--gold-line);}
+  .ownerbtn.admin:hover{border-color:var(--gold);background:var(--gold-soft);filter:none;}
+  .ownerbtn svg{width:13px;height:13px;display:block;}
+
   *{box-sizing:border-box;}
   html,body{margin:0;height:100%;}
   body{
@@ -788,6 +798,14 @@
     <div class="clock"><span id="clock">--:--:--</span><small>New York / ET</small></div>
     <a class="logoutbtn" href="/account" id="acctBtn" style="display:none;">Account</a>
     <a class="gopro" href="/upgrade" id="goProBtn" style="display:none;">⬆ Go Pro</a>
+    <a class="ownerbtn" href="/agent" id="promoBtn" title="Promo Studio (owner only)" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.1 5.4L19.8 9l-4.4 3.6L16.8 19 12 15.7 7.2 19l1.4-6.4L4.2 9l5.7-.6z"/></svg>
+      Promo
+    </a>
+    <a class="ownerbtn admin" href="/admin" id="adminBtn" title="Admin (owner only)" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.56V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.12-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.56-1.12 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H10a1.7 1.7 0 0 0 1-1.56V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V10a1.7 1.7 0 0 0 1.56 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      Admin
+    </a>
     <a class="logoutbtn" href="/logout" title="Log out" id="logoutBtn" style="display:none;">Log out</a>
   </header>
 
@@ -1491,6 +1509,16 @@ async function loadMe(){
     if(me.auth){
       USER_TIER = me.tier || 'free';
       IS_OWNER = !!me.is_owner;
+      // Owner-only tools — Promo Studio + Admin, exclusive to the Vxmpira.N account.
+      // Gated on the server's is_owner flag (TRADOVATE_OWNER), with the username as
+      // an explicit fallback. The buttons are cosmetic; /agent and /admin enforce
+      // their own server-side gates regardless of what's shown here.
+      if(IS_OWNER || me.username === 'Vxmpira.N'){
+        ['promoBtn','adminBtn'].forEach(function(id){
+          var el = document.getElementById(id);
+          if(el) el.style.display = 'inline-flex';
+        });
+      }
       const lo = document.getElementById('logoutBtn');
       if(lo) lo.style.display = 'inline-block';
       const ac = document.getElementById('acctBtn');
