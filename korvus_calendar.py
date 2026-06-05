@@ -233,7 +233,20 @@ def _norm_title(t: str) -> str:
 
 def _canon(t: str) -> str:
     n = _norm_title(t)
-    return _TITLE_ALIASES.get(n, n)
+    if n in _TITLE_ALIASES:
+        return _TITLE_ALIASES[n]
+    # Concept-level canon for releases the two feeds name very differently.
+    # Nonfarm payrolls is the worst offender: Forex Factory calls it
+    # "Non-Farm Employment Change" while FMP calls it "Nonfarm Payrolls"
+    # (plus variants like "Non Farm Payrolls" / "Total Nonfarm Payrolls").
+    # After normalization those share ZERO tokens, so both the alias dict and
+    # the token-overlap fallback miss them and the actual never attaches.
+    # Collapse every nonfarm spelling to one key here. ADP's separate
+    # private-payrolls print is routed to its own canon instead.
+    has_nonfarm = ("nonfarm" in n) or ("non" in n and "farm" in n) or ("nfp" in n.split())
+    if has_nonfarm and "private" not in n:
+        return "adp employment change" if "adp" in n else "nonfarm payrolls"
+    return n
 
 def _ts(s):
     try:
@@ -255,13 +268,24 @@ def _merge() -> list:
     for e in fmp:
         idx.setdefault((_canon(e.get("title")), (e.get("country") or "").upper()), []).append(e)
 
+    def _has_actual(c):
+        a = c.get("actual") if c else None
+        return a not in (None, "")
+
     def _pick(cands, ref_date):
-        if len(cands) == 1:
-            return cands[0]
+        cands = [c for c in cands if c]            # drop any None from the fallback
+        if not cands:
+            return None
+        # Prefer candidates that actually carry a released value, so a duplicate
+        # or revision row with an empty actual can't shadow the real print
+        # (this is what was eating the Non-Farm Payrolls actual).
+        pool = [c for c in cands if _has_actual(c)] or cands
+        if len(pool) == 1:
+            return pool[0]
         ref = _ts(ref_date)
         if not ref:
-            return cands[0]
-        return min(cands, key=lambda c: abs(((_ts(c.get("date")) or ref) - ref).total_seconds()))
+            return pool[0]
+        return min(pool, key=lambda c: abs(((_ts(c.get("date")) or ref) - ref).total_seconds()))
 
     matched = 0
     for e in ff:
@@ -285,10 +309,16 @@ def _merge() -> list:
         if not cands:
             continue
         m = _pick(cands, e.get("date"))
+        if not m:
+            continue
         act = m.get("actual")
         if act not in (None, ""):
             e["actual"] = str(act)
             matched += 1
+    nfp = next((x for x in ff if _canon(x.get("title")) == "nonfarm payrolls"), None)
+    if nfp is not None:
+        print(f"  [calendar] merge: NFP '{nfp.get('title')}' actual -> "
+              f"{nfp.get('actual') or '(none — FMP returned no actual for it at fetch time)'}")
     print(f"  [calendar] merge: {len(ff)} FF events · {matched} actuals matched from FMP")
     return ff
 
