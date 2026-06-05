@@ -76,6 +76,113 @@
     --r:14px;
     --shadow:0 18px 50px -22px rgba(0,0,0,.9);
   }
+
+  /* ============================================================================
+     LIGHT MODE — "paper terminal". Crimson stays the signature accent; the void
+     black inverts to a soft off-white, ink flips to deep slate. Activated by
+     html[data-theme="light"] (toggled in the header, persisted to localStorage).
+     Most of the UI rides the design tokens, so redefining them flips ~80%; the
+     rules below patch the handful of surfaces that hard-code dark/white values.
+     ============================================================================ */
+  html[data-theme="light"]{
+    --bg:#f3f5fa;
+    --bg-2:#e8ecf4;
+    --panel:rgba(255,255,255,.86);
+    --panel-solid:#ffffff;
+    --line:rgba(16,22,40,.14);
+    --line-soft:rgba(16,22,40,.07);
+
+    --ink:#0d1424;
+    --ink-dim:#4a5468;
+    --ink-faint:#8b93a7;
+    --white-glow:rgba(13,20,36,.14);
+
+    --bull:#08925a;  --bull-dim:#86d3ad;
+    --bear:#d51731;  --bear-dim:#eaa3ac;
+    --neutral:#69728a;
+
+    --gold:#dd0f37;       --gold-deep:#a90c2a;
+    --gold-soft:rgba(221,15,55,.09); --gold-line:rgba(221,15,55,.32);
+    --crimson:#dd0f37;    --crimson-deep:#a90c2a;  --crimson-bright:#ff2347;
+    --crimson-glow:rgba(221,15,55,.30);
+    --crown:#dd0f37;      --crown-deep:#a90c2a;    --crown-glow:rgba(221,15,55,.40);
+    --teal:#dd0f37;
+
+    --hi:#d51731; --med:#b9690a; --lo:#8b93a7;
+    --med-glow:rgba(185,105,10,.30); --med-line:rgba(185,105,10,.32); --med-soft:rgba(185,105,10,.10);
+    --shadow:0 18px 50px -26px rgba(16,22,40,.30);
+  }
+  /* atmosphere + structural surfaces that hard-code dark/white values */
+  html[data-theme="light"] body{background:var(--bg);}
+  html[data-theme="light"] .aurora{opacity:.16;}
+  html[data-theme="light"] body::after{
+    background:
+      linear-gradient(rgba(16,22,40,.035) 1px,transparent 1px) 0 0/100% 46px,
+      linear-gradient(90deg,rgba(16,22,40,.035) 1px,transparent 1px) 0 0/46px 100%,
+      radial-gradient(circle at 50% 0%,rgba(16,22,40,.015),transparent 55%);
+  }
+  html[data-theme="light"] header{
+    background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(243,245,250,.72));
+    border-bottom:1px solid var(--line);
+  }
+  html[data-theme="light"] .glyph{
+    background:radial-gradient(circle at 30% 25%,#ffffff,#ffe7eb);
+    border-color:rgba(221,15,55,.32);
+  }
+  html[data-theme="light"] .members{border-color:var(--line);background:rgba(16,22,40,.03);}
+  html[data-theme="light"] .sess{border-color:var(--line);}
+  html[data-theme="light"] .discord{color:#3b46c4;border-color:rgba(88,101,242,.40);background:rgba(88,101,242,.08);}
+  html[data-theme="light"] .discord:hover{color:#2730a8;background:rgba(88,101,242,.16);}
+  html[data-theme="light"] .ribbonwrap::after{background:linear-gradient(90deg,rgba(243,245,250,0),rgba(243,245,250,.94));}
+  html[data-theme="light"] .ribbon{background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(243,245,250,.5));}
+  html[data-theme="light"] .fut:hover{background:rgba(221,15,55,.05);}
+  html[data-theme="light"] .ctxband{background:linear-gradient(180deg,rgba(255,255,255,.66),rgba(243,245,250,.46));}
+  /* panels — drop the dark glow-pulse, use a clean light card shadow */
+  html[data-theme="light"] .panel{
+    border-color:var(--line);
+    animation:rise .7s ease both;
+    box-shadow:
+      0 0 0 1px rgba(221,15,55,.10),
+      inset 0 1px 0 rgba(255,255,255,.8),
+      0 18px 44px -26px rgba(16,22,40,.32);
+  }
+  html[data-theme="light"] .panel:hover{
+    border-color:rgba(221,15,55,.34);
+    box-shadow:
+      0 0 0 1px rgba(221,15,55,.26),
+      0 0 30px -8px rgba(221,15,55,.30),
+      0 18px 44px -22px rgba(16,22,40,.36);
+  }
+  html[data-theme="light"] .phead{border-bottom:1px solid var(--line);box-shadow:none;}
+  html[data-theme="light"] .phead h2{text-shadow:none;}
+  html[data-theme="light"] .catfilter{background:rgba(16,22,40,.04);}
+  html[data-theme="light"] .item:hover{background:rgba(16,22,40,.04);}
+  html[data-theme="light"] .accent.low{background:linear-gradient(#c3c9d6,#aab2c2);}
+  html[data-theme="light"] .badge.x{color:#1d6fb8;border-color:rgba(29,111,184,.30);}
+  html[data-theme="light"] .badge.reddit{color:#d2521a;border-color:rgba(210,82,26,.30);}
+  html[data-theme="light"] .badge.wire{color:#6a4fd0;border-color:rgba(106,79,208,.30);}
+  html[data-theme="light"] .inst{border-color:var(--line);background:rgba(16,22,40,.03);}
+  html[data-theme="light"] .inst:hover{border-color:rgba(16,22,40,.40);}
+  html[data-theme="light"] .inst[data-name]:hover::after{border-color:var(--line);box-shadow:0 6px 20px -6px rgba(16,22,40,.30),0 0 16px -6px var(--crimson-glow);}
+  html[data-theme="light"] .inst[data-name]:hover::before{border-top-color:#ffffff;}
+  html[data-theme="light"] .wrow:hover{background:rgba(16,22,40,.03);}
+  html[data-theme="light"] footer{background:rgba(255,255,255,.62);}
+  html[data-theme="light"] .logoutbtn:hover{border-color:rgba(16,22,40,.40);}
+  html[data-theme="light"] .modal-bg{background:rgba(16,22,40,.45);}
+  html[data-theme="light"] .modal{border-color:var(--line);box-shadow:0 0 50px -10px var(--crimson-glow),0 30px 70px -30px rgba(16,22,40,.4);}
+  html[data-theme="light"] .modal textarea{background:#f3f5fa;}
+  html[data-theme="light"] .gopro,html[data-theme="light"] .modal button.primary{color:#ffffff;}
+
+  /* theme toggle button (sits in the header next to the clock) */
+  .themetoggle{display:inline-grid;place-items:center;width:34px;height:34px;flex:none;cursor:pointer;
+    border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.03);color:var(--ink-dim);
+    transition:color .2s,border-color .2s,background .2s,transform .15s;}
+  .themetoggle:hover{color:var(--ink);border-color:var(--gold-line);background:var(--gold-soft);transform:translateY(-1px);}
+  .themetoggle svg{width:17px;height:17px;display:block;}
+  .themetoggle .ic-moon{display:none;}
+  html[data-theme="light"] .themetoggle .ic-sun{display:none;}
+  html[data-theme="light"] .themetoggle .ic-moon{display:block;}
+
   *{box-sizing:border-box;}
   html,body{margin:0;height:100%;}
   body{
@@ -232,6 +339,7 @@
   .kznow{display:flex;align-items:center;gap:8px;padding:8px 16px;border-right:1px solid var(--line-soft);white-space:nowrap;flex:none;}
   .kznow .lbl{font-family:var(--mono);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);}
   .kznow .val{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--crimson);}
+  .kznow .val.muted{color:var(--ink-dim);}   /* market-closed / daily-break status */
   .lvl{display:flex;align-items:center;gap:7px;padding:8px 13px;border-right:1px solid var(--line-soft);white-space:nowrap;flex:none;}
   .lvl .lk{font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);}
   .lvl .lv{font-family:var(--mono);font-size:11px;color:var(--ink-dim);}
@@ -635,6 +743,8 @@
     .item{padding:10px 10px 10px 8px;gap:8px;}
   }
 </style>
+<!-- apply the saved theme before first paint so light mode never flashes dark -->
+<script>(function(){try{var t=localStorage.getItem('korvus-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');}}catch(e){}})();</script>
 </head>
 <body>
 
@@ -671,6 +781,10 @@
       Forex News
     </a>
     <div class="sess" id="sess">SESSION <b>—</b></div>
+    <button class="themetoggle" id="themeToggle" type="button" title="Toggle light / dark mode" aria-label="Toggle light or dark mode">
+      <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.4M12 19v2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M2.6 12h2.4M19 12h2.4M4.6 19.4l1.7-1.7M17.7 6.3l1.7-1.7"/></svg>
+      <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.2A7.6 7.6 0 0 1 9.8 4 7.6 7.6 0 1 0 20 14.2Z"/></svg>
+    </button>
     <div class="clock"><span id="clock">--:--:--</span><small>New York / ET</small></div>
     <a class="logoutbtn" href="/account" id="acctBtn" style="display:none;">Account</a>
     <a class="gopro" href="/upgrade" id="goProBtn" style="display:none;">⬆ Go Pro</a>
@@ -1499,9 +1613,9 @@ function renderMacroBand(q){
 
 // global trading sessions in ET. [s,e) decimal hours; wraps midnight when s>e.
 const SESSIONS = [
-  { nm:'Asia',     s:18,  e:4.75 },  // 6:00 PM – 4:45 AM ET (overnight)
-  { nm:'London',   s:3,   e:12   },  // 3:00 AM – 12:00 PM ET
-  { nm:'New York', s:8,   e:17   },  // 8:00 AM – 5:00 PM ET
+  { nm:'Asia',     s:18, e:24 },  // 6:00 PM – 12:00 AM ET
+  { nm:'London',   s:0,  e:8  },  // 12:00 AM – 8:00 AM ET
+  { nm:'New York', s:8,  e:17 },  // 8:00 AM – 5:00 PM ET
 ];
 function _etNow(){
   const p = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour12:false,
@@ -1539,16 +1653,51 @@ function _futuresStateET(){
 // trade during the cash session (9:30a–4p ET). Outside that, any number we'd show
 // is stale/placeholder — so we render an honest CLOSED state instead.
 function _proxiesLive(){ return _futuresStateET() === 'rth'; }
+
+// Weekend close for CME index futures: halt Fri 5:00 PM ET, reopen Sun 6:00 PM ET.
+function _isWeekendClosed(){
+  const t=_etNow(), wd=_etWeekday();
+  if(wd===6) return true;            // Saturday — closed all day
+  if(wd===5 && t>=17) return true;   // Friday after 5:00 PM ET
+  if(wd===0 && t<18) return true;    // Sunday before 6:00 PM ET
+  return false;
+}
+// Decimal hours from now until the next Sunday 6:00 PM ET reopen.
+function _untilSundayOpen(){
+  const t=_etNow(), wd=_etWeekday();
+  const how    = wd*24 + t;                 // hour-of-week, Sun 00:00 = 0
+  const target = (wd===0) ? 18 : (168 + 18);// this Sunday 6pm, or next Sunday 6pm
+  let d = target - how; if(d<0) d += 168;
+  return d;
+}
+// longer-form countdown (days / hours / minutes) for the weekend wait
+function _fmtCdLong(decHours){
+  let s = Math.max(0, Math.round(decHours*3600));
+  const d=Math.floor(s/86400); s-=d*86400;
+  const h=Math.floor(s/3600);  s-=h*3600;
+  const m=Math.floor(s/60);
+  return (d?d+'d ':'') + (h?h+'h ':'') + m+'m';
+}
 function renderSessions(){
   const kzEl = document.getElementById('killzones'); if(!kzEl) return;
-  const t = _etNow(); const openNames = [];
+  const t = _etNow();
+  const weekendClosed = _isWeekendClosed();
+  const dailyBreak    = !weekendClosed && (t>=17 && t<18);  // weekday 5–6 PM ET maintenance gap
+  const openNames = [];
   kzEl.innerHTML = SESSIONS.map(k=>{
-    const open = _isOpen(k,t); if(open) openNames.push(k.nm);
+    const open = !weekendClosed && !dailyBreak && _isOpen(k,t);
+    if(open) openNames.push(k.nm);
     return `<div class="kz ${open?'active':''}"><span class="kzdot"></span>`
          + `<span><span class="knm">${k.nm}</span> <span class="kt">${_sessLabel(k)}</span></span></div>`;
   }).join('');
   const nowEl = document.getElementById('kzNow'); if(!nowEl) return;
-  if(openNames.length){
+  if(weekendClosed){
+    nowEl.innerHTML = `<span class="lbl">Closed</span>`
+      + `<span class="val muted">Market closed · opens Sun 6:00 PM ET · ${_fmtCdLong(_untilSundayOpen())}</span>`;
+  }else if(dailyBreak){
+    nowEl.innerHTML = `<span class="lbl">Closed</span>`
+      + `<span class="val muted">Daily break · Asia opens 6:00 PM ET · ${_fmtCd(18 - t)}</span>`;
+  }else if(openNames.length){
     nowEl.innerHTML = `<span class="lbl">Open</span><span class="val">${openNames.join(' + ')}</span>`;
   }else{
     let best=null; SESSIONS.forEach(k=>{ let d=k.s-t; if(d<0)d+=24; if(best===null||d<best.d) best={nm:k.nm,d}; });
@@ -1611,6 +1760,19 @@ renderMacroBand(null); renderSessionLevels(null); renderSessions();
 loadContextBands();
 setInterval(renderSessions, 1000);
 setInterval(loadContextBands, 30000);
+
+/* ---- light / dark theme toggle ---- */
+(function(){
+  const root = document.documentElement;
+  const btn  = document.getElementById('themeToggle');
+  if(!btn) return;
+  btn.addEventListener('click', function(){
+    const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    if(next === 'light') root.setAttribute('data-theme','light');
+    else root.removeAttribute('data-theme');
+    try{ localStorage.setItem('korvus-theme', next); }catch(e){}
+  });
+})();
 </script>
 </body>
 </html>
