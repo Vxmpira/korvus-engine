@@ -3,96 +3,202 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KORVUS · Admin</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;500;700&family=Familjen+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<title>Korvus · Admin Console · BlackCrownVxJ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --vanta:#050506;--ink:#0c0c0f;--ink-2:#121217;--white:#f4f5f7;
-    --crimson:#ff2740;--orange:#ff8a1f;--green:#39d353;--yellow:#ffd400;--info:#5b8bf5;
-    --muted:#74747e;--line:rgba(255,255,255,.08);--line-strong:rgba(255,255,255,.16);
+    --bg:#000000; --bg-2:#040406;
+    --panel:rgba(14,15,19,.74); --panel-solid:#0c0d11;
+    --line:rgba(255,255,255,.10); --line-soft:rgba(255,255,255,.05); --line-strong:rgba(255,255,255,.16);
+    --ink:#f6f8ff; --ink-dim:#aab0c0; --ink-faint:#646b7d;
+    --bull:#3ce594; --bull-dim:#176b40;
+    --bear:#ff2e4d; --neutral:#7a8298;
+    --crimson:#ff1f44; --crimson-deep:#d4112f; --crimson-bright:#ff3355; --crimson-glow:rgba(255,31,68,.6);
+    --gold:#ff1f44; --gold-soft:rgba(255,31,68,.10); --gold-line:rgba(255,31,68,.34);
+    --crown:#ff1f44; --crown-glow:rgba(255,31,68,.65);
+    --brand-yellow:#f5c542; --info:#5b8bf5;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+    --body:'Hanken Grotesk',system-ui,sans-serif;
+    --disp:'Bricolage Grotesque',var(--body);
+    --r:14px;
   }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{background:var(--vanta);color:var(--white)}
-  body{font-family:"Familjen Grotesk",sans-serif;min-height:100vh;position:relative;-webkit-font-smoothing:antialiased}
-  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
-    background:radial-gradient(900px 600px at 80% -10%,rgba(255,39,64,.16),transparent 60%)}
-  .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:30px 22px 70px}
-  header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:24px}
-  .brand{display:flex;align-items:baseline;gap:13px}
-  .wordmark{font-family:"Anton",sans-serif;font-size:clamp(30px,5vw,50px);letter-spacing:2px;line-height:.9;text-shadow:0 0 22px rgba(255,39,64,.55)}
-  .wordmark span{color:var(--crimson)}
-  .tag{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:4px;color:var(--yellow);text-transform:uppercase}
-  .toplinks{display:flex;gap:14px;align-items:center}
-  .toplinks a,.refresh{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:1px;color:var(--muted);text-decoration:none;background:none;border:none;cursor:pointer}
-  .toplinks a:hover,.refresh:hover{color:var(--crimson)}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:var(--bg);color:var(--ink);}
+  body{font-family:var(--body);min-height:100vh;position:relative;-webkit-font-smoothing:antialiased;letter-spacing:-.005em;}
 
-  .sec-lbl{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin:26px 0 12px}
-  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
-  .stat{background:linear-gradient(180deg,var(--ink-2),var(--ink));border:1px solid var(--line);border-radius:10px;padding:18px 18px 16px}
-  .stat .k{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
-  .stat .v{font-family:"Anton",sans-serif;font-size:38px;line-height:1;margin-top:8px}
-  .stat .v.sm{font-size:26px}
-  .stat.accent .v{color:var(--crimson)}
-  .stat.gold .v{color:var(--yellow)}
-  .stat .sub{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--muted);margin-top:6px}
+  /* ---------- atmosphere (matches the terminal) ---------- */
+  .aurora{position:fixed;inset:-20%;z-index:-2;filter:blur(22px);opacity:.40;pointer-events:none;}
+  .aurora span{position:absolute;border-radius:50%;mix-blend-mode:screen;}
+  .a1{width:55vw;height:55vw;left:-8vw;top:-18vw;background:radial-gradient(circle,rgba(255,31,68,.14),transparent 62%);animation:drift1 26s ease-in-out infinite;}
+  .a2{width:50vw;height:50vw;right:-6vw;top:6vh;background:radial-gradient(circle,rgba(255,51,85,.15),transparent 62%);animation:drift2 32s ease-in-out infinite;}
+  .a3{width:42vw;height:42vw;left:30vw;bottom:-22vw;background:radial-gradient(circle,rgba(212,17,47,.11),transparent 62%);animation:drift1 38s ease-in-out infinite reverse;}
+  @keyframes drift1{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(4vw,3vh) scale(1.08);}}
+  @keyframes drift2{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(-3vw,4vh) scale(1.1);}}
+  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      linear-gradient(rgba(120,140,170,.035) 1px,transparent 1px) 0 0/100% 46px,
+      linear-gradient(90deg,rgba(120,140,170,.035) 1px,transparent 1px) 0 0/46px 100%,
+      radial-gradient(circle at 50% 0%,rgba(255,255,255,.02),transparent 55%);
+    -webkit-mask-image:radial-gradient(circle at 50% 30%,#000,transparent 96%);
+            mask-image:radial-gradient(circle at 50% 30%,#000,transparent 96%);}
 
-  .panel{background:linear-gradient(180deg,var(--ink-2),var(--ink));border:1px solid var(--line);border-radius:10px;padding:20px;margin-top:14px}
-  .panel h3{font-family:"Anton",sans-serif;letter-spacing:1px;font-size:20px;margin-bottom:4px}
-  .panel .desc{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:14px}
+  .wrap{position:relative;z-index:1;max-width:1240px;margin:0 auto;padding:26px 24px 80px;}
 
-  .pills{display:flex;flex-wrap:wrap;gap:10px}
-  .pill{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.5px;padding:8px 12px;border-radius:6px;border:1px solid var(--line-strong);display:flex;gap:8px;align-items:center}
-  .pill .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
-  .pill.ok .dot{background:var(--green);box-shadow:0 0 8px var(--green)}
-  .pill.bad .dot{background:var(--crimson);box-shadow:0 0 8px var(--crimson)}
-  .pill .lab{color:var(--muted)}
-  .pill .val{color:var(--white)}
+  /* ---------- header ---------- */
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    padding:14px 18px;margin-bottom:30px;border:1px solid var(--line);border-radius:var(--r);
+    background:linear-gradient(180deg,rgba(10,13,18,.86),rgba(6,8,12,.6));backdrop-filter:blur(14px);
+    animation:fadeDown .7s ease both;}
+  @keyframes fadeDown{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:none;}}
+  .brand{display:flex;align-items:center;gap:13px;}
+  .glyph{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;flex:none;
+    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);
+    border:1px solid rgba(255,31,68,.42);box-shadow:0 0 28px -5px var(--crown-glow),inset 0 1px 0 rgba(255,255,255,.05);}
+  .glyph svg{animation:crownPulse 3.2s ease-in-out infinite;}
+  @keyframes crownPulse{0%,100%{filter:drop-shadow(0 0 7px var(--crown-glow));}50%{filter:drop-shadow(0 0 15px rgba(255,31,68,.98));}}
+  .brand .txt{line-height:1;}
+  .brand .mark{font-family:var(--disp);font-weight:800;font-size:22px;letter-spacing:-.01em;color:var(--ink);}
+  .brand .tagline{font-family:var(--mono);font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--crimson);margin-top:6px;}
+  .toplinks{display:flex;gap:10px;align-items:center;}
+  .toplinks a,.refresh{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);
+    text-decoration:none;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:999px;
+    padding:8px 14px;cursor:pointer;transition:color .2s,border-color .2s,background .2s,transform .15s;display:inline-flex;align-items:center;gap:6px;}
+  .toplinks a:hover,.refresh:hover{color:var(--ink);border-color:var(--gold-line);background:var(--gold-soft);transform:translateY(-1px);}
+  .refresh.spin svg{animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
 
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th{text-align:left;font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--line-strong)}
-  td{padding:9px 10px;border-bottom:1px solid var(--line);color:#dcdce0}
-  td.mono,th.mono{font-family:"JetBrains Mono",monospace}
-  tr:hover td{background:rgba(255,255,255,.02)}
-  .tierbadge{font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:1px;padding:2px 7px;border-radius:3px;text-transform:uppercase}
-  .tierbadge.pro{background:var(--crimson);color:#0a0a0a}
-  .tierbadge.free{background:rgba(255,255,255,.08);color:var(--muted);border:1px solid var(--line-strong)}
+  /* ---------- section labels ---------- */
+  .sec-lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.28em;color:var(--ink-faint);text-transform:uppercase;
+    margin:34px 0 14px;display:flex;align-items:center;gap:12px;}
+  .sec-lbl::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent);}
+  .sec-lbl .est{font-size:8.5px;letter-spacing:.12em;color:var(--crimson);border:1px solid var(--gold-line);
+    border-radius:4px;padding:3px 7px;background:var(--gold-soft);}
 
-  .rev{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
-  .rev .big{font-family:"Anton",sans-serif;font-size:46px;color:var(--green)}
-  .rev .meta{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);line-height:1.7}
-  .estimate{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:1px;color:var(--yellow);border:1px solid rgba(255,212,0,.4);border-radius:3px;padding:2px 6px;text-transform:uppercase;margin-left:6px}
+  /* ---------- panels ---------- */
+  .panel{background:var(--panel);border:1px solid rgba(255,255,255,.14);border-radius:var(--r);padding:22px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 0 0 1px rgba(255,31,68,.10),0 0 26px -6px rgba(255,31,68,.20),0 24px 60px -28px rgba(0,0,0,.95);
+    backdrop-filter:blur(10px);animation:rise .6s ease both;}
+  @keyframes rise{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
 
-  .studio{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
-  .studio a{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#0a0a0a;background:var(--crimson);padding:10px 16px;border-radius:6px;text-decoration:none;box-shadow:0 0 18px rgba(255,39,64,.4)}
-  .studio a:hover{filter:brightness(1.1)}
+  /* ---------- KPI cards ---------- */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:14px;}
+  .stat{position:relative;background:linear-gradient(180deg,rgba(20,22,28,.7),rgba(8,9,12,.7));
+    border:1px solid var(--line);border-radius:12px;padding:18px 18px 16px;overflow:hidden;
+    animation:rise .55s ease both;transition:border-color .22s,transform .18s,box-shadow .22s;}
+  .stat::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--crimson),transparent 70%);opacity:.0;transition:opacity .22s;}
+  .stat:hover{transform:translateY(-3px);border-color:var(--gold-line);box-shadow:0 18px 40px -26px rgba(0,0,0,.9),0 0 22px -8px var(--crimson-glow);}
+  .stat:hover::before{opacity:.9;}
+  .stat .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;color:var(--ink-faint);text-transform:uppercase;}
+  .stat .v{font-family:var(--disp);font-weight:800;font-size:42px;line-height:1;margin-top:10px;letter-spacing:-.02em;color:var(--ink);}
+  .stat .v.sm{font-size:27px;}
+  .stat.accent .v{color:var(--crimson);text-shadow:0 0 18px rgba(255,31,68,.4);}
+  .stat.live .v{color:var(--bull);}
+  .stat .sub{font-family:var(--mono);font-size:9.5px;color:var(--ink-faint);margin-top:8px;display:flex;align-items:center;gap:6px;}
+  .livedot{width:7px;height:7px;border-radius:50%;background:var(--bull);box-shadow:0 0 0 0 rgba(60,229,148,.6);animation:pulse 2.4s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(60,229,148,.5);}70%{box-shadow:0 0 0 7px rgba(60,229,148,0);}100%{box-shadow:0 0 0 0 rgba(60,229,148,0);}}
 
-  .loading,.err{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--muted);padding:30px;text-align:center;border:1px dashed var(--line-strong);border-radius:10px}
-  .err{color:#ffb3bd;border-color:var(--crimson)}
-  .foot{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);font-family:"JetBrains Mono",monospace;font-size:10.5px;color:#4c4c54;line-height:1.8}
+  /* ---------- revenue hero ---------- */
+  .rev{display:flex;align-items:center;gap:26px;flex-wrap:wrap;}
+  .rev .big{font-family:var(--disp);font-weight:800;font-size:clamp(46px,7vw,68px);line-height:.9;color:var(--bull);
+    text-shadow:0 0 26px rgba(60,229,148,.28);letter-spacing:-.02em;}
+  .rev .meta{font-family:var(--mono);font-size:11.5px;color:var(--ink-dim);line-height:1.85;}
+  .rev .meta b{color:var(--ink);font-weight:600;}
+  .rev .meta .dim{color:var(--ink-faint);}
+  .chips{display:flex;flex-wrap:wrap;gap:9px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line-soft);}
+  .chip{font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;color:var(--ink-dim);
+    border:1px solid var(--line);border-radius:999px;padding:6px 12px;display:flex;align-items:center;gap:8px;}
+  .chip b{color:var(--ink);font-weight:600;}
+  .chip .d{width:7px;height:7px;border-radius:50%;background:var(--info);box-shadow:0 0 8px var(--info);}
+
+  /* ---------- status grid ---------- */
+  .status{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;}
+  .srow{display:flex;align-items:center;gap:11px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;
+    background:rgba(255,255,255,.02);transition:border-color .2s,background .2s;}
+  .srow:hover{border-color:var(--line-strong);background:rgba(255,255,255,.035);}
+  .srow .d{width:9px;height:9px;border-radius:50%;background:var(--neutral);flex:none;}
+  .srow.ok .d{background:var(--bull);box-shadow:0 0 9px var(--bull);}
+  .srow.bad .d{background:var(--crimson);box-shadow:0 0 9px var(--crimson);}
+  .srow.info .d{background:var(--info);box-shadow:0 0 9px var(--info);}
+  .srow .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;color:var(--ink-faint);text-transform:uppercase;}
+  .srow .val{font-family:var(--mono);font-size:12px;color:var(--ink);margin-left:auto;font-weight:500;text-align:right;}
+
+  /* ---------- tables ---------- */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}
+  @media(max-width:880px){.grid2{grid-template-columns:1fr;}}
+  .panel h3{font-family:var(--disp);font-weight:700;letter-spacing:-.01em;font-size:16px;margin-bottom:3px;color:var(--ink);}
+  .panel .desc{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);line-height:1.6;margin-bottom:16px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--ink-faint);text-transform:uppercase;
+    padding:0 10px 10px;border-bottom:1px solid var(--line-strong);}
+  td{padding:11px 10px;border-bottom:1px solid var(--line-soft);color:var(--ink-dim);}
+  td.mono{font-family:var(--mono);font-size:12px;}
+  td.name{color:var(--ink);font-weight:600;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr{transition:background .15s;}
+  tbody tr:hover td{background:rgba(255,31,68,.04);}
+  .tier{font-family:var(--mono);font-size:9px;letter-spacing:.1em;padding:3px 8px;border-radius:4px;text-transform:uppercase;}
+  .tier.pro{background:var(--crimson);color:#0a0a0a;font-weight:600;box-shadow:0 0 12px -2px var(--crimson-glow);}
+  .tier.free{background:rgba(255,255,255,.06);color:var(--ink-faint);border:1px solid var(--line);}
+
+  /* ---------- tools ---------- */
+  .studio{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+  .studio .cta{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#0a0a0a;
+    background:var(--crimson);padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:600;
+    box-shadow:0 0 22px -4px var(--crimson-glow);transition:filter .18s,transform .15s;display:inline-flex;align-items:center;gap:8px;}
+  .studio .cta:hover{filter:brightness(1.08);transform:translateY(-1px);}
+
+  .loading,.err{font-family:var(--mono);font-size:13px;color:var(--ink-dim);padding:42px;text-align:center;
+    border:1px dashed var(--line-strong);border-radius:var(--r);line-height:1.7;}
+  .err{color:#ffb3bd;border-color:var(--gold-line);background:var(--gold-soft);}
+
+  .foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10px;
+    color:var(--ink-faint);line-height:1.9;}
+  .foot .legend{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px;}
+  .foot .legend span{display:inline-flex;align-items:center;gap:7px;letter-spacing:.06em;text-transform:uppercase;}
+  .foot .legend i{width:8px;height:8px;border-radius:50%;display:inline-block;}
 </style>
 </head>
 <body>
+<div class="aurora"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
+
 <div class="wrap">
   <header class="top">
-    <div class="brand"><div class="wordmark">KOR<span>V</span>US</div><div class="tag">Admin</div></div>
+    <div class="brand">
+      <span class="glyph" aria-label="BlackCrownVxJ">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="crwn" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#ff6a5d"/><stop offset="1" stop-color="#c2160c"/></linearGradient></defs>
+          <path d="M2.6 17.6 L4.4 8.4 L8.7 12.4 L12 4.6 L15.3 12.4 L19.6 8.4 L21.4 17.6 Z" fill="url(#crwn)" stroke="#ff8a7e" stroke-width="0.5" stroke-linejoin="round"/>
+          <rect x="3" y="18.4" width="18" height="2.5" rx="1.1" fill="url(#crwn)"/>
+          <circle cx="4" cy="8" r="1.3" fill="#ff9a90"/><circle cx="12" cy="5" r="1.5" fill="#ff9a90"/><circle cx="20" cy="8" r="1.3" fill="#ff9a90"/>
+        </svg>
+      </span>
+      <span class="txt">
+        <div class="mark">KORVUS</div>
+        <div class="tagline">Owner Console</div>
+      </span>
+    </div>
     <div class="toplinks">
-      <button class="refresh" id="refresh">↻ refresh</button>
-      <a href="/">‹ back to terminal</a>
+      <button class="refresh" id="refresh" title="Refresh analytics">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v5h-5"/></svg>
+        Refresh
+      </button>
+      <a href="/">‹ Terminal</a>
     </div>
   </header>
 
   <div id="root"><div class="loading">Loading owner analytics…</div></div>
 
   <div class="foot">
-    Owner console · server-enforced. Figures read live from your database &amp; environment.
-    Revenue is an estimate derived from member counts — wire your billing module for exact billed totals.
-    API keys are shown as present/absent only, never the values.
-    <br><br>
-    <span style="color:var(--green)">●</span> ok &nbsp;
-    <span style="color:var(--crimson)">●</span> needs attention &nbsp;
-    <span style="color:var(--info)">●</span> info
+    <div class="legend">
+      <span><i style="background:var(--bull);box-shadow:0 0 8px var(--bull)"></i>Healthy</span>
+      <span><i style="background:var(--crimson);box-shadow:0 0 8px var(--crimson)"></i>Needs attention</span>
+      <span><i style="background:var(--info);box-shadow:0 0 8px var(--info)"></i>Info</span>
+    </div>
+    Owner console · server-enforced. Figures read live from your database &amp; environment. Revenue is an estimate
+    derived from member counts — wire your billing module for exact billed totals. API keys are shown as present/absent only, never the values.
   </div>
 </div>
 
@@ -102,17 +208,9 @@ const esc = s => String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt
 const money = n => "$" + (Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 function uptime(s){s=Number(s)||0;const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);
   return (d?d+"d ":"")+(h?h+"h ":"")+m+"m";}
-function pill(label, ok, val){
-  return '<div class="pill '+(ok?"ok":"bad")+'"><span class="dot"></span><span class="lab">'+esc(label)+'</span>'+
-    (val!=null?'<span class="val">'+esc(val)+'</span>':'')+'</div>';
-}
-function infoPill(label, val){
-  return '<div class="pill"><span class="dot" style="background:var(--info);box-shadow:0 0 8px var(--info)"></span>'+
-    '<span class="lab">'+esc(label)+'</span><span class="val">'+esc(val)+'</span></div>';
-}
 
 async function load(){
-  $("#root").innerHTML = '<div class="loading">Loading owner analytics…</div>';
+  const btn = $("#refresh"); if(btn) btn.classList.add("spin");
   let stats={}, online={}, health={};
   try{
     [stats, online, health] = await Promise.all([
@@ -123,9 +221,21 @@ async function load(){
   }catch(e){
     $("#root").innerHTML = '<div class="err">Couldn\'t load /api/admin/stats — '+esc(e.message||e)+
       '<br>Make sure the server restarted after the korvus_admin.py update, and that you\'re the owner.</div>';
+    if(btn) btn.classList.remove("spin");
     return;
   }
   render(stats, online, health);
+  if(btn) btn.classList.remove("spin");
+}
+
+function statCard(k, v, cls, sub){
+  const big = String(v).length>6 ? ' sm' : '';
+  return '<div class="stat'+(cls?(' '+cls):'')+'"><div class="k">'+esc(k)+'</div>'+
+    '<div class="v'+big+'">'+esc(v)+'</div>'+(sub?('<div class="sub">'+sub+'</div>'):'')+'</div>';
+}
+function srow(kind, label, val){
+  return '<div class="srow '+kind+'"><span class="d"></span><span class="lab">'+esc(label)+'</span>'+
+    (val!=null?'<span class="val">'+esc(val)+'</span>':'')+'</div>';
 }
 
 function render(stats, online, health){
@@ -133,90 +243,85 @@ function render(stats, online, health){
   const rev = stats.revenue || {};
   const st = stats.status || {};
   const activeNow = (online && online.online != null) ? online.online : "—";
-
   let html = "";
 
-  // ---- top stat cards ----
+  // ---- membership KPIs ----
   html += '<div class="sec-lbl">Membership</div><div class="cards">';
   html += statCard("Total users", u.total!=null?u.total:"—");
   html += statCard("Pro", u.pro!=null?u.pro:"—", "accent");
   html += statCard("Free", u.free!=null?u.free:"—");
-  html += statCard("Active now", activeNow, "gold");
+  html += statCard("Active now", activeNow, "live", '<span class="livedot"></span>live sessions');
   if(u.verified!=null) html += statCard("Verified", u.verified);
   if(u.new_7d!=null)   html += statCard("New · 7d", u.new_7d);
   html += '</div>';
 
   // ---- revenue ----
-  html += '<div class="sec-lbl">Revenue <span class="estimate">estimate</span></div>';
+  html += '<div class="sec-lbl">Revenue <span class="est">Estimate</span></div>';
   html += '<div class="panel"><div class="rev"><div class="big">'+money(rev.estimated_mrr)+'</div>'+
-    '<div class="meta">estimated MRR · '+esc(rev.paying_members!=null?rev.paying_members:"—")+' paying @ '+money(rev.monthly_price)+'/mo<br>'+
-    '≈ '+money(rev.estimated_arr)+' ARR · basis: '+esc(rev.basis||"—")+'<br>'+esc(rev.note||"")+'</div></div>';
-  if(stats.subscriptions){
-    html += '<div style="margin-top:14px" class="pills">';
-    Object.keys(stats.subscriptions).forEach(k=>{ html += infoPill(k, stats.subscriptions[k]); });
+    '<div class="meta"><b>'+esc(rev.paying_members!=null?rev.paying_members:"—")+'</b> paying @ '+money(rev.monthly_price)+'/mo · estimated MRR<br>'+
+    '≈ <b>'+money(rev.estimated_arr)+'</b> ARR <span class="dim">· basis: '+esc(rev.basis||"—")+'</span><br>'+
+    '<span class="dim">'+esc(rev.note||"")+'</span></div></div>';
+  if(stats.subscriptions && Object.keys(stats.subscriptions).length){
+    html += '<div class="chips">';
+    Object.keys(stats.subscriptions).forEach(k=>{ html += '<div class="chip"><span class="d"></span>'+esc(k)+' <b>'+esc(stats.subscriptions[k])+'</b></div>'; });
     html += '</div>';
   }
   html += '</div>';
 
-  // ---- system / data status ----
-  html += '<div class="sec-lbl">System &amp; data sources</div><div class="panel"><div class="pills">';
-  html += pill("server", true, "online · up "+uptime(st.server_uptime_seconds));
-  html += pill("database", !!st.db_present, st.db_present?"present":"missing");
-  html += pill("Anthropic key", !!st.anthropic_key, st.anthropic_key?"set":"missing");
-  html += pill("Alpha Vantage key", !!st.alphavantage_key, st.alphavantage_key?"set":"missing");
-  html += pill("Finnhub key", !!st.finnhub_key, st.finnhub_key?"set":"missing");
-  html += infoPill("quotes provider", st.quotes_provider);
-  html += infoPill("news provider", st.news_provider);
-  html += infoPill("email", st.email_provider);
+  // ---- system / data ----
+  html += '<div class="sec-lbl">System &amp; data sources</div><div class="panel"><div class="status">';
+  html += srow("ok", "server", "online · up "+uptime(st.server_uptime_seconds));
+  html += srow(st.db_present?"ok":"bad", "database", st.db_present?"present":"missing");
+  html += srow(st.anthropic_key?"ok":"bad", "Anthropic key", st.anthropic_key?"set":"missing");
+  html += srow(st.alphavantage_key?"ok":"bad", "Alpha Vantage key", st.alphavantage_key?"set":"missing");
+  html += srow(st.finnhub_key?"ok":"bad", "Finnhub key", st.finnhub_key?"set":"missing");
+  html += srow("info", "quotes provider", st.quotes_provider);
+  html += srow("info", "news provider", st.news_provider);
+  html += srow("info", "email", st.email_provider);
   if(health && (health.last_update || health.scored!=null)){
-    html += infoPill("engine last update", health.last_update || "—");
-    if(health.scored!=null) html += infoPill("items scored", health.scored);
+    html += srow("info", "engine last update", health.last_update || "—");
+    if(health.scored!=null) html += srow("info", "items scored", health.scored);
   }
   html += '</div></div>';
 
-  // ---- pro members ----
-  if(stats.pro_members){
-    html += '<div class="sec-lbl">Pro members · contact</div><div class="panel">';
-    if(stats.pro_members.length){
-      html += '<table><thead><tr><th>Username</th><th>Email</th><th>Joined</th>'+
-              (stats.pro_members[0].subscription_status!==undefined?'<th>Sub</th>':'')+'</tr></thead><tbody>';
-      stats.pro_members.forEach(m=>{
-        html += '<tr><td class="mono">'+esc(m.username)+'</td><td class="mono">'+esc(m.email)+'</td>'+
-          '<td class="mono">'+esc((m.created_at||"").slice(0,10))+'</td>'+
-          (m.subscription_status!==undefined?'<td class="mono">'+esc(m.subscription_status||"—")+'</td>':'')+'</tr>';
-      });
-      html += '</tbody></table>';
-    } else { html += '<div class="desc">No pro members yet.</div>'; }
-    html += '</div>';
-  }
-
-  // ---- recent signups ----
+  // ---- members (two-column) ----
+  html += '<div class="sec-lbl">Members</div><div class="grid2">';
+  // pro members
+  html += '<div class="panel"><h3>Pro members</h3><div class="desc">Operators with an active paid tier · contact.</div>';
+  if(stats.pro_members && stats.pro_members.length){
+    const hasSub = stats.pro_members[0].subscription_status!==undefined;
+    html += '<table><thead><tr><th>User</th><th>Email</th><th>Joined</th>'+(hasSub?'<th>Sub</th>':'')+'</tr></thead><tbody>';
+    stats.pro_members.forEach(m=>{
+      html += '<tr><td class="mono name">'+esc(m.username)+'</td><td class="mono">'+esc(m.email)+'</td>'+
+        '<td class="mono">'+esc((m.created_at||"").slice(0,10))+'</td>'+
+        (hasSub?'<td class="mono">'+esc(m.subscription_status||"—")+'</td>':'')+'</tr>';
+    });
+    html += '</tbody></table>';
+  } else { html += '<div class="desc" style="margin:0">No pro members yet.</div>'; }
+  html += '</div>';
+  // recent signups
+  html += '<div class="panel"><h3>Recent signups</h3><div class="desc">Newest accounts across all tiers.</div>';
   if(stats.recent_signups && stats.recent_signups.length){
-    html += '<div class="sec-lbl">Recent signups</div><div class="panel"><table>'+
-      '<thead><tr><th>Username</th><th>Email</th><th>Tier</th><th>Joined</th></tr></thead><tbody>';
+    html += '<table><thead><tr><th>User</th><th>Email</th><th>Tier</th><th>Joined</th></tr></thead><tbody>';
     stats.recent_signups.forEach(m=>{
       const t=(m.tier||"free").toLowerCase();
-      html += '<tr><td class="mono">'+esc(m.username)+'</td><td class="mono">'+esc(m.email)+'</td>'+
-        '<td><span class="tierbadge '+(t==="pro"?"pro":"free")+'">'+esc(t)+'</span></td>'+
+      html += '<tr><td class="mono name">'+esc(m.username)+'</td><td class="mono">'+esc(m.email)+'</td>'+
+        '<td><span class="tier '+(t==="pro"?"pro":"free")+'">'+esc(t)+'</span></td>'+
         '<td class="mono">'+esc((m.created_at||"").slice(0,10))+'</td></tr>';
     });
-    html += '</tbody></table></div>';
-  }
+    html += '</tbody></table>';
+  } else { html += '<div class="desc" style="margin:0">No signups yet.</div>'; }
+  html += '</div></div>';
 
   // ---- tools ----
   html += '<div class="sec-lbl">Tools</div><div class="panel studio">'+
     '<div><h3>Promo Studio</h3><div class="desc" style="margin:0">Generate on-brand social posts from live market context.</div></div>'+
-    '<a href="/agent">⟶ open</a></div>';
+    '<a class="cta" href="/agent">Open Studio ⟶</a></div>';
 
-  if(stats.users_error)  html += '<div class="panel err" style="margin-top:14px">users query: '+esc(stats.users_error)+'</div>';
-  if(stats.revenue_error) html += '<div class="panel err" style="margin-top:14px">revenue: '+esc(stats.revenue_error)+'</div>';
+  if(stats.users_error)   html += '<div class="err" style="margin-top:16px">users query: '+esc(stats.users_error)+'</div>';
+  if(stats.revenue_error) html += '<div class="err" style="margin-top:16px">revenue: '+esc(stats.revenue_error)+'</div>';
 
   $("#root").innerHTML = html;
-}
-
-function statCard(k, v, cls){
-  const big = String(v).length>6 ? ' sm' : '';
-  return '<div class="stat'+(cls?(' '+cls):'')+'"><div class="k">'+esc(k)+'</div><div class="v'+big+'">'+esc(v)+'</div></div>';
 }
 
 $("#refresh").addEventListener("click", load);
