@@ -454,9 +454,6 @@
   .js .showcase-strip .pt:nth-child(4){transition-delay:.24s;}
 
   /* ===== extra motion · making it pop ===== */
-  .scrollbar{position:fixed;top:0;left:0;right:0;height:3px;z-index:200;pointer-events:none;
-    transform-origin:0 50%;transform:scaleX(var(--p,0));
-    background:linear-gradient(90deg,var(--crimson),var(--crimson-bright));box-shadow:0 0 12px var(--crimson-glow);}
   @keyframes ctaPulse{0%,100%{box-shadow:0 0 24px -6px var(--crimson-glow);}50%{box-shadow:0 0 42px 0 var(--crimson-glow);}}
   .hero-cta .btn-gold{animation:ctaPulse 3.2s ease-in-out infinite;}
   @keyframes livePulse{0%,100%{opacity:1;}50%{opacity:.3;}}
@@ -494,7 +491,6 @@
     .glow{transform:translateX(-50%);opacity:1;}
     .kx-sweep{display:none;}
     .js .showcase-cap,.js .showcase-strip .pt{opacity:1;transform:none;}
-    .scrollbar{display:none;}
     .hero-cta .btn-gold,.sc-eyebrow i,.kx-pill.ok i,.kx-pill.live i{animation:none;}
     .js .hero-badges span,.js .disclaim,.js footer{opacity:1;transform:none;}
     .plan:hover{transform:none;}
@@ -503,7 +499,6 @@
 </style>
 </head>
 <body>
-  <div class="scrollbar" aria-hidden="true"></div>
   <div class="scene" aria-hidden="true">
     <div class="stars"></div>
     <div class="dawn"></div>
@@ -960,8 +955,7 @@
     }
     function draw(){
       ctx.clearRect(0,0,W,H);
-      offset += 0.35 + (window.__kv || 0);       // calm base speed + scroll-velocity surge
-      window.__kv = (window.__kv || 0) * 0.9;    // surge decays back to calm
+      offset += 0.35;                            // calm, constant drift
       if(offset >= STEP){ offset -= STEP; candles.shift(); candles.push(nextCandle()); }
       for(let i=0;i<candles.length;i++){
         const c = candles[i];
@@ -1026,7 +1020,7 @@
       ticking = false;
     }
     update();                                           // paint the initial "night" state
-    if(reduce) return;                                  // reduced motion: static scenery, no surge
+    if(reduce || matchMedia('(max-width:600px)').matches) return;  // reduced motion or mobile: static scenery, smooth scroll
     addEventListener('scroll', function(){ if(!ticking){ ticking = true; requestAnimationFrame(update); } }, {passive:true});
     addEventListener('resize', update, {passive:true});
   })();
