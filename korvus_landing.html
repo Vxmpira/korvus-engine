@@ -262,14 +262,6 @@
 
   /* ===== hero stage · the live Korvus terminal, in a browser, cinematically lit ===== */
   .stage{position:relative;z-index:2;max-width:1180px;margin:60px auto 0;padding:0 22px;}
-  .stage-light{position:absolute;inset:-16% 0 -6%;z-index:0;pointer-events:none;}
-  .stage-light .halo{position:absolute;left:50%;top:2%;width:84%;height:92%;transform:translateX(-50%);
-    background:radial-gradient(ellipse 60% 56% at 50% 42%,rgba(255,31,68,.32),rgba(255,31,68,.08) 46%,transparent 70%);filter:blur(14px);}
-  .stage-light .beam{position:absolute;top:-18%;width:44%;height:138%;filter:blur(10px);opacity:.5;mix-blend-mode:screen;}
-  .stage-light .beam-l{left:0;transform:skewX(-12deg);
-    background:linear-gradient(108deg,transparent 42%,rgba(255,31,68,.30) 62%,transparent 80%);}
-  .stage-light .beam-r{right:0;transform:skewX(12deg);
-    background:linear-gradient(-108deg,transparent 42%,rgba(255,120,110,.20) 62%,transparent 80%);}
 
   /* browser frame */
   .browser{position:relative;z-index:2;width:100%;border-radius:14px;overflow:hidden;
@@ -546,11 +538,6 @@
     </div>
 
     <div class="stage">
-      <div class="stage-light" aria-hidden="true">
-        <span class="halo"></span>
-        <span class="beam beam-l"></span>
-        <span class="beam beam-r"></span>
-      </div>
       <div class="browser">
         <div class="win-bar">
           <span class="win-dots"><i></i><i></i><i></i></span>
