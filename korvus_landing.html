@@ -38,7 +38,7 @@
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   html{scroll-behavior:smooth;overflow-x:hidden;overflow-x:clip;}
-  body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:clip;}
 
   /* ticker-tape grain + grid atmosphere */
   body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
@@ -231,6 +231,9 @@
     .container{padding:0 18px;}
     section{padding:52px 0;}
     .hero{padding:54px 0 38px;}
+    .hero h1{font-size:clamp(28px,8.4vw,40px);}
+    .eyebrow{font-size:11px;letter-spacing:.15em;margin-bottom:20px;}
+    .hero p{font-size:15.5px;}
     .hero-cta{flex-direction:column;align-items:stretch;}
     .hero-cta .btn{width:100%;text-align:center;}
     .feature{padding:28px 22px;}
