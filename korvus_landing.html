@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>document.documentElement.className += ' js';</script>
 <title>Korvus · Market Intelligence That Works While You Sleep · BlackCrownVxJ.LLC</title>
 <meta name="description" content="Korvus turns the firehose of market news and social chatter into clear, scored intelligence for index-futures traders. By BlackCrownVxJ.LLC." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -182,9 +183,318 @@
   .flist .t{font-size:14.5px;line-height:1.62;color:var(--ink-dim);}
   .flist .t b{color:var(--ink);font-weight:600;}
   @media(max-width:860px){.reassure{grid-template-columns:1fr;}.rcard{padding:34px 28px;}}
+
+  /* ============================================================
+     MOTION PASS — scroll reveal · hover micro-interactions · mobile
+     Reveal state applies only with .js on <html> (so no-JS visitors
+     always see content) and is fully neutralised under reduced motion.
+     ============================================================ */
+  .js #what .sec-title, .js #what .sec-intro, .js #what .feature,
+  .js #how .sec-title, .js #how .step,
+  .js #honest .sec-title, .js #honest .sec-intro, .js #honest .rcard,
+  .js #pricing .sec-title, .js #pricing .sec-intro, .js #pricing .plan{
+    opacity:0;transform:translateY(26px);
+    transition:opacity .7s cubic-bezier(.22,.61,.36,1),transform .7s cubic-bezier(.22,.61,.36,1);
+    will-change:opacity,transform;}
+  .js .in{opacity:1 !important;transform:none !important;}
+  .js #what .feature:nth-child(2){transition-delay:.09s;}
+  .js #what .feature:nth-child(3){transition-delay:.18s;}
+  .js #how .step:nth-child(2){transition-delay:.07s;}
+  .js #how .step:nth-child(3){transition-delay:.14s;}
+  .js #how .step:nth-child(4){transition-delay:.21s;}
+  .js #honest .reassure .rcard:nth-child(2){transition-delay:.10s;}
+  .js #pricing .pricing-wrap .plan:nth-child(2){transition-delay:.10s;}
+
+  /* hover micro-interactions */
+  .btn-gold:hover{transform:translateY(-2px);box-shadow:0 10px 32px -10px var(--crimson-glow),0 0 22px -6px var(--crimson-glow);}
+  .rcard{transition:transform .32s cubic-bezier(.22,.61,.36,1),border-color .3s ease,box-shadow .3s ease;}
+  .rcard:hover{transform:translateY(-4px);}
+  .rcard:not(.facts):hover{border-color:var(--line-bright);}
+  .step{transition:border-top-color .3s ease;}
+  .step:hover{border-top-color:var(--gold);}
+  .nav-links a:not(.btn){position:relative;}
+  .nav-links a:not(.btn)::after{content:"";position:absolute;left:0;right:100%;bottom:-5px;height:1px;
+    background:var(--gold);transition:right .3s cubic-bezier(.22,.61,.36,1);}
+  .nav-links a:not(.btn):hover::after{right:0;}
+  .tickerstrip:hover .ticker{animation-play-state:paused;}
+
+  /* mobile hardening */
+  @media(max-width:860px){
+    section{padding:64px 0;}
+    .hero{padding:74px 0 48px;}
+    .tickerstrip{margin-top:44px;}
+    .features,.flow,.pricing-wrap,.reassure{margin-top:38px;}
+  }
+  @media(max-width:560px){
+    .container{padding:0 18px;}
+    section{padding:52px 0;}
+    .hero{padding:54px 0 38px;}
+    .hero-cta{flex-direction:column;align-items:stretch;}
+    .hero-cta .btn{width:100%;text-align:center;}
+    .feature{padding:28px 22px;}
+    .plan{padding:30px 24px;}
+    .rcard{padding:30px 22px;}
+    .foot-inner{flex-direction:column;align-items:flex-start;gap:18px;}
+    #candles{opacity:.34;}
+  }
+
+  /* ===== scroll-driven scenery · "the world sleeps, then the market wakes" =====
+     Driven by --p (0 at top → 1 at bottom of page), set on <html> by JS.
+     Falls back to a calm "night" still (var(--p,0)=0) with no JS. */
+  .scene{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+  /* starfield — the quiet hours; fades out as you scroll into the session */
+  .stars{position:absolute;inset:-12% 0 0;opacity:clamp(0,calc(1 - var(--p,0)*4.5),1);
+    transform:translateY(calc(var(--p,0) * -50px));transition:opacity .15s linear;
+    background-image:
+      radial-gradient(1.3px 1.3px at 12% 18%,rgba(255,255,255,.9),transparent),
+      radial-gradient(1px 1px at 28% 42%,rgba(255,255,255,.55),transparent),
+      radial-gradient(1.4px 1.4px at 47% 11%,rgba(255,255,255,.8),transparent),
+      radial-gradient(1px 1px at 63% 31%,rgba(255,255,255,.5),transparent),
+      radial-gradient(1.3px 1.3px at 78% 21%,rgba(255,205,205,.7),transparent),
+      radial-gradient(1px 1px at 88% 46%,rgba(255,255,255,.5),transparent),
+      radial-gradient(1.1px 1.1px at 36% 60%,rgba(255,255,255,.45),transparent),
+      radial-gradient(1px 1px at 70% 68%,rgba(255,255,255,.4),transparent),
+      radial-gradient(1.2px 1.2px at 8% 55%,rgba(255,255,255,.4),transparent),
+      radial-gradient(1px 1px at 92% 64%,rgba(255,255,255,.35),transparent);}
+  .stars::after{content:"";position:absolute;inset:0;animation:twinkle 5.5s ease-in-out infinite;
+    background-image:
+      radial-gradient(1.4px 1.4px at 20% 80%,rgba(255,255,255,.5),transparent),
+      radial-gradient(1.2px 1.2px at 55% 88%,rgba(255,255,255,.55),transparent),
+      radial-gradient(1.3px 1.3px at 82% 82%,rgba(255,220,220,.45),transparent),
+      radial-gradient(1px 1px at 40% 28%,rgba(255,255,255,.6),transparent);}
+  @keyframes twinkle{0%,100%{opacity:.35;}50%{opacity:1;}}
+  /* dawn — a crimson light rising from the horizon as the session opens */
+  .dawn{position:absolute;left:50%;bottom:0;width:150vw;height:95vh;
+    transform:translateX(-50%) translateY(calc(42vh - var(--p,0)*78vh));
+    opacity:calc(.14 + var(--p,0)*.86);filter:blur(6px);
+    background:radial-gradient(ellipse 58% 100% at 50% 100%,rgba(255,31,68,.24),rgba(255,31,68,.07) 44%,transparent 72%);}
+  /* the existing top glow recedes (parallax) and dims as the dawn takes over */
+  .glow{transform:translateX(-50%) translateY(calc(var(--p,0) * -140px));opacity:calc(1 - var(--p,0)*.55);transition:opacity .15s linear;}
+
+  /* hero headline shimmer — graceful fallback to solid crimson */
+  @supports ((-webkit-background-clip:text) or (background-clip:text)){
+    .hero h1 em{background:linear-gradient(100deg,var(--gold) 22%,#ff7a8c 42%,#ffffff 50%,#ff7a8c 58%,var(--gold) 78%);
+      background-size:240% 100%;-webkit-background-clip:text;background-clip:text;
+      -webkit-text-fill-color:transparent;color:transparent;animation:shimmer 6.5s ease-in-out infinite;}
+  }
+  @keyframes shimmer{0%{background-position:130% 0;}50%{background-position:-30% 0;}100%{background-position:130% 0;}}
+
+  /* ===== hero stage · the live Korvus terminal, in a browser, cinematically lit ===== */
+  .stage{position:relative;z-index:2;max-width:1180px;margin:60px auto 0;padding:0 22px;}
+  .stage-light{position:absolute;inset:-16% -8% -6%;z-index:0;pointer-events:none;}
+  .stage-light .halo{position:absolute;left:50%;top:2%;width:84%;height:92%;transform:translateX(-50%);
+    background:radial-gradient(ellipse 60% 56% at 50% 42%,rgba(255,31,68,.32),rgba(255,31,68,.08) 46%,transparent 70%);filter:blur(14px);}
+  .stage-light .beam{position:absolute;top:-18%;width:44%;height:138%;filter:blur(10px);opacity:.5;mix-blend-mode:screen;}
+  .stage-light .beam-l{left:-9%;transform:skewX(-12deg);
+    background:linear-gradient(108deg,transparent 42%,rgba(255,31,68,.30) 62%,transparent 80%);}
+  .stage-light .beam-r{right:-9%;transform:skewX(12deg);
+    background:linear-gradient(-108deg,transparent 42%,rgba(255,120,110,.20) 62%,transparent 80%);}
+
+  /* browser frame */
+  .browser{position:relative;z-index:2;width:100%;border-radius:14px;overflow:hidden;
+    border:1px solid rgba(255,255,255,.10);background:#0b0b0e;
+    box-shadow:0 50px 90px -30px rgba(0,0,0,.85),0 0 0 1px rgba(0,0,0,.5),0 0 80px -34px rgba(255,31,68,.5);}
+  .win-bar{display:flex;align-items:center;gap:12px;height:40px;padding:0 16px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#161619,#101013);}
+  .win-dots{display:flex;gap:7px;}
+  .win-dots i{width:11px;height:11px;border-radius:50%;background:#3a3a42;}
+  .win-dots i:nth-child(1){background:#ff5f57;}.win-dots i:nth-child(2){background:#febc2e;}.win-dots i:nth-child(3){background:#28c840;}
+  .win-url{flex:1;max-width:340px;margin:0 auto;display:flex;align-items:center;gap:7px;justify-content:center;
+    height:24px;border-radius:7px;background:#08080a;border:1px solid var(--line);
+    font-family:var(--mono);font-size:11.5px;color:var(--ink-dim);}
+  .win-tools{width:54px;}
+
+  /* terminal viewport — a clipped peek of the live app, em-scaled */
+  .kx{position:relative;height:clamp(420px,52vw,720px);overflow:hidden;
+    font-family:var(--mono);color:var(--ink);font-size:clamp(7px,0.92vw,12px);
+    background:radial-gradient(140% 120% at 50% 0%,#0a0b10,#000 72%);}
+  .kx u{text-decoration:none;}
+  .kx-head{display:flex;align-items:center;gap:1em;padding:.85em 1.2em;border-bottom:1px solid var(--line);}
+  .kx-brand{display:flex;align-items:center;gap:.6em;}
+  .kx-brand svg{width:1.7em;height:1.7em;}
+  .kx-bd b{display:block;font-family:var(--body);font-weight:800;letter-spacing:.12em;font-size:1.15em;line-height:1;}
+  .kx-bd span{font-size:.62em;letter-spacing:.22em;color:var(--ink-faint);}
+  .kx-pills{display:flex;gap:.5em;margin:0 auto;flex-wrap:wrap;justify-content:center;}
+  .kx-pill{display:inline-flex;align-items:center;gap:.4em;font-size:.74em;letter-spacing:.08em;padding:.3em .7em;
+    border:1px solid var(--line);border-radius:2em;color:var(--ink-dim);background:rgba(255,255,255,.02);}
+  .kx-pill i{width:.5em;height:.5em;border-radius:50%;background:currentColor;}
+  .kx-pill.ok{color:var(--up);border-color:rgba(60,229,148,.3);}
+  .kx-pill.live{color:var(--crimson);border-color:rgba(255,31,68,.3);}
+  .kx-pill.disc{color:#9aa6ff;border-color:rgba(154,166,255,.3);}
+  .kx-pill.warn{color:var(--crimson);border-color:rgba(255,31,68,.3);}
+  .kx-clock{margin-left:auto;text-align:right;}
+  .kx-clock b{font-size:1.05em;color:var(--ink);}
+  .kx-clock span{display:block;font-size:.62em;letter-spacing:.14em;color:var(--ink-faint);}
+
+  .kx-strip,.kx-macro,.kx-session{display:flex;align-items:center;gap:.8em;padding:.55em 1.2em;border-bottom:1px solid var(--line);}
+  .kx-lab{font-size:.66em;letter-spacing:.2em;color:var(--ink-faint);white-space:nowrap;}
+  .kx-lab em{opacity:.7;font-style:normal;}
+  .kx-tiles{display:flex;gap:.55em;overflow:hidden;flex:1;}
+  .kx-tile{flex:1;min-width:0;border:1px solid var(--line);border-radius:.45em;padding:.45em .6em;background:rgba(255,255,255,.015);}
+  .kx-tile b{font-size:.92em;letter-spacing:.04em;}
+  .kx-tile span{display:block;font-size:.56em;letter-spacing:.1em;color:var(--ink-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .kx-tile u{display:block;font-size:.62em;letter-spacing:.12em;color:var(--ink-faint);margin-top:.2em;}
+  .kx-mac,.kx-ses{font-size:.74em;color:var(--ink-dim);}
+  .kx-mac i,.kx-ses i{color:var(--ink-faint);font-style:normal;font-size:.85em;margin-left:.2em;}
+  .kx-ses.on{color:var(--ink);}
+  .kx-bd2{margin-left:auto;font-size:.7em;letter-spacing:.1em;color:var(--crimson);font-style:normal;white-space:nowrap;}
+
+  .kx-body{display:flex;gap:1em;padding:1em 1.2em;}
+  .kx-feed{flex:1 1 62%;min-width:0;}
+  .kx-fh{display:flex;align-items:center;gap:.7em;margin-bottom:.7em;}
+  .kx-fh b{font-family:var(--body);font-weight:700;font-size:1em;}
+  .kx-filters{display:flex;gap:.35em;}
+  .kx-filters i{font-size:.66em;letter-spacing:.12em;color:var(--ink-faint);border:1px solid var(--line);border-radius:.4em;padding:.16em .5em;font-style:normal;}
+  .kx-filters i.on{color:#fff;background:var(--crimson);border-color:var(--crimson);}
+  .kx-fh u{margin-left:auto;font-size:.7em;color:var(--ink-faint);}
+  .kx-item{display:flex;gap:.8em;padding:.7em .2em .7em .7em;border-bottom:1px solid var(--line);border-left:2px solid transparent;}
+  .kx-item.lo{border-left-color:rgba(255,255,255,.12);}
+  .kx-item.md{border-left-color:var(--brand-yellow);}
+  .kx-item.hi{border-left-color:var(--crimson);}
+  .kx-mcol{flex:0 0 auto;width:4.4em;}
+  .kx-mcol time{display:block;font-size:.7em;color:var(--ink-faint);}
+  .kx-imp{display:inline-block;margin-top:.35em;font-size:.6em;letter-spacing:.14em;padding:.12em .45em;border-radius:.3em;color:var(--ink-faint);border:1px solid var(--line);}
+  .kx-imp.m{color:var(--brand-yellow);border-color:rgba(245,197,66,.35);}
+  .kx-acol{min-width:0;flex:1;}
+  .kx-src{font-size:.62em;letter-spacing:.1em;color:var(--ink-faint);margin-bottom:.25em;}
+  .kx-src .nw{color:var(--ink-dim);border:1px solid var(--line);border-radius:.3em;padding:.05em .35em;margin-right:.4em;}
+  .kx-acol h4{font-family:var(--body);font-weight:700;font-size:.95em;line-height:1.25;margin:0 0 .2em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .kx-acol p{font-size:.74em;line-height:1.35;color:var(--ink-dim);margin:0 0 .45em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .kx-vf{display:flex;align-items:center;gap:.5em;}
+  .v{font-size:.7em;font-weight:700;letter-spacing:.04em;padding:.16em .55em;border-radius:.35em;}
+  .v.bear{color:var(--down);border:1px solid rgba(255,46,77,.35);}
+  .v.bull{color:var(--up);border:1px solid rgba(60,229,148,.35);}
+  .v.neu{color:var(--ink-dim);border:1px solid var(--line);}
+  .kx-tk{font-size:.66em;letter-spacing:.06em;color:var(--ink-dim);border:1px solid var(--line);border-radius:.3em;padding:.1em .4em;}
+  .conf{margin-left:auto;display:flex;align-items:center;gap:.45em;font-size:.66em;color:var(--ink-faint);white-space:nowrap;}
+  .conf i{display:inline-block;height:.4em;min-width:.4em;background:linear-gradient(90deg,var(--crimson),var(--crimson-bright));border-radius:1em;}
+
+  .kx-rail{flex:1 1 38%;min-width:0;display:flex;flex-direction:column;gap:.9em;}
+  .kx-card{border:1px solid var(--line);border-radius:.6em;padding:.9em;background:rgba(255,255,255,.018);}
+  .kx-ch{display:flex;align-items:center;gap:.5em;margin-bottom:.7em;}
+  .kx-ch b{font-family:var(--body);font-weight:700;font-size:.95em;}
+  .kx-sym{font-size:.66em;letter-spacing:.1em;color:var(--ink-faint);border:1px solid var(--line);border-radius:.3em;padding:.1em .4em;}
+  .kx-cl{display:inline-flex;align-items:center;gap:.35em;font-size:.66em;letter-spacing:.1em;color:var(--crimson);}
+  .kx-cl i{width:.45em;height:.45em;border-radius:50%;background:var(--crimson);}
+  .kx-ch u{margin-left:auto;font-size:.66em;color:var(--ink-faint);}
+  .kx-confirm{border:1px solid rgba(60,229,148,.3);border-radius:.5em;padding:.7em;background:rgba(60,229,148,.05);margin-bottom:.7em;}
+  .kx-confirm b{display:block;color:var(--up);font-family:var(--body);font-weight:700;font-size:.85em;margin-bottom:.3em;}
+  .kx-confirm p{font-size:.72em;line-height:1.35;color:var(--ink-dim);margin:0;}
+  .kx-leg{display:flex;align-items:center;justify-content:space-between;padding:.4em 0;border-top:1px solid var(--line);}
+  .kx-leg:first-of-type{border-top:0;}
+  .kx-leg b{font-size:.85em;}
+  .kx-leg span{font-size:.62em;color:var(--ink-faint);margin-left:.4em;}
+  .kx-leg u{font-size:.66em;letter-spacing:.1em;color:var(--ink-faint);}
+  .kx-sub{font-size:.62em;letter-spacing:.16em;color:var(--ink-faint);margin-bottom:.5em;}
+  .kx-fund{display:flex;align-items:center;justify-content:space-between;padding:.32em 0;border-top:1px solid var(--line);}
+  .kx-fund:first-of-type{border-top:0;}
+  .kx-fund b{font-size:.82em;}
+  .kx-fund span{font-size:.66em;color:var(--ink-faint);margin-left:.5em;flex:1;}
+  .kx-fund u{font-size:.64em;letter-spacing:.1em;color:var(--ink-faint);}
+
+  .kx-fade{position:absolute;left:0;right:0;bottom:0;height:30%;pointer-events:none;background:linear-gradient(180deg,transparent,#000 94%);}
+  .kx-sweep{position:absolute;inset:0;z-index:5;pointer-events:none;transform:translateX(-130%);
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.10),transparent);}
+  .js .stage.in .kx-sweep{animation:screenOn 1.2s .35s ease-out 1;}
+  @keyframes screenOn{from{transform:translateX(-130%);}to{transform:translateX(130%);}}
+
+  .floor{position:relative;z-index:1;width:70%;height:60px;margin:-6px auto 0;
+    background:radial-gradient(ellipse 70% 100% at 50% 0%,rgba(255,31,68,.20),transparent 70%);filter:blur(9px);opacity:.7;}
+
+  /* hero feature badges */
+  .hero-badges{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:26px;}
+  .hero-badges span{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12px;letter-spacing:.03em;
+    color:var(--ink-dim);border:1px solid var(--line);border-radius:2em;padding:7px 14px;background:rgba(255,255,255,.02);}
+  .hero-badges i{width:5px;height:5px;border-radius:50%;background:var(--crimson);box-shadow:0 0 8px var(--crimson);}
+
+  /* stage reveal entrance */
+  .js .stage{opacity:0;transform:translateY(48px);
+    transition:opacity .9s cubic-bezier(.22,.61,.36,1),transform .9s cubic-bezier(.22,.61,.36,1);}
+  .js .stage.in{opacity:1;transform:none;}
+
+  /* stage mobile */
+  @media(max-width:860px){
+    .stage{margin-top:46px;}
+    .kx-macro,.kx-session{display:none;}
+  }
+  @media(max-width:600px){
+    .stage{padding:0 14px;margin-top:36px;}
+    .kx{height:clamp(360px,94vw,520px);}
+    .kx-rail{display:none;}
+    .kx-feed{flex-basis:100%;}
+    .kx-pills{display:none;}
+    .kx-tile:nth-child(n+5){display:none;}
+    .floor{width:84%;}
+  }
+
+  /* ===== showcase caption · annotation callouts · "what you're looking at" strip ===== */
+  .showcase-cap{max-width:760px;margin:72px auto 0;text-align:center;padding:0 22px;}
+  .sc-eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--gold);margin-bottom:16px;}
+  .sc-eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--up);box-shadow:0 0 8px var(--up);}
+  .sc-title{font-family:var(--disp);font-weight:500;font-size:clamp(26px,3.4vw,40px);line-height:1.1;letter-spacing:-.02em;margin:0 0 12px;}
+  .sc-sub{font-size:clamp(15px,1.5vw,17px);color:var(--ink-dim);margin:0 auto;max-width:600px;}
+
+  /* annotation callouts over the terminal (desktop) */
+  .annot{position:absolute;inset:0;z-index:3;pointer-events:none;}
+  .pin{position:absolute;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;
+    font-family:var(--mono);font-size:12px;letter-spacing:.03em;color:var(--ink);
+    background:rgba(8,8,11,.82);border:1px solid var(--line-bright);border-radius:2em;padding:8px 14px;
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 8px 24px -8px rgba(0,0,0,.8);}
+  .pin i{width:7px;height:7px;border-radius:50%;background:var(--crimson);box-shadow:0 0 10px var(--crimson);}
+  .pin-top{top:-14px;left:50%;transform:translateX(-50%);}
+  .pin-left{top:38%;left:-10px;}
+  .pin-right{top:23%;right:-10px;}
+  @media(max-width:1180px){.pin-left{left:6px;}.pin-right{right:6px;}}
+  @media(max-width:1024px){.annot{display:none;}}
+
+  /* "what you're looking at" strip */
+  .showcase-strip{max-width:1100px;margin:30px auto 0;padding:0 22px;display:grid;grid-template-columns:repeat(4,1fr);gap:22px;}
+  .pt{display:flex;gap:12px;}
+  .pt b{font-family:var(--mono);font-size:13px;color:var(--crimson);letter-spacing:.05em;padding-top:2px;}
+  .pt h4{font-family:var(--body);font-weight:700;font-size:15px;margin:0 0 5px;color:var(--ink);}
+  .pt p{font-size:13.5px;line-height:1.45;color:var(--ink-dim);margin:0;}
+  @media(max-width:860px){.showcase-strip{grid-template-columns:repeat(2,1fr);gap:20px 26px;}}
+  @media(max-width:520px){.showcase-strip{grid-template-columns:1fr;gap:16px;}}
+
+  /* reveal for showcase pieces */
+  .js .showcase-cap,.js .showcase-strip .pt{opacity:0;transform:translateY(22px);
+    transition:opacity .8s cubic-bezier(.22,.61,.36,1),transform .8s cubic-bezier(.22,.61,.36,1);}
+  .js .showcase-cap.in,.js .showcase-strip .pt.in{opacity:1;transform:none;}
+  .js .showcase-strip .pt:nth-child(2){transition-delay:.08s;}
+  .js .showcase-strip .pt:nth-child(3){transition-delay:.16s;}
+  .js .showcase-strip .pt:nth-child(4){transition-delay:.24s;}
+  .js .pin{opacity:0;transform:translateY(8px) scale(.96);transition:opacity .6s ease,transform .6s ease;}
+  .js .stage.in .pin{opacity:1;transform:none;}
+  .js .stage.in .pin-top{transition-delay:.35s;}
+  .js .stage.in .pin-left{transition-delay:.5s;}
+  .js .stage.in .pin-right{transition-delay:.65s;}
+
+  /* respect reduced motion — calm, content fully visible */
+  @media(prefers-reduced-motion:reduce){
+    .js #what .sec-title, .js #what .sec-intro, .js #what .feature,
+    .js #how .sec-title, .js #how .step,
+    .js #honest .sec-title, .js #honest .sec-intro, .js #honest .rcard,
+    .js #pricing .sec-title, .js #pricing .sec-intro, .js #pricing .plan,
+    .js .stage{
+      opacity:1;transform:none;transition:none;}
+    .eyebrow,.hero h1,.hero p,.hero-cta,.tickerstrip{animation:none;opacity:1;}
+    .ticker{animation:none;}
+    .btn-gold:hover,.rcard:hover{transform:none;}
+    .stars::after{animation:none;}
+    .hero h1 em{animation:none;}
+    .dawn{opacity:.18;transform:translateX(-50%) translateY(10vh);}
+    .glow{transform:translateX(-50%);opacity:1;}
+    .kx-sweep{display:none;}
+    .js .showcase-cap,.js .showcase-strip .pt,.js .pin{opacity:1;transform:none;}
+  }
 </style>
 </head>
 <body>
+  <div class="scene" aria-hidden="true">
+    <div class="stars"></div>
+    <div class="dawn"></div>
+  </div>
   <canvas id="candles"></canvas>
   <div class="glow"></div>
 
@@ -217,16 +527,173 @@
     <div class="container">
       <div class="eyebrow">Always-on market intelligence · News · Impact · SMT</div>
       <h1>Your edge while<br>the world <em>sleeps</em>.</h1>
-      <p>The market never stops moving — and the headline that decides tomorrow's open
-         is breaking <em>right now</em>, while most traders are asleep. Korvus reads the
-         wires around the clock, weighs what each story actually means, and puts the
-         <em>why</em> in front of you: scored, in plain English, one glance away.
-         You stop reacting to the market. You start walking in already knowing.</p>
+      <p>The headline that moves tomorrow's open is breaking <em>right now</em> &mdash; while most
+         traders are asleep. Korvus reads the wires around the clock and puts the <em>why</em>
+         in front of you: scored, in plain English, one glance away.</p>
       <div class="hero-cta">
         <a href="/signup" class="btn btn-gold">Claim your free edge</a>
         <a href="#how" class="btn btn-ghost">See how it works</a>
       </div>
+      <div class="hero-badges">
+        <span><i></i> 24/7 newswire</span>
+        <span><i></i> Impact scoring</span>
+        <span><i></i> SMT divergence</span>
+        <span><i></i> Plain-English why</span>
+        <span><i></i> $3.99/mo</span>
+      </div>
     </div>
+
+    <div class="showcase-cap">
+      <span class="sc-eyebrow"><i></i> THE LIVE TERMINAL &middot; korvus.industries</span>
+      <h2 class="sc-title">This is exactly what you're walking into.</h2>
+      <p class="sc-sub">The terminal you log into &mdash; scored news, SMT divergence and full session context, all one glance away.</p>
+    </div>
+
+    <div class="stage">
+      <div class="stage-light" aria-hidden="true">
+        <span class="halo"></span>
+        <span class="beam beam-l"></span>
+        <span class="beam beam-r"></span>
+      </div>
+      <div class="browser">
+        <div class="win-bar">
+          <span class="win-dots"><i></i><i></i><i></i></span>
+          <span class="win-url"><svg viewBox="0 0 24 24" width="11" height="11" fill="none"><rect x="5" y="10.5" width="14" height="8.5" rx="2" stroke="#8a90a2" stroke-width="1.6"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="#8a90a2" stroke-width="1.6"/></svg> korvus.industries</span>
+          <span class="win-tools"></span>
+        </div>
+        <div class="kx">
+          <div class="kx-head">
+            <div class="kx-brand">
+              <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 35 L8.2 16.5 L17 23.5 L24 9 L31 23.5 L39.8 16.5 L43 35 Z" fill="#ff1f44"/><rect x="6" y="34.5" width="36" height="5" rx="1.2" fill="#ff1f44"/></svg>
+              <div class="kx-bd"><b>KORVUS</b><span>YOUR EDGE WHILE THE WORLD SLEEPS</span></div>
+            </div>
+            <div class="kx-pills">
+              <span class="kx-pill ok"><i></i>ENGINE LIVE &middot; REAL-TIME</span>
+              <span class="kx-pill live"><i></i>1 trader live</span>
+              <span class="kx-pill disc">ECLIPSE-X</span>
+              <span class="kx-pill">FOREX NEWS</span>
+              <span class="kx-pill warn">SESSION CLOSED</span>
+            </div>
+            <div class="kx-clock"><b>11:54:35 AM</b><span>NEW YORK / ET</span></div>
+          </div>
+
+          <div class="kx-strip">
+            <span class="kx-lab">FUTURES BOARD <em>via ETF proxies</em></span>
+            <div class="kx-tiles">
+              <div class="kx-tile"><b>MNQ</b><span>MICRO NASDAQ</span><u>CLOSED</u></div>
+              <div class="kx-tile"><b>MES</b><span>MICRO S&amp;P</span><u>CLOSED</u></div>
+              <div class="kx-tile"><b>MYM</b><span>MICRO DOW</span><u>CLOSED</u></div>
+              <div class="kx-tile"><b>M2K</b><span>MICRO RUSSELL</span><u>CLOSED</u></div>
+              <div class="kx-tile"><b>CL</b><span>CRUDE OIL</span><u>CLOSED</u></div>
+              <div class="kx-tile"><b>GC</b><span>GOLD</span><u>CLOSED</u></div>
+              <div class="kx-tile"><b>VX</b><span>VIX FUTURES</span><u>CLOSED</u></div>
+            </div>
+          </div>
+
+          <div class="kx-macro">
+            <span class="kx-lab">MACRO CONFLUENCE</span>
+            <span class="kx-mac">Dollar <i>DXY</i></span>
+            <span class="kx-mac">Bonds <i>10Y</i></span>
+            <span class="kx-mac">Gold <i>XAU</i></span>
+            <span class="kx-mac">Oil <i>WTI</i></span>
+            <span class="kx-mac">Credit <i>HY</i></span>
+            <span class="kx-mac">Volatility <i>VIX</i></span>
+            <em class="kx-bd2">BACKDROP CLOSED</em>
+          </div>
+
+          <div class="kx-session">
+            <span class="kx-lab">SESSION MAP</span>
+            <span class="kx-ses">Asia <i>6p-12a</i></span>
+            <span class="kx-ses">London <i>12a-8a</i></span>
+            <span class="kx-ses on">New York <i>8a-5p</i></span>
+            <em class="kx-bd2">Market closed &middot; opens Sun 6:00 PM ET</em>
+          </div>
+
+          <div class="kx-body">
+            <div class="kx-feed">
+              <div class="kx-fh"><b>News &amp; Market Impact</b><span class="kx-filters"><i class="on">ALL</i><i>HIGH</i><i>MED</i><i>LOW</i></span><u>60 items</u></div>
+
+              <article class="kx-item lo">
+                <div class="kx-mcol"><time>11:52 AM</time><span class="kx-imp">LOW</span></div>
+                <div class="kx-acol">
+                  <div class="kx-src"><span class="nw">NEWSWIRE</span> YAHOO FINANCE</div>
+                  <h4>Alvotech (ALVO) Receives FDA Form 483 Following Routine Facility Inspection</h4>
+                  <p>Alvotech received an FDA Form 483 following a routine facility inspection, flagging observations but not a warning letter.</p>
+                  <div class="kx-vf"><span class="v bear">&#9660; Bearish</span><span class="conf">conf 35% <i style="width:35%"></i></span></div>
+                </div>
+              </article>
+
+              <article class="kx-item md">
+                <div class="kx-mcol"><time>11:42 AM</time><span class="kx-imp m">MED</span></div>
+                <div class="kx-acol">
+                  <div class="kx-src"><span class="nw">NEWSWIRE</span> YAHOO FINANCE</div>
+                  <h4>JPMorgan sets jaw-dropping Tesla stock price target</h4>
+                  <p>JPMorgan raises Tesla price target to a new high, signaling renewed bullish conviction amid broader EV and AI narratives.</p>
+                  <div class="kx-vf"><span class="v bull">&#9650; Bullish</span><span class="kx-tk">TSLA</span><span class="kx-tk">MNQ</span><span class="conf">conf 62% <i style="width:62%"></i></span></div>
+                </div>
+              </article>
+
+              <article class="kx-item lo">
+                <div class="kx-mcol"><time>11:36 AM</time><span class="kx-imp">LOW</span></div>
+                <div class="kx-acol">
+                  <div class="kx-src"><span class="nw">NEWSWIRE</span> INVESTING.COM</div>
+                  <h4>Air New Zealand plans for elevated fuel costs into 2027</h4>
+                  <p>Air New Zealand guidance reflects persistently high jet fuel costs expected through 2027, pressuring airline margins.</p>
+                  <div class="kx-vf"><span class="v bear">&#9660; Bearish</span><span class="conf">conf 35% <i style="width:35%"></i></span></div>
+                </div>
+              </article>
+
+              <article class="kx-item lo">
+                <div class="kx-mcol"><time>11:36 AM</time><span class="kx-imp">LOW</span></div>
+                <div class="kx-acol">
+                  <div class="kx-src"><span class="nw">NEWSWIRE</span> INVESTING.COM</div>
+                  <h4>Elon Musk to attend ASML tech conference to talk Terafab &mdash; Bloomberg</h4>
+                  <p>Musk confirmed to speak at ASML on Terafab, a Tesla/SpaceX manufacturing initiative &mdash; continued focus on advanced chip fabrication.</p>
+                  <div class="kx-vf"><span class="v neu">&#9670; Neutral</span><span class="kx-tk">TSLA</span><span class="conf">conf 35% <i style="width:35%"></i></span></div>
+                </div>
+              </article>
+            </div>
+
+            <div class="kx-rail">
+              <div class="kx-card">
+                <div class="kx-ch"><b>SMT Divergence</b><span class="kx-sym">NQ &middot; ES &middot; YM</span></div>
+                <div class="kx-confirm"><b>&#10003; Confirming &mdash; aligned weakness</b><p>All three indices are near session lows together, confirming each other to the downside. No divergence.</p></div>
+                <div class="kx-leg"><div><b>NQ</b><span>via QQQ</span></div><u>CLOSED</u></div>
+                <div class="kx-leg"><div><b>ES</b><span>via SPY</span></div><u>CLOSED</u></div>
+                <div class="kx-leg"><div><b>YM</b><span>via DIA</span></div><u>CLOSED</u></div>
+              </div>
+              <div class="kx-card">
+                <div class="kx-ch"><b>Funds Watch</b><span class="kx-cl"><i></i>CLOSED</span><u>32 symbols</u></div>
+                <div class="kx-sub">NASDAQ HEAVYWEIGHTS</div>
+                <div class="kx-fund"><b>NVDA</b><span>NVIDIA</span><u>CLOSED</u></div>
+                <div class="kx-fund"><b>AAPL</b><span>Apple</span><u>CLOSED</u></div>
+                <div class="kx-fund"><b>MSFT</b><span>Microsoft</span><u>CLOSED</u></div>
+                <div class="kx-fund"><b>AMZN</b><span>Amazon</span><u>CLOSED</u></div>
+                <div class="kx-fund"><b>META</b><span>Meta</span><u>CLOSED</u></div>
+                <div class="kx-fund"><b>GOOGL</b><span>Alphabet</span><u>CLOSED</u></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="kx-fade" aria-hidden="true"></div>
+          <span class="kx-sweep" aria-hidden="true"></span>
+        </div>
+      </div>
+      <div class="annot" aria-hidden="true">
+        <span class="pin pin-top"><i></i>ENGINE LIVE &middot; REAL-TIME</span>
+        <span class="pin pin-left"><i></i>Every headline scored &middot; impact + confidence</span>
+        <span class="pin pin-right"><i></i>SMT divergence &middot; NQ &middot; ES &middot; YM</span>
+      </div>
+      <div class="floor" aria-hidden="true"></div>
+    </div>
+
+    <div class="showcase-strip">
+      <div class="pt"><b>01</b><div><h4>24/7 scored newswire</h4><p>Every market-moving headline, read and ranked the moment it breaks.</p></div></div>
+      <div class="pt"><b>02</b><div><h4>Impact, direction &amp; confidence</h4><p>Each story tagged HIGH / MED / LOW with a bull-bear read and a confidence score.</p></div></div>
+      <div class="pt"><b>03</b><div><h4>SMT divergence</h4><p>NQ, ES and YM watched together for the divergence that front-runs reversals.</p></div></div>
+      <div class="pt"><b>04</b><div><h4>Futures, macro &amp; funds</h4><p>Index futures via ETF proxies, a macro backdrop, session map and funds watch.</p></div></div>
+    </div>
+
     <div class="tickerstrip">
       <div class="ticker" id="ticker"></div>
     </div>
@@ -441,6 +908,7 @@
   (function(){
     const cv = document.getElementById('candles');
     const ctx = cv.getContext('2d');
+    const REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;
     let W, H;
     const BULL = '#ffffff', BEAR = '#c2185b';
     const CW = 9;        // candle body width
@@ -484,7 +952,8 @@
     }
     function draw(){
       ctx.clearRect(0,0,W,H);
-      offset += 0.35;                            // scroll speed (slow, calm)
+      offset += 0.35 + (window.__kv || 0);       // calm base speed + scroll-velocity surge
+      window.__kv = (window.__kv || 0) * 0.9;    // surge decays back to calm
       if(offset >= STEP){ offset -= STEP; candles.shift(); candles.push(nextCandle()); }
       for(let i=0;i<candles.length;i++){
         const c = candles[i];
@@ -509,11 +978,49 @@
         }
       }
       ctx.globalAlpha = 1;
-      requestAnimationFrame(draw);
+      if(!REDUCE) requestAnimationFrame(draw);
     }
     window.addEventListener('resize', resize);
     resize();
     requestAnimationFrame(draw);
+  })();
+
+  // ===== scroll reveal (progressive enhancement · motion-safe) ===============
+  (function(){
+    if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;  // CSS keeps content visible
+    var sel = '.showcase-cap, .showcase-strip .pt, .stage, #what .sec-title, #what .sec-intro, #what .feature,'
+            + '#how .sec-title, #how .step,'
+            + '#honest .sec-title, #honest .sec-intro, #honest .rcard,'
+            + '#pricing .sec-title, #pricing .sec-intro, #pricing .plan';
+    var nodes = document.querySelectorAll(sel);
+    if(!('IntersectionObserver' in window)){
+      nodes.forEach(function(el){ el.classList.add('in'); });   // unsupported -> just show
+      return;
+    }
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, {rootMargin:'0px 0px -8% 0px', threshold:0.08});
+    nodes.forEach(function(el){ io.observe(el); });
+  })();
+
+  // ===== scroll-progress + velocity driver (feeds the scenery + candle surge) =
+  (function(){
+    var root = document.documentElement;
+    var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var lastY = window.scrollY || 0, ticking = false;
+    function update(){
+      var y = window.scrollY || 0;
+      var max = (document.documentElement.scrollHeight - window.innerHeight) || 1;
+      var p = Math.min(1, Math.max(0, y / max));
+      root.style.setProperty('--p', p.toFixed(4));     // 0 (night) → 1 (session open)
+      var dv = Math.abs(y - lastY); lastY = y;
+      window.__kv = Math.min(8, dv * 0.12);             // scroll velocity → candle surge (capped)
+      ticking = false;
+    }
+    update();                                           // paint the initial "night" state
+    if(reduce) return;                                  // reduced motion: static scenery, no surge
+    addEventListener('scroll', function(){ if(!ticking){ ticking = true; requestAnimationFrame(update); } }, {passive:true});
+    addEventListener('resize', update, {passive:true});
   })();
 </script>
 </body>
