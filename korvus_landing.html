@@ -161,6 +161,27 @@
     .brand-sub{display:none;}            /* free width on small phones */
     .nav-links .btn{padding:8px 13px;font-size:13px;}
   }
+
+  /* reassurance / feeling blocks */
+  .reassure{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:56px;align-items:stretch;}
+  .rcard{position:relative;display:flex;flex-direction:column;border-radius:20px;padding:42px 40px;
+    background:linear-gradient(180deg,rgba(17,20,26,.62),rgba(9,11,15,.5));border:1px solid var(--line-bright);backdrop-filter:blur(12px);}
+  .rcard.facts{border-color:var(--crimson-line);background:linear-gradient(180deg,rgba(22,12,15,.6),rgba(12,8,10,.5));box-shadow:0 0 60px -22px rgba(255,31,68,.5);}
+  .rcard .eyebrow2{font-family:var(--mono);font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);
+    display:flex;align-items:center;gap:10px;margin-bottom:20px;}
+  .rcard .eyebrow2::before{content:"";width:24px;height:1px;background:var(--gold);opacity:.7;}
+  .rcard h3{font-family:var(--disp);font-weight:500;font-size:clamp(23px,2.4vw,28px);line-height:1.18;letter-spacing:-.015em;color:var(--ink);margin-bottom:22px;}
+  .rcard p{color:var(--ink-dim);font-size:15.5px;line-height:1.78;margin-bottom:16px;}
+  .rcard p:last-child{margin-bottom:0;}
+  .rcard p em{color:var(--ink);font-style:italic;}
+  .flist{list-style:none;display:flex;flex-direction:column;}
+  .flist li{display:flex;gap:14px;align-items:flex-start;padding:15px 0;border-bottom:1px solid var(--line);}
+  .flist li:first-child{padding-top:2px;}
+  .flist li:last-child{border-bottom:none;padding-bottom:0;}
+  .flist .ic{flex:none;width:21px;height:21px;color:var(--gold);margin-top:1px;}
+  .flist .t{font-size:14.5px;line-height:1.62;color:var(--ink-dim);}
+  .flist .t b{color:var(--ink);font-weight:600;}
+  @media(max-width:860px){.reassure{grid-template-columns:1fr;}.rcard{padding:34px 28px;}}
 </style>
 </head>
 <body>
@@ -255,6 +276,36 @@
         <div class="step"><span class="snum">02</span><h4>Analyze</h4><p>Each item is read, summarized, and scored for real impact.</p></div>
         <div class="step"><span class="snum">03</span><h4>Surface</h4><p>The why lands on your terminal while it still matters.</p></div>
         <div class="step"><span class="snum">04</span><h4>Decide</h4><p>You move with context, not guesswork. The calls stay yours.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="honest">
+    <div class="container">
+      <div class="sec-label">Before you decide</div>
+      <div class="sec-title">The honest version.</div>
+      <p class="sec-intro">Two questions every trader asks before letting something new onto their desk. Here are the straight answers — no hype, no fine print.</p>
+      <div class="reassure">
+        <div class="rcard">
+          <div class="eyebrow2">How it feels</div>
+          <h3>&ldquo;What am I getting myself into?&rdquo;</h3>
+          <p>Not another firehose of red alerts, and not a guru in your inbox promising green days. Korvus is the <em>quiet</em> part of your routine — the market's overnight chaos arrives already read, weighed, and ranked, so the first thing you feel at the open is <em>recognition</em>, not panic.</p>
+          <p>You wake up, you glance, and you already know what moved and why. No twelve tabs. No 6&nbsp;a.m. scramble. No <em>&ldquo;wait — when did that happen?&rdquo;</em> Just the calm of walking in informed while the rest of the desk is still catching up.</p>
+          <p>And the part that matters most: the call stays <em>yours</em>. Korvus hands you the context — it never pretends to know your trade.</p>
+        </div>
+        <div class="rcard facts">
+          <div class="eyebrow2">No surprises</div>
+          <h3>&ldquo;What am I signing up for?&rdquo;</h3>
+          <ul class="flist">
+            <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>A free account — no credit card.</b> Setup takes about a minute.</span></li>
+            <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>The full 24/7 scored news feed,</b> free on the Observer tier.</span></li>
+            <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Your watchlist and settings, saved to you</b> and synced across devices.</span></li>
+            <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Email only when it matters.</b> No spam — unsubscribe in one click.</span></li>
+            <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Your data stays yours.</b> Leave or delete your account anytime.</span></li>
+            <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Pro is optional</b> — $3.99/mo, cancel anytime, no lock-in.</span></li>
+            <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>A tool, not advice.</b> Korvus informs your decision; it never makes it.</span></li>
+          </ul>
+        </div>
       </div>
     </div>
   </section>
