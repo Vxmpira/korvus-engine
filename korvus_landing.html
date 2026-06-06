@@ -38,7 +38,8 @@
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   html{scroll-behavior:smooth;}
-  body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;}
+  html{overflow-x:hidden;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;width:100%;}
 
   /* ticker-tape grain + grid atmosphere */
   body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
@@ -281,13 +282,13 @@
 
   /* ===== hero stage · the live Korvus terminal, in a browser, cinematically lit ===== */
   .stage{position:relative;z-index:2;max-width:1180px;margin:60px auto 0;padding:0 22px;}
-  .stage-light{position:absolute;inset:-16% -8% -6%;z-index:0;pointer-events:none;}
+  .stage-light{position:absolute;inset:-16% 0 -6%;z-index:0;pointer-events:none;}
   .stage-light .halo{position:absolute;left:50%;top:2%;width:84%;height:92%;transform:translateX(-50%);
     background:radial-gradient(ellipse 60% 56% at 50% 42%,rgba(255,31,68,.32),rgba(255,31,68,.08) 46%,transparent 70%);filter:blur(14px);}
   .stage-light .beam{position:absolute;top:-18%;width:44%;height:138%;filter:blur(10px);opacity:.5;mix-blend-mode:screen;}
-  .stage-light .beam-l{left:-9%;transform:skewX(-12deg);
+  .stage-light .beam-l{left:0;transform:skewX(-12deg);
     background:linear-gradient(108deg,transparent 42%,rgba(255,31,68,.30) 62%,transparent 80%);}
-  .stage-light .beam-r{right:-9%;transform:skewX(12deg);
+  .stage-light .beam-r{right:0;transform:skewX(12deg);
     background:linear-gradient(-108deg,transparent 42%,rgba(255,120,110,.20) 62%,transparent 80%);}
 
   /* browser frame */
@@ -435,19 +436,6 @@
   .sc-title{font-family:var(--disp);font-weight:500;font-size:clamp(26px,3.4vw,40px);line-height:1.1;letter-spacing:-.02em;margin:0 0 12px;}
   .sc-sub{font-size:clamp(15px,1.5vw,17px);color:var(--ink-dim);margin:0 auto;max-width:600px;}
 
-  /* annotation callouts over the terminal (desktop) */
-  .annot{position:absolute;inset:0;z-index:3;pointer-events:none;}
-  .pin{position:absolute;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;
-    font-family:var(--mono);font-size:12px;letter-spacing:.03em;color:var(--ink);
-    background:rgba(8,8,11,.82);border:1px solid var(--line-bright);border-radius:2em;padding:8px 14px;
-    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 8px 24px -8px rgba(0,0,0,.8);}
-  .pin i{width:7px;height:7px;border-radius:50%;background:var(--crimson);box-shadow:0 0 10px var(--crimson);}
-  .pin-top{top:-14px;left:50%;transform:translateX(-50%);}
-  .pin-left{top:38%;left:-10px;}
-  .pin-right{top:23%;right:-10px;}
-  @media(max-width:1180px){.pin-left{left:6px;}.pin-right{right:6px;}}
-  @media(max-width:1024px){.annot{display:none;}}
-
   /* "what you're looking at" strip */
   .showcase-strip{max-width:1100px;margin:30px auto 0;padding:0 22px;display:grid;grid-template-columns:repeat(4,1fr);gap:22px;}
   .pt{display:flex;gap:12px;}
@@ -464,11 +452,30 @@
   .js .showcase-strip .pt:nth-child(2){transition-delay:.08s;}
   .js .showcase-strip .pt:nth-child(3){transition-delay:.16s;}
   .js .showcase-strip .pt:nth-child(4){transition-delay:.24s;}
-  .js .pin{opacity:0;transform:translateY(8px) scale(.96);transition:opacity .6s ease,transform .6s ease;}
-  .js .stage.in .pin{opacity:1;transform:none;}
-  .js .stage.in .pin-top{transition-delay:.35s;}
-  .js .stage.in .pin-left{transition-delay:.5s;}
-  .js .stage.in .pin-right{transition-delay:.65s;}
+
+  /* ===== extra motion · making it pop ===== */
+  .scrollbar{position:fixed;top:0;left:0;right:0;height:3px;z-index:200;pointer-events:none;
+    transform-origin:0 50%;transform:scaleX(var(--p,0));
+    background:linear-gradient(90deg,var(--crimson),var(--crimson-bright));box-shadow:0 0 12px var(--crimson-glow);}
+  @keyframes ctaPulse{0%,100%{box-shadow:0 0 24px -6px var(--crimson-glow);}50%{box-shadow:0 0 42px 0 var(--crimson-glow);}}
+  .hero-cta .btn-gold{animation:ctaPulse 3.2s ease-in-out infinite;}
+  @keyframes livePulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+  .sc-eyebrow i,.kx-pill.ok i,.kx-pill.live i{animation:livePulse 1.8s ease-in-out infinite;}
+  .js .hero-badges span{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease;}
+  .js .hero-badges.in span{opacity:1;transform:none;}
+  .js .hero-badges.in span:nth-child(2){transition-delay:.07s;}
+  .js .hero-badges.in span:nth-child(3){transition-delay:.14s;}
+  .js .hero-badges.in span:nth-child(4){transition-delay:.21s;}
+  .js .hero-badges.in span:nth-child(5){transition-delay:.28s;}
+  .sec-label{position:relative;}
+  .sec-label::after{content:"";position:absolute;left:0;bottom:-8px;height:2px;width:0;background:var(--crimson);transition:width .7s cubic-bezier(.22,.61,.36,1) .15s;}
+  .js .sec-label.in::after{width:42px;}
+  .js .disclaim,.js footer{opacity:0;transform:translateY(20px);transition:opacity .8s ease,transform .8s ease;}
+  .js .disclaim.in,.js footer.in{opacity:1;transform:none;}
+  .feature{transition:background .3s ease,box-shadow .3s ease;}
+  .feature:hover{box-shadow:inset 0 0 0 1px var(--line-bright),0 0 40px -20px var(--crimson-glow);}
+  .plan{transition:transform .3s cubic-bezier(.22,.61,.36,1),box-shadow .3s ease,border-color .3s ease;}
+  .plan:hover{box-shadow:0 20px 50px -24px rgba(0,0,0,.7),0 0 44px -18px var(--crimson-glow);}
 
   /* respect reduced motion — calm, content fully visible */
   @media(prefers-reduced-motion:reduce){
@@ -486,11 +493,17 @@
     .dawn{opacity:.18;transform:translateX(-50%) translateY(10vh);}
     .glow{transform:translateX(-50%);opacity:1;}
     .kx-sweep{display:none;}
-    .js .showcase-cap,.js .showcase-strip .pt,.js .pin{opacity:1;transform:none;}
+    .js .showcase-cap,.js .showcase-strip .pt{opacity:1;transform:none;}
+    .scrollbar{display:none;}
+    .hero-cta .btn-gold,.sc-eyebrow i,.kx-pill.ok i,.kx-pill.live i{animation:none;}
+    .js .hero-badges span,.js .disclaim,.js footer{opacity:1;transform:none;}
+    .plan:hover{transform:none;}
+    .sec-label::after{transition:none;width:42px;}
   }
 </style>
 </head>
 <body>
+  <div class="scrollbar" aria-hidden="true"></div>
   <div class="scene" aria-hidden="true">
     <div class="stars"></div>
     <div class="dawn"></div>
@@ -678,11 +691,6 @@
           <div class="kx-fade" aria-hidden="true"></div>
           <span class="kx-sweep" aria-hidden="true"></span>
         </div>
-      </div>
-      <div class="annot" aria-hidden="true">
-        <span class="pin pin-top"><i></i>ENGINE LIVE &middot; REAL-TIME</span>
-        <span class="pin pin-left"><i></i>Every headline scored &middot; impact + confidence</span>
-        <span class="pin pin-right"><i></i>SMT divergence &middot; NQ &middot; ES &middot; YM</span>
       </div>
       <div class="floor" aria-hidden="true"></div>
     </div>
@@ -988,7 +996,7 @@
   // ===== scroll reveal (progressive enhancement · motion-safe) ===============
   (function(){
     if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;  // CSS keeps content visible
-    var sel = '.showcase-cap, .showcase-strip .pt, .stage, #what .sec-title, #what .sec-intro, #what .feature,'
+    var sel = '.hero-badges, .sec-label, .disclaim, footer, .showcase-cap, .showcase-strip .pt, .stage, #what .sec-title, #what .sec-intro, #what .feature,'
             + '#how .sec-title, #how .step,'
             + '#honest .sec-title, #honest .sec-intro, #honest .rcard,'
             + '#pricing .sec-title, #pricing .sec-intro, #pricing .plan';
