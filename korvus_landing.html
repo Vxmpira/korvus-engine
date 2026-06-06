@@ -37,22 +37,23 @@
     --disp:'Fraunces',Georgia,serif;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
-  html{scroll-behavior:smooth;}
-  html{overflow-x:hidden;}
-  body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;width:100%;}
+  html{scroll-behavior:smooth;overflow-x:hidden;overflow-x:clip;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;}
 
   /* ticker-tape grain + grid atmosphere */
   body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
     background:
-      linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px) 0 0/100% 54px,
-      linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px) 0 0/54px 100%;
-    -webkit-mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,#000,transparent 80%);
-            mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,#000,transparent 80%);}
-  .glow{position:fixed;top:-30vh;left:50%;transform:translateX(-50%);width:90vw;height:70vh;z-index:0;pointer-events:none;
-    background:radial-gradient(ellipse at center,rgba(255,31,68,.14),rgba(255,31,68,.05) 42%,transparent 70%);filter:blur(30px);}
+      linear-gradient(rgba(255,255,255,.013) 1px,transparent 1px) 0 0/100% 64px,
+      linear-gradient(90deg,rgba(255,255,255,.013) 1px,transparent 1px) 0 0/64px 100%;
+    -webkit-mask-image:radial-gradient(ellipse 92% 78% at 50% 20%,#000 38%,transparent 94%);
+            mask-image:radial-gradient(ellipse 92% 78% at 50% 20%,#000 38%,transparent 94%);}
+  .glow{position:fixed;top:-32vh;left:50%;transform:translateX(-50%);width:78vw;height:68vh;z-index:0;pointer-events:none;
+    background:radial-gradient(ellipse at center,rgba(255,31,68,.11),rgba(255,31,68,.04) 44%,transparent 70%);filter:blur(34px);}
 
   /* animated candlestick field */
-  #candles{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;}
+  #candles{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.3;
+    -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 13%,#000 87%,transparent 100%);
+            mask-image:linear-gradient(90deg,transparent 0,#000 13%,#000 87%,transparent 100%);}
 
   .container{max-width:1140px;margin:0 auto;padding:0 28px;position:relative;z-index:2;}
 
@@ -236,39 +237,18 @@
     .plan{padding:30px 24px;}
     .rcard{padding:30px 22px;}
     .foot-inner{flex-direction:column;align-items:flex-start;gap:18px;}
-    #candles{opacity:.34;}
+    #candles{opacity:.2;}
   }
 
   /* ===== scroll-driven scenery · "the world sleeps, then the market wakes" =====
      Driven by --p (0 at top → 1 at bottom of page), set on <html> by JS.
      Falls back to a calm "night" still (var(--p,0)=0) with no JS. */
   .scene{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
-  /* starfield — the quiet hours; fades out as you scroll into the session */
-  .stars{position:absolute;inset:-12% 0 0;opacity:clamp(0,calc(1 - var(--p,0)*4.5),1);
-    transform:translateY(calc(var(--p,0) * -50px));transition:opacity .15s linear;
-    background-image:
-      radial-gradient(1.3px 1.3px at 12% 18%,rgba(255,255,255,.9),transparent),
-      radial-gradient(1px 1px at 28% 42%,rgba(255,255,255,.55),transparent),
-      radial-gradient(1.4px 1.4px at 47% 11%,rgba(255,255,255,.8),transparent),
-      radial-gradient(1px 1px at 63% 31%,rgba(255,255,255,.5),transparent),
-      radial-gradient(1.3px 1.3px at 78% 21%,rgba(255,205,205,.7),transparent),
-      radial-gradient(1px 1px at 88% 46%,rgba(255,255,255,.5),transparent),
-      radial-gradient(1.1px 1.1px at 36% 60%,rgba(255,255,255,.45),transparent),
-      radial-gradient(1px 1px at 70% 68%,rgba(255,255,255,.4),transparent),
-      radial-gradient(1.2px 1.2px at 8% 55%,rgba(255,255,255,.4),transparent),
-      radial-gradient(1px 1px at 92% 64%,rgba(255,255,255,.35),transparent);}
-  .stars::after{content:"";position:absolute;inset:0;animation:twinkle 5.5s ease-in-out infinite;
-    background-image:
-      radial-gradient(1.4px 1.4px at 20% 80%,rgba(255,255,255,.5),transparent),
-      radial-gradient(1.2px 1.2px at 55% 88%,rgba(255,255,255,.55),transparent),
-      radial-gradient(1.3px 1.3px at 82% 82%,rgba(255,220,220,.45),transparent),
-      radial-gradient(1px 1px at 40% 28%,rgba(255,255,255,.6),transparent);}
-  @keyframes twinkle{0%,100%{opacity:.35;}50%{opacity:1;}}
   /* dawn — a crimson light rising from the horizon as the session opens */
-  .dawn{position:absolute;left:50%;bottom:0;width:150vw;height:95vh;
-    transform:translateX(-50%) translateY(calc(42vh - var(--p,0)*78vh));
-    opacity:calc(.14 + var(--p,0)*.86);filter:blur(6px);
-    background:radial-gradient(ellipse 58% 100% at 50% 100%,rgba(255,31,68,.24),rgba(255,31,68,.07) 44%,transparent 72%);}
+  .dawn{position:absolute;left:50%;bottom:-8vh;width:135vw;height:78vh;
+    transform:translateX(-50%) translateY(calc(16vh - var(--p,0)*26vh));
+    opacity:calc(.34 + var(--p,0)*.36);filter:blur(44px);
+    background:radial-gradient(ellipse 54% 100% at 50% 100%,rgba(255,31,68,.15),rgba(255,31,68,.045) 46%,transparent 72%);}
   /* the existing top glow recedes (parallax) and dims as the dawn takes over */
   .glow{transform:translateX(-50%) translateY(calc(var(--p,0) * -140px));opacity:calc(1 - var(--p,0)*.55);transition:opacity .15s linear;}
 
@@ -414,17 +394,27 @@
   .js .stage.in{opacity:1;transform:none;}
 
   /* stage mobile */
+  .kx-tabs{display:none;}
   @media(max-width:860px){
     .stage{margin-top:46px;}
-    .kx-macro,.kx-session{display:none;}
   }
   @media(max-width:600px){
     .stage{padding:0 14px;margin-top:36px;}
-    .kx{height:clamp(360px,94vw,520px);}
+    .kx{height:clamp(520px,150vw,720px);font-size:clamp(9px,2.7vw,13px);}
+    .kx-head{flex-direction:column;align-items:flex-start;gap:.7em;}
+    .kx-pills{display:flex;margin:0;justify-content:flex-start;}
+    .kx-clock{margin-left:0;text-align:left;}
+    .kx-strip{flex-direction:column;align-items:flex-start;gap:.5em;}
+    .kx-tiles{flex:none;width:100%;}
+    .kx-tile{flex:0 0 auto;min-width:11em;}
+    .kx-tabs{display:flex;gap:.5em;padding:.7em 1.2em 0;}
+    .kx-tabs span{flex:1;min-width:0;text-align:center;font-size:.74em;letter-spacing:.06em;color:var(--ink-faint);
+      border:1px solid var(--line);border-bottom:0;border-radius:.5em .5em 0 0;padding:.75em .4em;
+      background:rgba(255,255,255,.015);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .kx-tabs span.on{color:var(--ink);border-color:var(--crimson);box-shadow:inset 0 2px 0 var(--crimson);}
     .kx-rail{display:none;}
     .kx-feed{flex-basis:100%;}
-    .kx-pills{display:none;}
-    .kx-tile:nth-child(n+5){display:none;}
+    .kx-body{padding-top:.7em;}
     .floor{width:84%;}
   }
 
@@ -485,9 +475,8 @@
     .eyebrow,.hero h1,.hero p,.hero-cta,.tickerstrip{animation:none;opacity:1;}
     .ticker{animation:none;}
     .btn-gold:hover,.rcard:hover{transform:none;}
-    .stars::after{animation:none;}
     .hero h1 em{animation:none;}
-    .dawn{opacity:.18;transform:translateX(-50%) translateY(10vh);}
+    .dawn{opacity:.42;transform:translateX(-50%) translateY(4vh);}
     .glow{transform:translateX(-50%);opacity:1;}
     .kx-sweep{display:none;}
     .js .showcase-cap,.js .showcase-strip .pt{opacity:1;transform:none;}
@@ -500,7 +489,6 @@
 </head>
 <body>
   <div class="scene" aria-hidden="true">
-    <div class="stars"></div>
     <div class="dawn"></div>
   </div>
   <canvas id="candles"></canvas>
@@ -615,6 +603,12 @@
             <span class="kx-ses">London <i>12a-8a</i></span>
             <span class="kx-ses on">New York <i>8a-5p</i></span>
             <em class="kx-bd2">Market closed &middot; opens Sun 6:00 PM ET</em>
+          </div>
+
+          <div class="kx-tabs" aria-hidden="true">
+            <span class="on">NEWS &amp; IMPACT</span>
+            <span>SMT DIVERGENCE</span>
+            <span>FUNDS WATCH</span>
           </div>
 
           <div class="kx-body">
@@ -913,9 +907,9 @@
     const ctx = cv.getContext('2d');
     const REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;
     let W, H;
-    const BULL = '#ffffff', BEAR = '#c2185b';
-    const CW = 9;        // candle body width
-    const GAP = 8;       // gap between candles
+    const BULL = '#ffffff', BEAR = '#ff1f44';
+    const CW = 8;        // candle body width
+    const GAP = 12;      // gap between candles
     const STEP = CW + GAP;
     let candles = [];    // each: {o,h,l,c} prices in pixels
     let offset = 0;      // horizontal scroll position
@@ -1005,21 +999,19 @@
     nodes.forEach(function(el){ io.observe(el); });
   })();
 
-  // ===== scroll-progress + velocity driver (feeds the scenery + candle surge) =
+  // ===== scroll-progress driver · subtle dawn/glow parallax (desktop only) ====
   (function(){
     var root = document.documentElement;
     var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var lastY = window.scrollY || 0, ticking = false;
+    var ticking = false;
     function update(){
       var y = window.scrollY || 0;
       var max = (document.documentElement.scrollHeight - window.innerHeight) || 1;
       var p = Math.min(1, Math.max(0, y / max));
       root.style.setProperty('--p', p.toFixed(4));     // 0 (night) → 1 (session open)
-      var dv = Math.abs(y - lastY); lastY = y;
-      window.__kv = Math.min(8, dv * 0.12);             // scroll velocity → candle surge (capped)
       ticking = false;
     }
-    update();                                           // paint the initial "night" state
+    update();                                           // paint the initial state
     if(reduce || matchMedia('(max-width:600px)').matches) return;  // reduced motion or mobile: static scenery, smooth scroll
     addEventListener('scroll', function(){ if(!ticking){ ticking = true; requestAnimationFrame(update); } }, {passive:true});
     addEventListener('resize', update, {passive:true});
