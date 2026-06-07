@@ -38,11 +38,14 @@ const PUBLIC_URL    = process.env.PUBLIC_URL || "https://blackcrown-intelligence
 const stripe = STRIPE_SECRET ? require("stripe")(STRIPE_SECRET) : null;
 
 // Image generation (Pro perk). Dormant until IMAGE_API_KEY is set in crown.env.
-// NOTE: Claude/Anthropic does NOT generate images — this calls a separate image provider
-// (OpenAI-shaped by default; override IMAGE_API_URL/IMAGE_MODEL for another provider).
-const IMAGE_KEY     = process.env.IMAGE_API_KEY;
-const IMAGE_MODEL   = process.env.IMAGE_MODEL || "gpt-image-1";
-const IMAGE_API_URL = process.env.IMAGE_API_URL || "https://api.openai.com/v1/images/generations";
+// NOTE: Claude/Anthropic does NOT generate images — this calls a separate image provider.
+// Default provider is PicsArt (async submit→poll). Set IMAGE_PROVIDER=openai to use OpenAI instead.
+const IMAGE_PROVIDER = (process.env.IMAGE_PROVIDER || "picsart").toLowerCase();
+const IMAGE_KEY      = process.env.IMAGE_API_KEY;
+const IMAGE_MODEL    = process.env.IMAGE_MODEL || "";   // empty = provider's default model
+const OPENAI_IMG_URL = process.env.IMAGE_API_URL || "https://api.openai.com/v1/images/generations";
+const PICSART_T2I    = "https://genai-api.picsart.io/v1/text2image";
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // ---- database ----
 const DB_PATH = process.env.CROWN_DB || "/var/lib/crown/crown.db";
@@ -243,6 +246,55 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
+// Pull the first image URL (or base64) out of various provider response shapes.
+function pickImage(o){
+  if(!o || typeof o!=="object") return null;
+  if(Array.isArray(o.data)){ const d=o.data.find(x=>x && (x.url||x.b64_json)); if(d) return d.b64_json ? ("data:image/png;base64,"+d.b64_json) : d.url; }
+  if(o.data && (o.data.url||o.data.b64_json)) return o.data.b64_json ? ("data:image/png;base64,"+o.data.b64_json) : o.data.url;
+  if(Array.isArray(o.images)){ const im=o.images.find(x=>x && (x.url||typeof x==="string")); if(im) return (typeof im==="string") ? im : im.url; }
+  if(o.url) return o.url;
+  if(o.b64_json) return "data:image/png;base64,"+o.b64_json;
+  return null;
+}
+
+// PicsArt Text2Image: POST returns 202 + inference_id, then poll the inference endpoint until FINISHED.
+async function generatePicsart(prompt){
+  const body = Object.assign({ prompt, count:1, width:1024, height:1024 }, IMAGE_MODEL ? { model:IMAGE_MODEL } : {});
+  const post = await fetch(PICSART_T2I, {
+    method:"POST",
+    headers:{ "content-type":"application/json", "accept":"application/json", "X-Picsart-API-Key":IMAGE_KEY },
+    body: JSON.stringify(body)
+  });
+  const pj = await post.json().catch(()=>({}));
+  if(!post.ok) throw new Error(pj.message || pj.detail || ("Picsart error "+post.status));
+  let url = pickImage(pj);
+  if(url) return url;
+  const id = pj.inference_id || pj.id || (pj.data && pj.data.inference_id);
+  if(!id) throw new Error("Picsart returned no inference id");
+  const base = PICSART_T2I + "/inferences/" + encodeURIComponent(id);
+  for(let i=0;i<30;i++){               // up to ~45s, within nginx's 120s proxy timeout
+    await sleep(1500);
+    const g = await fetch(base, { headers:{ "accept":"application/json", "X-Picsart-API-Key":IMAGE_KEY } });
+    const gj = await g.json().catch(()=>({}));
+    url = pickImage(gj);
+    if(url) return url;
+    const st = String(gj.status||"").toUpperCase();
+    if(st==="FAILED" || st==="ERROR") throw new Error("Picsart generation failed");
+  }
+  throw new Error("Timed out waiting for the image");
+}
+
+// OpenAI Images (kept as an option via IMAGE_PROVIDER=openai)
+async function generateOpenAI(prompt){
+  const model = IMAGE_MODEL || "gpt-image-1";
+  const body = { model, prompt, n:1, size:"1024x1024" };
+  if(model.startsWith("dall-e")) body.response_format = "b64_json";
+  const r = await fetch(OPENAI_IMG_URL, { method:"POST", headers:{ "content-type":"application/json", "authorization":"Bearer "+IMAGE_KEY }, body:JSON.stringify(body) });
+  const data = await r.json();
+  if(!r.ok) throw new Error((data.error && data.error.message) || "Image provider error");
+  return pickImage(data);
+}
+
 // ---- image generation (Pro only; dormant until IMAGE_API_KEY is set) ----
 app.post("/api/image", async (req, res) => {
   if (rateLimited("img:"+clientIp(req), 20, 60000)) return res.status(429).json({ error:"rate", message:"You're generating images quickly — give it a moment." });
@@ -254,21 +306,12 @@ app.post("/api/image", async (req, res) => {
   if (!prompt) return res.status(400).json({ error:"no_prompt", message:"Describe the image you want." });
   if (prompt.length > 1000) return res.status(400).json({ error:"too_long", message:"Keep the prompt under 1000 characters." });
   try {
-    const body = { model:IMAGE_MODEL, prompt, n:1, size:"1024x1024" };
-    if (IMAGE_MODEL.startsWith("dall-e")) body.response_format = "b64_json";
-    const r = await fetch(IMAGE_API_URL, {
-      method:"POST",
-      headers:{ "content-type":"application/json", "authorization":"Bearer "+IMAGE_KEY },
-      body: JSON.stringify(body)
-    });
-    const data = await r.json();
-    if (!r.ok) return res.status(502).json({ error:"image_error", message:(data.error && data.error.message) || "Image provider error." });
-    const item = (data.data && data.data[0]) || {};
-    const image = item.b64_json ? ("data:image/png;base64," + item.b64_json) : item.url;
-    if (!image) return res.status(502).json({ error:"image_empty", message:"No image returned." });
+    const image = IMAGE_PROVIDER === "openai" ? await generateOpenAI(prompt) : await generatePicsart(prompt);
+    if (!image) return res.status(502).json({ error:"image_empty", message:"No image returned by the provider." });
     res.json({ image });
   } catch (e) {
-    res.status(500).json({ error:"server_error", message:e.message });
+    console.error("Image error:", e.message);
+    res.status(502).json({ error:"image_error", message:e.message });
   }
 });
 

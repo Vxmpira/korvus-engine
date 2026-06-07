@@ -712,7 +712,7 @@ async function submitLogin(){
   bad("lf-email", !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em));
   bad("lf-pass", pw.length<1);
   if(!ok) return;
-  if(IS_PREVIEW){ S.account={username:em.split("@")[0],email:em}; S.tier="pro"; closeLogin(); render(); toast("👑 Welcome back"); return; }
+  if(IS_PREVIEW){ S.account={username:em.split("@")[0],email:em}; S.tier="free"; closeLogin(); render(); toast("Demo login — real sign-in runs on your live site"); return; }
   const { ok:good, d } = await apiPost("/api/login", { email:em, password:pw });
   if(!good){ $("lf-email").classList.add("bad"); $("lf-pass").classList.add("bad"); toast(d.message || "Wrong email or password"); return; }
   closeLogin(); await refreshMe(); toast("👑 Welcome back, " + (S.account?.username || ""));
