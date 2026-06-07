@@ -119,6 +119,9 @@
   .msg.bot .bubble{background:var(--panel);border:1px solid var(--line-soft);border-top-left-radius:5px}
   .msg.user .bubble{background:linear-gradient(115deg,rgba(212,175,55,.16),rgba(212,175,55,.06));border:1px solid var(--line);border-top-right-radius:5px}
   .typing .bubble{display:flex;gap:5px;align-items:center}
+  .bubble-img{padding:7px;max-width:340px}
+  .bubble-img img{display:block;width:100%;border-radius:11px;background:var(--obsidian)}
+  .img-cap{font-size:.74rem;color:var(--muted-2);padding:8px 4px 2px;line-height:1.45}
   .typing i{width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;animation:blink 1.2s infinite}
   .typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
   @keyframes blink{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
@@ -315,6 +318,7 @@
       <div class="composer" id="composer">
         <textarea id="input" placeholder="Speak, and the Crown shall answer…" rows="1"></textarea>
         <button class="ic-btn" onclick="proGate('File uploads')" title="Attach (Pro)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
+        <button class="ic-btn" onclick="imagePrompt()" title="Create image (Pro)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="m21 15-4.5-4.5L5 21"/></svg></button>
         <button class="send" id="send" aria-label="Send"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
       </div>
       <div class="composer-foot">Crown can make mistakes. Verify important information.</div>
@@ -545,8 +549,15 @@ function renderChat(){
     const u = m.role==='user';
     const nm = u ? (S.account?.username || "You") : "Crown";
     const av = u ? (S.account?.username ? esc(S.account.username[0].toUpperCase()) : "You") : CROWN_AV;
-    const copy = u ? "" : `<div class="mactions"><button class="copy" onclick="copyMsg(this,${i})"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy</button></div>`;
-    return `<div class="msg ${u?'user':'bot'}"><div class="av">${av}</div><div class="mcol"><div class="mname">${esc(nm)}</div><div class="bubble">${esc(m.content)}</div>${copy}</div></div>`;
+    let bubble, actions="";
+    if(m.image){
+      bubble = `<div class="bubble bubble-img"><img src="${m.image}" alt="${esc(m.alt||'Generated image')}" loading="lazy">${m.alt?`<div class="img-cap">${esc(m.alt)}</div>`:""}</div>`;
+      actions = `<div class="mactions"><a class="copy" href="${m.image}" download="crown-image.png"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg> Save</a></div>`;
+    } else {
+      bubble = `<div class="bubble">${esc(m.content)}</div>`;
+      if(!u) actions = `<div class="mactions"><button class="copy" onclick="copyMsg(this,${i})"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy</button></div>`;
+    }
+    return `<div class="msg ${u?'user':'bot'}"><div class="av">${av}</div><div class="mcol"><div class="mname">${esc(nm)}</div>${bubble}${actions}</div></div>`;
   }).join("");
   chat.scrollTop = chat.scrollHeight;
 }
@@ -636,6 +647,41 @@ function closeInput(){ $("inputModal").classList.remove("show"); inputCb=null; }
 
 /* ===== upgrade / signup ===== */
 function proGate(feature){ toast(feature + " is a Pro feature"); openUpgrade(); }
+
+/* ===== image generation (Pro) ===== */
+function imagePrompt(){
+  if(S.tier!=="pro") return proGate("Image generation");
+  openInput("Create image","Describe your image","Prompt","A regal golden crown resting on black marble, soft studio lighting", v=>generateImage(v));
+}
+async function generateImage(prompt){
+  prompt=(prompt||"").trim(); if(!prompt||busy) return;
+  let c=activeChat(); if(!c){ newChat(); c=activeChat(); }
+  busy=true; $("send").disabled=true;
+  c.messages.push({role:"user", content:"🎨 "+prompt});
+  if(c.title==="New chat") c.title = prompt.length>34 ? prompt.slice(0,34)+"…" : prompt;
+  render();
+  const chat=$("chat");
+  const t=document.createElement("div"); t.className="msg bot"; t.innerHTML='<div class="av">'+CROWN_AV+'</div><div class="mcol"><div class="mname">Crown</div><div class="bubble">Painting your image…</div></div>';
+  chat.appendChild(t); chat.scrollTop=chat.scrollHeight;
+  try{
+    if(IS_PREVIEW){ const e=new Error("preview"); e.code="preview"; throw e; }
+    const { ok, status, d } = await apiPost("/api/image", { prompt });
+    if(status===401){ const e=new Error("auth"); e.code="auth"; throw e; }
+    if(status===403){ const e=new Error("pro"); e.code="pro"; throw e; }
+    if(status===503){ const e=new Error("off"); e.code="off"; throw e; }
+    if(status===429){ const e=new Error(d.message||"Slow down a moment"); e.code="rate"; throw e; }
+    if(!ok || !d.image){ throw new Error(d.message || ("Request failed ("+status+")")); }
+    c.messages.push({role:"assistant", content:"", image:d.image, alt:prompt});
+    render();
+  }catch(err){
+    if(err.code==="preview"){ c.messages.push({role:"assistant", content:"🎨 Image generation runs on your live Crown server for Pro members. Deploy and open your site to try it."}); render(); }
+    else if(err.code==="auth"){ c.messages.push({role:"assistant", content:"Please log in to generate images."}); render(); openLogin(); }
+    else if(err.code==="pro"){ c.messages.push({role:"assistant", content:"👑 Image generation is part of Pro."}); render(); openUpgrade(); }
+    else if(err.code==="off"){ c.messages.push({role:"assistant", content:"Image generation isn't switched on yet — add an image API key on the server to enable it."}); render(); }
+    else if(err.code==="rate"){ c.messages.push({role:"assistant", content:err.message}); render(); }
+    else { c.messages.push({role:"assistant", content:"⚠️ Couldn't create the image.\n\n("+err.message+")"}); render(); }
+  }finally{ busy=false; $("send").disabled=false; renderHead(); }
+}
 function openUpgrade(){ $("upgradeModal").classList.add("show"); setTimeout(()=>$("su-user").focus(),60); }
 function closeUpgrade(){ $("upgradeModal").classList.remove("show"); ["f-user","f-email","f-pass"].forEach(id=>$(id).classList.remove("bad")); }
 async function submitSignup(){

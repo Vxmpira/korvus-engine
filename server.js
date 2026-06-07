@@ -37,6 +37,13 @@ const STRIPE_WHSEC  = process.env.STRIPE_WEBHOOK_SECRET;
 const PUBLIC_URL    = process.env.PUBLIC_URL || "https://blackcrown-intelligence.com";
 const stripe = STRIPE_SECRET ? require("stripe")(STRIPE_SECRET) : null;
 
+// Image generation (Pro perk). Dormant until IMAGE_API_KEY is set in crown.env.
+// NOTE: Claude/Anthropic does NOT generate images — this calls a separate image provider
+// (OpenAI-shaped by default; override IMAGE_API_URL/IMAGE_MODEL for another provider).
+const IMAGE_KEY     = process.env.IMAGE_API_KEY;
+const IMAGE_MODEL   = process.env.IMAGE_MODEL || "gpt-image-1";
+const IMAGE_API_URL = process.env.IMAGE_API_URL || "https://api.openai.com/v1/images/generations";
+
 // ---- database ----
 const DB_PATH = process.env.CROWN_DB || "/var/lib/crown/crown.db";
 try { fs.mkdirSync(path.dirname(DB_PATH), { recursive: true }); } catch (_) {}
@@ -151,7 +158,7 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), (req,
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/api/health", (_req, res) =>
-  res.json({ ok:true, model:MODEL, keyLoaded:!!KEY, stripe:!!stripe, priceSet:!!STRIPE_PRICE, db:true, accounts:true }));
+  res.json({ ok:true, model:MODEL, keyLoaded:!!KEY, stripe:!!stripe, priceSet:!!STRIPE_PRICE, db:true, accounts:true, images:!!IMAGE_KEY }));
 
 // ---- auth ----
 app.post("/api/register", (req, res) => {
@@ -236,7 +243,36 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-// ---- Stripe checkout / portal (require login) ----
+// ---- image generation (Pro only; dormant until IMAGE_API_KEY is set) ----
+app.post("/api/image", async (req, res) => {
+  if (rateLimited("img:"+clientIp(req), 20, 60000)) return res.status(429).json({ error:"rate", message:"You're generating images quickly — give it a moment." });
+  if (!IMAGE_KEY) return res.status(503).json({ error:"image_unconfigured", message:"Image generation is not set up on the server yet." });
+  const u = getSessionUser(req);
+  if (!u) return res.status(401).json({ error:"auth_required", message:"Please log in first." });
+  if (u.tier !== "pro") return res.status(403).json({ error:"pro_only", message:"Image generation is a Pro feature." });
+  const prompt = String(req.body.prompt || "").trim();
+  if (!prompt) return res.status(400).json({ error:"no_prompt", message:"Describe the image you want." });
+  if (prompt.length > 1000) return res.status(400).json({ error:"too_long", message:"Keep the prompt under 1000 characters." });
+  try {
+    const body = { model:IMAGE_MODEL, prompt, n:1, size:"1024x1024" };
+    if (IMAGE_MODEL.startsWith("dall-e")) body.response_format = "b64_json";
+    const r = await fetch(IMAGE_API_URL, {
+      method:"POST",
+      headers:{ "content-type":"application/json", "authorization":"Bearer "+IMAGE_KEY },
+      body: JSON.stringify(body)
+    });
+    const data = await r.json();
+    if (!r.ok) return res.status(502).json({ error:"image_error", message:(data.error && data.error.message) || "Image provider error." });
+    const item = (data.data && data.data[0]) || {};
+    const image = item.b64_json ? ("data:image/png;base64," + item.b64_json) : item.url;
+    if (!image) return res.status(502).json({ error:"image_empty", message:"No image returned." });
+    res.json({ image });
+  } catch (e) {
+    res.status(500).json({ error:"server_error", message:e.message });
+  }
+});
+
+
 async function resolvePriceId(){
   if (!STRIPE_PRICE) return null;
   if (STRIPE_PRICE.startsWith("price_")) return STRIPE_PRICE;
