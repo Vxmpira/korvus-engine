@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Crown Console — BlackCrown VxJ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --obsidian:#070709;--obsidian-2:#0c0c11;--panel:#13131a;--panel-2:#1a1a23;--panel-3:#22222c;
+    --gold:#d4af37;--gold-bright:#f5e0a3;--gold-deep:#9c7c1f;--garnet:#8b1a2b;--garnet-soft:#b3243a;
+    --ivory:#ece7dd;--muted:#8c867a;--muted-2:#5f5b52;
+    --line:rgba(212,175,55,.16);--line-soft:rgba(236,231,221,.08);
+    --display:'Cinzel',serif;--body:'Hanken Grotesk',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--obsidian);color:var(--ivory);font-family:var(--body);overflow:hidden;-webkit-font-smoothing:antialiased}
+  ::selection{background:rgba(212,175,55,.3);color:#fff}
+  .bg-glow{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(50% 40% at 80% -5%,rgba(212,175,55,.08),transparent 70%),radial-gradient(40% 40% at 0% 100%,rgba(139,26,43,.1),transparent 70%)}
+  button{font-family:var(--body)}
+
+  .app{position:relative;z-index:1;display:grid;grid-template-columns:286px 1fr;height:100vh}
+  .overlay{display:none;position:fixed;inset:0;background:rgba(4,4,6,.6);z-index:18}
+
+  /* ---------- sidebar ---------- */
+  .sidebar{display:flex;flex-direction:column;gap:14px;padding:16px 14px;border-right:1px solid var(--line-soft);
+    background:linear-gradient(180deg,var(--obsidian-2),var(--obsidian));min-width:0;z-index:20}
+  .side-brand{display:flex;align-items:center;gap:10px;padding:4px 6px;text-decoration:none;color:var(--ivory)}
+  .side-brand .crown{width:26px;height:21px;color:var(--gold)}
+  .side-brand .name{font-family:var(--display);font-weight:700;letter-spacing:.1em;font-size:.9rem}
+  .side-brand .name b{color:var(--gold)}
+  .newchat{display:flex;align-items:center;gap:9px;justify-content:center;padding:12px;border-radius:12px;border:1px solid var(--line);
+    background:rgba(212,175,55,.06);color:var(--ivory);font-weight:600;font-size:.9rem;cursor:pointer;transition:border-color .25s,background .25s}
+  .newchat:hover{border-color:var(--gold);background:rgba(212,175,55,.11)}
+  .side-scroll{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:3px;margin:0 -4px;padding:0 4px}
+  .side-scroll::-webkit-scrollbar{width:7px}.side-scroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:7px}
+  .grp-label{display:flex;align-items:center;justify-content:space-between;font-size:.64rem;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--muted-2);padding:14px 8px 6px}
+  .grp-label .add{cursor:pointer;color:var(--muted);width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:6px}
+  .grp-label .add:hover{color:var(--gold-bright);background:var(--panel)}
+
+  .proj{margin-bottom:2px}
+  .proj-head{display:flex;align-items:center;gap:8px;padding:9px 8px;border-radius:9px;cursor:pointer;color:var(--ivory);font-size:.86rem;font-weight:600}
+  .proj-head:hover{background:var(--panel)}
+  .proj-head .chev{transition:transform .2s;color:var(--muted-2)}
+  .proj.collapsed .chev{transform:rotate(-90deg)}
+  .proj.collapsed .proj-chats{display:none}
+  .proj-head .pc{color:var(--gold)}
+  .proj-head .cnt{margin-left:auto;font-size:.7rem;color:var(--muted-2);font-weight:500}
+  .proj-head .padd{opacity:0;color:var(--muted);transition:opacity .2s}
+  .proj-head:hover .padd{opacity:1}
+  .proj-chats{display:flex;flex-direction:column;gap:2px;padding-left:10px;margin-left:9px;border-left:1px solid var(--line-soft)}
+
+  .row{display:flex;align-items:center;gap:9px;padding:9px 8px;border-radius:9px;color:var(--muted);font-size:.85rem;cursor:pointer;
+    transition:background .2s,color .2s;position:relative}
+  .row:hover{background:var(--panel);color:var(--ivory)}
+  .row.active{background:var(--panel-2);color:var(--ivory)}
+  .row.active::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:2px;border-radius:2px;background:var(--gold)}
+  .row .ti{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .dots{opacity:0;color:var(--muted-2);width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:6px;flex-shrink:0}
+  .row:hover .dots{opacity:1}.row .dots:hover{color:var(--ivory);background:var(--panel-3)}
+  .row svg.lead{flex-shrink:0;color:var(--muted-2)}
+
+  .locked-proj{margin:6px 4px;border:1px dashed var(--line);border-radius:12px;padding:14px;background:rgba(212,175,55,.03);text-align:center;cursor:pointer;transition:border-color .25s}
+  .locked-proj:hover{border-color:var(--gold)}
+  .locked-proj .lk{display:inline-flex;align-items:center;gap:6px;color:var(--gold-bright);font-size:.78rem;font-weight:600}
+  .locked-proj p{color:var(--muted);font-size:.74rem;margin-top:6px;line-height:1.4}
+
+  .plan-card{border:1px solid var(--line);border-radius:14px;padding:14px;background:linear-gradient(180deg,rgba(212,175,55,.07),rgba(139,26,43,.05))}
+  .pc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+  .pc-top .lbl{font-size:.8rem;color:var(--muted)}
+  .pill{font-family:var(--display);font-size:.64rem;font-weight:700;letter-spacing:.14em;padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--gold-bright)}
+  .pill.pro{background:linear-gradient(120deg,var(--garnet),var(--garnet-soft));color:#fff;border:none}
+  .meter{height:6px;border-radius:999px;background:var(--obsidian);overflow:hidden;border:1px solid var(--line-soft);margin:4px 0 7px}
+  .meter .fill{height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold-bright));transition:width .5s,background .3s}
+  .meter .fill.warn{background:linear-gradient(90deg,var(--garnet),var(--garnet-soft))}
+  .pc-usage{font-size:.72rem;color:var(--muted);font-variant-numeric:tabular-nums}.pc-usage .inf{color:var(--gold-bright);font-weight:700}
+  .btn{border:none;cursor:pointer;border-radius:999px;font-weight:600;font-size:.88rem;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .2s,box-shadow .3s,border-color .3s;text-decoration:none}
+  .btn-gold{background:linear-gradient(115deg,var(--gold-deep),var(--gold) 52%,var(--gold-bright));color:#1a1405;box-shadow:0 5px 20px rgba(212,175,55,.25)}
+  .btn-gold:hover{transform:translateY(-1px);box-shadow:0 9px 28px rgba(212,175,55,.4)}
+  .btn-ghost{background:rgba(255,255,255,.02);color:var(--ivory);border:1px solid var(--line)}
+  .btn-ghost:hover{border-color:var(--gold);color:var(--gold-bright)}
+  .upgrade-btn{width:100%;padding:11px;margin-top:11px}
+
+  /* ---------- main ---------- */
+  .main{display:flex;flex-direction:column;height:100vh;min-width:0}
+  .main-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 22px;border-bottom:1px solid var(--line-soft);background:linear-gradient(180deg,rgba(212,175,55,.03),transparent)}
+  .mh-left{display:flex;align-items:center;gap:11px;min-width:0}
+  .hamb{display:none;width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ivory);cursor:pointer;align-items:center;justify-content:center;flex-shrink:0}
+  .mh-title{font-family:var(--display);font-weight:600;letter-spacing:.04em;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mh-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .model-pill{display:flex;align-items:center;gap:8px;font-size:.76rem;color:var(--muted);padding:7px 12px;border-radius:999px;border:1px solid var(--line-soft);background:var(--obsidian)}
+  .model-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px var(--gold);animation:pulse 2.4s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .avatar{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:.78rem;
+    background:linear-gradient(120deg,var(--gold-deep),var(--gold-bright));color:#1a1405;flex-shrink:0}
+  @media(max-width:560px){.model-pill{display:none}}
+
+  .chat{flex:1;overflow-y:auto;padding:28px 22px;display:flex;flex-direction:column;gap:18px}
+  .chat::-webkit-scrollbar{width:9px}.chat::-webkit-scrollbar-thumb{background:var(--line);border-radius:9px}
+  .empty{margin:auto;text-align:center;max-width:560px;padding:16px}
+  .empty .ec{width:62px;height:62px;border-radius:18px;margin:0 auto 22px;display:flex;align-items:center;justify-content:center;background:linear-gradient(120deg,var(--gold-deep),var(--gold-bright));color:#1a1405;box-shadow:0 16px 50px -16px rgba(212,175,55,.7)}
+  .empty h2{font-family:var(--display);font-size:clamp(1.4rem,4vw,1.7rem);margin-bottom:8px}
+  .empty p{color:var(--muted);margin-bottom:24px}
+  .chips{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+  .chip{padding:11px 15px;border-radius:12px;border:1px solid var(--line-soft);background:var(--panel);color:var(--ivory);font-size:.85rem;cursor:pointer;transition:border-color .25s,transform .2s,background .25s}
+  .chip:hover{border-color:var(--gold);transform:translateY(-2px);background:var(--panel-2)}
+
+  .msg{display:flex;gap:13px;max-width:760px;width:100%;margin:0 auto;animation:rise .35s ease}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .msg.user{flex-direction:row-reverse}
+  .av{width:33px;height:33px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:.74rem}
+  .msg.bot .av{background:linear-gradient(120deg,var(--gold-deep),var(--gold-bright));color:#1a1405}
+  .msg.user .av{background:var(--panel-2);border:1px solid var(--line);color:var(--ivory)}
+  .bubble{padding:13px 17px;border-radius:15px;font-size:.95rem;white-space:pre-wrap;line-height:1.62}
+  .msg.bot .bubble{background:var(--panel);border:1px solid var(--line-soft);border-top-left-radius:5px}
+  .msg.user .bubble{background:linear-gradient(115deg,rgba(212,175,55,.16),rgba(212,175,55,.06));border:1px solid var(--line);border-top-right-radius:5px}
+  .typing .bubble{display:flex;gap:5px;align-items:center}
+  .typing i{width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;animation:blink 1.2s infinite}
+  .typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+
+  .composer-wrap{padding:14px 22px 20px;border-top:1px solid var(--line-soft)}
+  .composer{display:flex;gap:10px;align-items:flex-end;max-width:760px;margin:0 auto;background:var(--obsidian);border:1px solid var(--line);border-radius:16px;padding:8px 8px 8px 16px;transition:border-color .25s}
+  .composer:focus-within{border-color:var(--gold)}
+  .composer textarea{flex:1;resize:none;background:transparent;color:var(--ivory);border:none;outline:none;font-family:var(--body);font-size:.95rem;height:28px;max-height:140px;padding:8px 0;line-height:1.5}
+  .ic-btn{width:38px;height:38px;flex-shrink:0;border-radius:10px;border:1px solid var(--line-soft);background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .2s,border-color .2s}
+  .ic-btn:hover{color:var(--gold-bright);border-color:var(--line)}
+  .send{width:42px;height:42px;flex-shrink:0;border-radius:11px;border:none;cursor:pointer;background:linear-gradient(120deg,var(--gold-deep),var(--gold-bright));color:#1a1405;display:flex;align-items:center;justify-content:center;transition:transform .2s}
+  .send:hover{transform:scale(1.06)}.send:disabled{opacity:.4;cursor:not-allowed;transform:none}
+  .composer-foot{max-width:760px;margin:9px auto 0;text-align:center;font-size:.72rem;color:var(--muted-2)}
+  .locked{max-width:760px;margin:0 auto 12px;padding:16px 18px;border:1px solid var(--line);border-radius:14px;text-align:center;background:linear-gradient(0deg,rgba(139,26,43,.14),transparent);display:none}
+  .locked.show{display:block;animation:rise .4s}.locked p{margin-bottom:11px;font-size:.92rem}.locked b{color:var(--gold-bright)}
+
+  /* ---------- modals ---------- */
+  .modal-bg{position:fixed;inset:0;z-index:60;background:rgba(4,4,6,.78);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:22px;animation:fade .3s}
+  .modal-bg.show{display:flex}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .modal{max-width:430px;width:100%;background:linear-gradient(180deg,var(--panel),var(--obsidian-2));border:1px solid var(--line);border-radius:22px;padding:clamp(26px,5vw,36px) clamp(22px,5vw,34px);position:relative;box-shadow:0 50px 120px -30px rgba(0,0,0,.9);animation:rise .35s}
+  .modal .close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:9px;border:1px solid var(--line-soft);background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .modal .close:hover{color:var(--ivory)}
+  .modal .mcrown{width:48px;height:38px;color:var(--gold);margin-bottom:14px;filter:drop-shadow(0 4px 16px rgba(212,175,55,.5))}
+  .modal .eyebrow{font-family:var(--display);letter-spacing:.3em;text-transform:uppercase;font-size:.68rem;color:var(--gold);font-weight:600;margin-bottom:6px}
+  .modal h3{font-family:var(--display);font-size:1.55rem;margin-bottom:4px}
+  .modal .msub{color:var(--muted);font-size:.9rem}
+  .modal .mamt{font-family:var(--display);margin:12px 0}.modal .mamt b{font-size:2.3rem;font-weight:800}.modal .mamt span{color:var(--muted)}
+  .field{margin-top:13px}
+  .field label{display:block;font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .field input{width:100%;background:var(--obsidian);border:1px solid var(--line);border-radius:11px;padding:12px 14px;color:var(--ivory);font-family:var(--body);font-size:.94rem;outline:none;transition:border-color .25s}
+  .field input:focus{border-color:var(--gold)}
+  .field .err{color:var(--garnet-soft);font-size:.76rem;margin-top:5px;display:none}
+  .field.bad input{border-color:var(--garnet-soft)}.field.bad .err{display:block}
+  .modal .btn{width:100%;padding:13px;margin-top:18px}
+  .modal .mnote{margin-top:13px;font-size:.74rem;color:var(--muted-2);text-align:center;line-height:1.5}
+  .modal .switch{margin-top:12px;text-align:center;font-size:.82rem;color:var(--muted)}.modal .switch a{color:var(--gold-bright);cursor:pointer}
+
+  .ctx{position:fixed;z-index:70;background:var(--panel-2);border:1px solid var(--line);border-radius:11px;padding:6px;min-width:190px;box-shadow:0 20px 50px rgba(0,0,0,.7);display:none}
+  .ctx.show{display:block;animation:rise .15s}
+  .ctx button{width:100%;text-align:left;background:transparent;border:none;color:var(--ivory);padding:9px 11px;border-radius:8px;font-size:.85rem;cursor:pointer;display:flex;align-items:center;gap:9px}
+  .ctx button:hover{background:var(--panel-3)}.ctx button.danger:hover{color:var(--garnet-soft)}
+  .ctx .ctx-label{font-size:.64rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-2);padding:8px 11px 4px}
+  .ctx button .lk{margin-left:auto;font-size:.62rem;color:var(--gold-bright);letter-spacing:.1em}
+  .ctx .sep{height:1px;background:var(--line-soft);margin:5px 0}
+
+  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);z-index:80;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:12px;padding:13px 20px;color:var(--ivory);font-size:.9rem;box-shadow:0 20px 50px rgba(0,0,0,.6);opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;display:flex;align-items:center;gap:10px}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast svg{color:var(--gold)}
+
+  @media(max-width:900px){
+    .app{grid-template-columns:1fr}
+    .sidebar{position:fixed;inset:0 auto 0 0;width:286px;transform:translateX(-105%);transition:transform .3s;box-shadow:0 0 80px rgba(0,0,0,.8)}
+    .sidebar.open{transform:none}
+    .overlay.show{display:block}
+    .hamb{display:flex}
+  }
+
+  /* ====================== REDESIGN v2 ====================== */
+  /* atmosphere */
+  .bg-glow{background:
+    radial-gradient(58% 44% at 80% -8%,rgba(212,175,55,.13),transparent 72%),
+    radial-gradient(46% 46% at -2% 104%,rgba(139,26,43,.14),transparent 72%),
+    radial-gradient(120% 90% at 50% 40%,transparent 55%,rgba(0,0,0,.5))}
+
+  /* sidebar */
+  .sidebar{background:linear-gradient(180deg,#0a0a10,#070709);box-shadow:inset -1px 0 0 var(--line-soft),inset -22px 0 50px -38px rgba(212,175,55,.3)}
+  .side-brand{padding:6px 6px 12px;border-bottom:1px solid var(--line-soft)}
+  .side-brand .crown{filter:drop-shadow(0 3px 11px rgba(212,175,55,.55))}
+  .newchat{background:linear-gradient(180deg,rgba(212,175,55,.11),rgba(212,175,55,.03));box-shadow:0 7px 22px -13px rgba(212,175,55,.55)}
+  .newchat:hover{box-shadow:0 9px 26px -10px rgba(212,175,55,.65)}
+
+  .side-foot{display:flex;flex-direction:column;gap:11px}
+  .profile-btn{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:14px;border:1px solid var(--line-soft);background:rgba(255,255,255,.015);cursor:pointer;transition:border-color .25s,background .25s;width:100%}
+  .profile-btn:hover{border-color:var(--line);background:rgba(212,175,55,.05)}
+  .profile-btn .pf-av{width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:.8rem;background:linear-gradient(120deg,var(--gold-deep),var(--gold-bright));color:#1a1405}
+  .profile-btn .pf-meta{flex:1;min-width:0;text-align:left}
+  .profile-btn .pf-name{display:block;font-size:.85rem;color:var(--ivory);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .profile-btn .pf-sub{display:block;font-size:.7rem;color:var(--muted-2)}
+  .profile-btn .pf-chev{color:var(--muted-2);flex-shrink:0}
+
+  /* header */
+  .main-head{backdrop-filter:blur(10px);background:linear-gradient(180deg,rgba(22,17,7,.45),rgba(7,7,9,.15));border-bottom:1px solid var(--line)}
+  .mh-title{font-size:1.04rem}
+  .avatar{cursor:pointer;border:1px solid rgba(255,255,255,.16);transition:transform .2s,box-shadow .3s}
+  .avatar:hover{transform:translateY(-1px);box-shadow:0 7px 20px -7px rgba(212,175,55,.75)}
+
+  /* empty state */
+  .chat{padding:34px 22px}
+  .empty .ec{width:84px;height:84px;border-radius:24px;position:relative;box-shadow:0 22px 64px -16px rgba(212,175,55,.7),inset 0 0 0 1px rgba(255,255,255,.22)}
+  .empty .ec::after{content:"";position:absolute;inset:-22px;border-radius:50%;background:radial-gradient(circle,rgba(212,175,55,.28),transparent 70%);z-index:-1;filter:blur(7px)}
+  .empty .eyebrow2{font-family:var(--display);letter-spacing:.34em;text-transform:uppercase;font-size:.66rem;color:var(--gold);font-weight:600;margin-bottom:14px}
+  .empty h2{font-size:clamp(1.55rem,4.4vw,2.05rem);background:linear-gradient(120deg,var(--ivory),#fff 42%,var(--muted));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .empty p{margin-bottom:26px}
+  .chips{display:grid;grid-template-columns:1fr 1fr;gap:11px;max-width:540px;margin:0 auto}
+  .chip{display:flex;align-items:center;gap:11px;text-align:left;padding:15px 16px;border-radius:14px;background:linear-gradient(180deg,var(--panel),var(--obsidian-2));border:1px solid var(--line-soft);transition:border-color .25s,transform .2s,box-shadow .3s}
+  .chip .ci{color:var(--gold);flex-shrink:0;opacity:.92}
+  .chip .ct{flex:1;min-width:0}
+  .chip .ca{color:var(--muted-2);opacity:0;transform:translateX(-4px);transition:.2s;flex-shrink:0}
+  .chip:hover{border-color:var(--line);transform:translateY(-2px);box-shadow:0 16px 34px -20px rgba(212,175,55,.6)}
+  .chip:hover .ca{opacity:1;transform:none;color:var(--gold-bright)}
+  @media(max-width:540px){.chips{grid-template-columns:1fr}}
+
+  /* messages */
+  .msg{gap:14px;align-items:flex-start}
+  .av{box-shadow:0 4px 14px -7px rgba(0,0,0,.85)}
+  .msg.bot .av{box-shadow:0 5px 18px -7px rgba(212,175,55,.6)}
+  .mcol{display:flex;flex-direction:column;gap:5px;min-width:0;max-width:calc(100% - 47px)}
+  .msg.user .mcol{align-items:flex-end}
+  .mname{font-family:var(--display);font-size:.67rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-2);padding:0 4px}
+  .msg.bot .mname{color:var(--gold)}
+  .bubble{box-shadow:0 12px 32px -24px rgba(0,0,0,.9);max-width:100%}
+  .msg.bot .bubble{background:linear-gradient(180deg,var(--panel-2),var(--panel));border-color:var(--line-soft)}
+  .mactions{padding:0 4px}
+  .copy{display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;color:var(--muted-2);font-size:.72rem;cursor:pointer;font-family:var(--body);padding:3px 5px;border-radius:7px;opacity:0;transition:opacity .2s,color .2s}
+  .msg.bot:hover .copy{opacity:1}
+  .copy:hover{color:var(--gold-bright)}
+
+  /* composer redesign */
+  .composer-wrap{padding:8px 22px 18px;background:linear-gradient(0deg,var(--obsidian) 35%,transparent);border-top:none}
+  .composer{align-items:flex-end;gap:7px;background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:20px;padding:8px 9px 8px 7px;box-shadow:0 22px 54px -32px rgba(0,0,0,.95),inset 0 1px 0 rgba(255,255,255,.045);transition:border-color .25s,box-shadow .3s}
+  .composer:focus-within{border-color:var(--gold);box-shadow:0 24px 58px -28px rgba(212,175,55,.5),inset 0 1px 0 rgba(255,255,255,.07)}
+  .composer textarea{padding:10px 6px;font-size:.96rem;overflow-y:auto}
+  .composer textarea::-webkit-scrollbar{width:8px}
+  .composer textarea::-webkit-scrollbar-button{display:none;height:0;width:0}
+  .composer textarea::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px}
+  .ic-btn{width:40px;height:40px;border-radius:12px;border:none;background:transparent}
+  .ic-btn:hover{background:var(--panel-3);color:var(--gold-bright)}
+  .send{width:44px;height:44px;border-radius:13px;box-shadow:0 9px 24px -9px rgba(212,175,55,.7)}
+  .send:hover{transform:translateY(-1px) scale(1.04)}
+  .composer-foot{margin-top:11px;letter-spacing:.02em}
+
+  /* account modal */
+  .acct-head{display:flex;align-items:center;gap:14px;margin:8px 0 4px}
+  .acct-av{width:58px;height:58px;border-radius:17px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:1.35rem;background:linear-gradient(120deg,var(--gold-deep),var(--gold-bright));color:#1a1405;box-shadow:0 14px 36px -12px rgba(212,175,55,.7)}
+  .acct-id{min-width:0}
+  .acct-id .an{font-family:var(--display);font-size:1.32rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+  .acct-id .ae{color:var(--muted);font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .acct-rows{margin-top:18px;border:1px solid var(--line-soft);border-radius:14px;overflow:hidden}
+  .arow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px}
+  .arow+.arow{border-top:1px solid var(--line-soft)}
+  .arow .k{color:var(--muted);font-size:.8rem;letter-spacing:.04em}
+  .arow .v{color:var(--ivory);font-weight:600;font-size:.9rem;display:flex;align-items:center;gap:8px}
+  .arow .v .pill{padding:3px 9px}
+  .acct-actions{display:flex;flex-direction:column;gap:10px;margin-top:18px}
+  .acct-actions .btn{width:100%;padding:12px}
+  .btn-danger{background:transparent;border:1px solid rgba(179,36,58,.45);color:var(--garnet-soft)}
+  .btn-danger:hover{border-color:var(--garnet-soft);background:rgba(139,26,43,.13)}
+  .linkbtn{display:inline-block;margin-top:11px;background:none;border:none;color:var(--gold-bright);font-size:.78rem;cursor:pointer;font-family:var(--body);text-decoration:underline;text-underline-offset:3px}
+  .gold-text{background:linear-gradient(115deg,var(--gold-deep),var(--gold-bright) 50%,var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent}
+</style>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 56'%3E%3Cpath d='M4 42 L10 14 L22 28 L32 6 L42 28 L54 14 L60 42 Z' fill='%23d4af37'/%3E%3Crect x='4' y='44' width='56' height='8' fill='%23d4af37'/%3E%3C/svg%3E">
+</head>
+<body>
+<script>/*urlclean*/try{var _p=location.pathname;if(/\.html$/.test(_p))history.replaceState(null,"",_p.replace(/index\.html$/,"").replace(/\.html$/,"")+location.search+location.hash);}catch(e){}</script>
+<div class="bg-glow"></div>
+<div class="app">
+  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <a class="side-brand" href="/">
+      <svg class="crown" viewBox="0 0 64 50" fill="currentColor"><path d="M4 42 L10 14 L22 28 L32 6 L42 28 L54 14 L60 42 Z"/><rect x="4" y="42" width="56" height="6" rx="1.5"/></svg>
+      <span class="name">BLACK<b>CROWN</b></span>
+    </a>
+    <button class="newchat" onclick="newChat()"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> New Chat</button>
+    <div class="side-scroll" id="sideList"></div>
+    <div class="side-foot">
+      <div class="plan-card" id="planCard"></div>
+      <button class="profile-btn" id="profileBtn" onclick="openAccount()"></button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="main-head">
+      <div class="mh-left">
+        <button class="hamb" onclick="openSidebar()" aria-label="Menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg></button>
+        <span class="mh-title" id="headTitle">New chat</span>
+      </div>
+      <div class="mh-right">
+        <span class="model-pill"><span class="dot"></span> <span id="modelName">Crown · Standard</span></span>
+        <span class="pill" id="tierPill">FREE</span>
+        <div class="avatar" id="avatar" onclick="openAccount()" title="Account"><svg width="17" height="14" viewBox="0 0 64 50" fill="currentColor"><path d="M4 42 L10 14 L22 28 L32 6 L42 28 L54 14 L60 42 Z"/><rect x="4" y="42" width="56" height="6" rx="2"/></svg></div>
+      </div>
+    </header>
+
+    <div class="chat" id="chat"></div>
+
+    <div class="composer-wrap">
+      <div class="locked" id="lockedBar">
+        <p>👑 You've reached your <b>Free</b> token limit. Pro members enjoy <b>unlimited usage</b>, Projects, and advanced models.</p>
+        <button class="btn btn-gold" style="padding:11px 22px" onclick="openUpgrade()">Upgrade to Pro</button>
+      </div>
+      <div class="composer" id="composer">
+        <textarea id="input" placeholder="Speak, and the Crown shall answer…" rows="1"></textarea>
+        <button class="ic-btn" onclick="proGate('File uploads')" title="Attach (Pro)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
+        <button class="send" id="send" aria-label="Send"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+      </div>
+      <div class="composer-foot">Crown can make mistakes. Verify important information.</div>
+    </div>
+  </main>
+</div>
+
+<!-- UPGRADE / SIGNUP MODAL -->
+<div class="modal-bg" id="upgradeModal">
+  <div class="modal">
+    <button class="close" onclick="closeUpgrade()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <svg class="mcrown" viewBox="0 0 64 50" fill="currentColor"><path d="M4 42 L10 14 L22 28 L32 6 L42 28 L54 14 L60 42 Z"/><rect x="4" y="42" width="56" height="6" rx="2"/><circle cx="10" cy="12" r="3.2"/><circle cx="32" cy="4" r="3.2"/><circle cx="54" cy="12" r="3.2"/></svg>
+    <div class="eyebrow">Create your account · Ascend to Pro</div>
+    <h3 class="gold-text">BlackCrown Pro</h3>
+    <p class="msub">Unlimited usage, Projects, and advanced models.</p>
+    <div class="mamt"><b class="gold-text">$29</b><span> / month</span></div>
+
+    <div class="field" id="f-user"><label>Username</label><input id="su-user" autocomplete="username" placeholder="yourname"><div class="err">Choose a username (3+ characters).</div></div>
+    <div class="field" id="f-email"><label>Email</label><input id="su-email" type="email" autocomplete="email" placeholder="you@example.com"><div class="err">Enter a valid email address.</div></div>
+    <div class="field" id="f-pass"><label>Password</label><input id="su-pass" type="password" autocomplete="new-password" placeholder="At least 8 characters"><div class="err">Password must be at least 8 characters.</div></div>
+
+    <button class="btn btn-gold" onclick="submitSignup()">Create account &amp; Ascend →</button>
+    <div class="switch">Already have an account? <a onclick="closeUpgrade();openLogin()">Log in</a></div>
+    <div class="mnote">Demo flow. In production this creates your account on the backend and opens secure Stripe Checkout — passwords are never stored in the browser.</div>
+  </div>
+</div>
+
+<!-- LOGIN MODAL -->
+<div class="modal-bg" id="loginModal">
+  <div class="modal">
+    <button class="close" onclick="closeLogin()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <svg class="mcrown" viewBox="0 0 64 50" fill="currentColor"><path d="M4 42 L10 14 L22 28 L32 6 L42 28 L54 14 L60 42 Z"/><rect x="4" y="42" width="56" height="6" rx="2"/><circle cx="10" cy="12" r="3.2"/><circle cx="32" cy="4" r="3.2"/><circle cx="54" cy="12" r="3.2"/></svg>
+    <div class="eyebrow">Welcome back</div>
+    <h3 class="gold-text">Log in to Crown</h3>
+    <p class="msub">Pick up right where you left off.</p>
+
+    <div class="field" id="lf-email"><label>Email</label><input id="li-email" type="email" autocomplete="email" placeholder="you@example.com"><div class="err">Enter a valid email address.</div></div>
+    <div class="field" id="lf-pass"><label>Password</label><input id="li-pass" type="password" autocomplete="current-password" placeholder="Your password"><div class="err">Enter your password.</div></div>
+
+    <button class="btn btn-gold" onclick="submitLogin()">Log in →</button>
+    <div class="switch">New to Crown? <a onclick="closeLogin();openUpgrade()">Create an account</a></div>
+    <div class="mnote">Demo login. In production this verifies your credentials against the backend and loads your real plan.</div>
+  </div>
+</div>
+
+<!-- NEW PROJECT MODAL -->
+<div class="modal-bg" id="nameModal">
+  <div class="modal" style="max-width:380px">
+    <button class="close" onclick="closeName()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <div class="eyebrow">New Project</div>
+    <h3>Name your project</h3>
+    <div class="field"><label>Project name</label><input id="proj-name" placeholder="e.g. Marketing, Q3 Launch…"></div>
+    <button class="btn btn-gold" onclick="confirmProject()">Create Project</button>
+  </div>
+</div>
+
+<!-- ACCOUNT / PROFILE MODAL -->
+<div class="modal-bg" id="accountModal">
+  <div class="modal">
+    <button class="close" onclick="closeAccount()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <div class="eyebrow">Your account</div>
+    <div id="acctBody"></div>
+  </div>
+</div>
+
+<!-- GENERIC INPUT MODAL (rename chat / edit name) -->
+<div class="modal-bg" id="inputModal">
+  <div class="modal" style="max-width:380px">
+    <button class="close" onclick="closeInput()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <div class="eyebrow" id="im-eyebrow">Edit</div>
+    <h3 id="im-title">Rename</h3>
+    <div class="field"><label id="im-label">Name</label><input id="im-input" maxlength="80" autocomplete="off"></div>
+    <button class="btn btn-gold" onclick="confirmInput()">Save</button>
+  </div>
+</div>
+
+<div class="ctx" id="ctxMenu"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== CONFIG (same as landing — your backend, with Claude.ai preview fallback) ===== */
+const CONFIG = {
+  BACKEND_URL: "/api/chat",
+  MODEL: "claude-sonnet-4-20250514",
+  FREE_TOKEN_LIMIT: 10000,
+  SYSTEM: "You are Crown, the assistant for BlackCrown VxJ. Confident, refined, concise. Help with writing, code, strategy and ideas."
+};
+
+/* ===== state (in-memory; real persistence arrives with the accounts/DB phase) ===== */
+const S = { tier:"free", account:null, chats:[], projects:[], activeId:null, tokensUsed:0, freeLimit:CONFIG.FREE_TOKEN_LIMIT, seq:0 };
+const $ = id => document.getElementById(id);
+const uid = p => p + (++S.seq) + "-" + Math.random().toString(36).slice(2,6);
+const CHIPS = ["Draft a launch announcement","Explain a concept simply","Write a Python script to…","Brainstorm brand names"];
+const CROWN_AV = '<svg width="18" height="14" viewBox="0 0 64 50" fill="currentColor"><path d="M4 42 L10 14 L22 28 L32 6 L42 28 L54 14 L60 42 Z"/><rect x="4" y="42" width="56" height="6" rx="2"/></svg>';
+
+/* preview = the claude.ai artifact sandbox (no backend); live = your deployed site */
+const IS_PREVIEW = /(^|\.)claude\.ai$|(^|\.)anthropic\.com$/.test(location.hostname);
+
+/* ===== backend helpers ===== */
+async function apiPost(path, body){
+  const r = await fetch(path, { method:"POST", headers:{"Content-Type":"application/json"}, credentials:"include", body:JSON.stringify(body||{}) });
+  const d = await r.json().catch(()=>({}));
+  return { ok:r.ok, status:r.status, d };
+}
+async function refreshMe(){
+  if(IS_PREVIEW) return;
+  try{
+    const r = await fetch("/api/me", { credentials:"include" });
+    const d = await r.json().catch(()=>({}));
+    if(d && d.user){ S.account={username:d.user.username,email:d.user.email}; S.tier=d.user.tier; S.tokensUsed=d.user.tokensUsed||0; S.freeLimit=d.user.limit||S.freeLimit; }
+    else { S.account=null; S.tier="free"; }
+    render();
+  }catch(e){}
+}
+
+/* ===== sidebar / drawer ===== */
+function openSidebar(){ $("sidebar").classList.add("open"); $("overlay").classList.add("show"); }
+function closeSidebar(){ $("sidebar").classList.remove("open"); $("overlay").classList.remove("show"); }
+
+/* ===== chats ===== */
+function newChat(projectId=null){
+  const c = { id:uid("c"), title:"New chat", projectId, messages:[] };
+  S.chats.unshift(c); S.activeId = c.id; closeSidebar(); render(); $("input").focus();
+}
+function selectChat(id){ S.activeId = id; closeSidebar(); render(); }
+function activeChat(){ return S.chats.find(c=>c.id===S.activeId) || null; }
+function deleteChat(id){ S.chats = S.chats.filter(c=>c.id!==id); if(S.activeId===id) S.activeId = S.chats[0]?.id || null; render(); }
+function renameChat(id){ const c=S.chats.find(x=>x.id===id); if(!c) return; openInput("Rename","Rename chat","Chat name",c.title,v=>{ c.title=v; toast("Chat renamed"); render(); }); }
+function moveChat(id, projectId){ const c=S.chats.find(x=>x.id===id); if(c){ c.projectId=projectId; toast("Moved to project"); } render(); }
+
+/* ===== projects (Pro) ===== */
+function newProject(){ if(S.tier!=="pro") return proGate("Projects"); $("proj-name").value=""; $("nameModal").classList.add("show"); setTimeout(()=>$("proj-name").focus(),50); }
+function confirmProject(){ const n=$("proj-name").value.trim(); if(!n) return; S.projects.unshift({id:uid("p"),name:n,collapsed:false}); closeName(); toast("Project created"); render(); }
+function closeName(){ $("nameModal").classList.remove("show"); }
+function toggleProject(id){ const p=S.projects.find(x=>x.id===id); if(p){ p.collapsed=!p.collapsed; render(); } }
+function deleteProject(id){ S.chats.forEach(c=>{ if(c.projectId===id) c.projectId=null; }); S.projects=S.projects.filter(p=>p.id!==id); render(); }
+
+/* ===== render ===== */
+function render(){ renderSidebar(); renderPlan(); renderProfile(); renderHead(); renderChat(); }
+
+function chatRow(c){
+  const active = c.id===S.activeId ? " active" : "";
+  return `<div class="row${active}" onclick="selectChat('${c.id}')">
+    <svg class="lead" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    <span class="ti">${esc(c.title)}</span>
+    <span class="dots" onclick="event.stopPropagation();openCtx(event,'${c.id}')">⋯</span>
+  </div>`;
+}
+function renderSidebar(){
+  const list = $("sideList"); let html = "";
+  if(S.tier === "pro"){
+    html += `<div class="grp-label">Projects <span class="add" title="New project" onclick="newProject()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></div>`;
+    S.projects.forEach(p=>{
+      const chats = S.chats.filter(c=>c.projectId===p.id);
+      html += `<div class="proj ${p.collapsed?'collapsed':''}">
+        <div class="proj-head" onclick="toggleProject('${p.id}')">
+          <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          <svg class="pc" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h5l2 3h11v8a2 2 0 0 1-2 2H3z"/></svg>
+          ${esc(p.name)}<span class="cnt">${chats.length}</span>
+          <span class="padd" title="Add chat" onclick="event.stopPropagation();newChat('${p.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+        </div>
+        <div class="proj-chats">${chats.map(chatRow).join("") || '<div class="row" style="cursor:default;color:var(--muted-2)">No chats yet</div>'}</div>
+      </div>`;
+    });
+    const unfiled = S.chats.filter(c=>!c.projectId);
+    html += `<div class="grp-label">Chats</div>`;
+    html += unfiled.map(chatRow).join("") || `<div class="row" style="cursor:default;color:var(--muted-2)">No loose chats</div>`;
+  } else {
+    html += `<div class="grp-label">Chats</div>`;
+    html += S.chats.map(chatRow).join("") || `<div class="row" style="cursor:default;color:var(--muted-2)">No chats yet</div>`;
+    html += `<div class="locked-proj" onclick="proGate('Projects')">
+      <span class="lk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> Projects · Pro</span>
+      <p>Organize chats into Projects with Pro.</p>
+    </div>`;
+  }
+  list.innerHTML = html;
+}
+function renderPlan(){
+  const el = $("planCard");
+  if(S.tier === "pro"){
+    el.innerHTML = `<div class="pc-top"><span class="lbl">${esc(S.account?.username || "Pro member")}</span><span class="pill pro">PRO</span></div>
+      <div class="pc-usage"><span class="inf">∞</span> Unlimited usage</div>`;
+  } else {
+    const pct = Math.min(100,(S.tokensUsed/S.freeLimit)*100);
+    el.innerHTML = `<div class="pc-top"><span class="lbl">Free plan</span><span class="pill">FREE</span></div>
+      <div class="meter"><div class="fill ${pct>80?'warn':''}" style="width:${pct}%"></div></div>
+      <div class="pc-usage">${S.tokensUsed.toLocaleString()} / ${S.freeLimit.toLocaleString()} tokens</div>
+      <button class="btn btn-gold upgrade-btn" onclick="openUpgrade()"><svg width="15" height="12" viewBox="0 0 64 50" fill="currentColor"><path d="M4 42 L10 14 L22 28 L32 6 L42 28 L54 14 L60 42 Z"/><rect x="4" y="42" width="56" height="6" rx="2"/></svg> Upgrade to Pro</button>`;
+  }
+}
+function renderProfile(){
+  const a=S.account, pro=S.tier==="pro";
+  const name=a?.username||"Guest";
+  const sub=pro?"Pro · Unlimited":(a?"Free plan":"Free · view account");
+  const initial=a?.username?esc(a.username[0].toUpperCase()):CROWN_AV;
+  $("profileBtn").innerHTML=`<span class="pf-av">${initial}</span>
+    <span class="pf-meta"><span class="pf-name">${esc(name)}</span><span class="pf-sub">${sub}</span></span>
+    <svg class="pf-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>`;
+}
+function renderHead(){
+  const c = activeChat();
+  $("headTitle").textContent = c ? c.title : "New chat";
+  $("tierPill").textContent = S.tier==="pro"?"PRO":"FREE";
+  $("tierPill").classList.toggle("pro", S.tier==="pro");
+  $("modelName").textContent = S.tier==="pro" ? "Crown · Pro" : "Crown · Standard";
+  $("avatar").innerHTML = S.account?.username ? esc(S.account.username[0].toUpperCase())
+    : '<svg width="17" height="14" viewBox="0 0 64 50" fill="currentColor"><path d="M4 42 L10 14 L22 28 L32 6 L42 28 L54 14 L60 42 Z"/><rect x="4" y="42" width="56" height="6" rx="2"/></svg>';
+  const out = S.tier==="free" && S.tokensUsed>=S.freeLimit;
+  $("lockedBar").classList.toggle("show", out);
+  $("composer").style.display = out ? "none" : "flex";
+}
+function renderChat(){
+  const chat = $("chat"), c = activeChat();
+  if(!c || c.messages.length===0){
+    const icons = [
+      '<path d="M12 2 13.9 8.1 20 10 13.9 11.9 12 18 10.1 11.9 4 10 10.1 8.1Z"/>',
+      '<path d="M12 3 13.4 8.6 19 10 13.4 11.4 12 17 10.6 11.4 5 10 10.6 8.6Z"/><circle cx="18.5" cy="5.5" r="1.4"/>',
+      '<path d="M12 2 13.9 8.1 20 10 13.9 11.9 12 18 10.1 11.9 4 10 10.1 8.1Z"/><circle cx="5" cy="6" r="1.3"/>',
+      '<path d="M12 2 13.9 8.1 20 10 13.9 11.9 12 18 10.1 11.9 4 10 10.1 8.1Z"/>'
+    ];
+    chat.innerHTML = `<div class="empty"><div class="ec"><svg width="40" height="32" viewBox="0 0 64 50" fill="currentColor"><path d="M4 42 L10 14 L22 28 L32 6 L42 28 L54 14 L60 42 Z"/><rect x="4" y="42" width="56" height="6" rx="2"/></svg></div>
+      <div class="eyebrow2">Begin your reign</div>
+      <h2>How may the Crown serve you?</h2><p>Ask anything — drafting, code, strategy, or ideas.</p>
+      <div class="chips">${CHIPS.map((t,i)=>`<button class="chip" data-q="${esc(t)}" onclick="useChip(this)"><svg class="ci" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">${icons[i]||icons[0]}</svg><span class="ct">${esc(t)}</span><svg class="ca" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>`).join("")}</div></div>`;
+    return;
+  }
+  chat.innerHTML = c.messages.map((m,i)=>{
+    const u = m.role==='user';
+    const nm = u ? (S.account?.username || "You") : "Crown";
+    const av = u ? (S.account?.username ? esc(S.account.username[0].toUpperCase()) : "You") : CROWN_AV;
+    const copy = u ? "" : `<div class="mactions"><button class="copy" onclick="copyMsg(this,${i})"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy</button></div>`;
+    return `<div class="msg ${u?'user':'bot'}"><div class="av">${av}</div><div class="mcol"><div class="mname">${esc(nm)}</div><div class="bubble">${esc(m.content)}</div>${copy}</div></div>`;
+  }).join("");
+  chat.scrollTop = chat.scrollHeight;
+}
+function useChip(b){ $("input").value = b.dataset.q || b.textContent; send(); }
+function copyMsg(btn,i){
+  const c=activeChat(); if(!c) return;
+  const txt=c.messages[i]?.content||"";
+  const done=()=>{ const o=btn.innerHTML; btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Copied'; setTimeout(()=>btn.innerHTML=o,1400); };
+  if(navigator.clipboard?.writeText){ navigator.clipboard.writeText(txt).then(done).catch(()=>toast("Copy failed")); }
+  else { const ta=document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta); ta.select(); try{document.execCommand("copy");done();}catch(e){toast("Copy failed");} ta.remove(); }
+}
+
+/* ===== context menu ===== */
+function openCtx(e, chatId){
+  const m = $("ctxMenu");
+  let html = `<button onclick="closeCtx();renameChat('${chatId}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg> Rename</button><div class="sep"></div>`;
+  if(S.tier==="pro" && S.projects.length){
+    html += `<div class="ctx-label">Move to project</div>`;
+    html += S.projects.map(p=>`<button onclick="moveChat('${chatId}','${p.id}');closeCtx()">📁 ${esc(p.name)}</button>`).join("");
+    html += `<button onclick="moveChat('${chatId}',null);closeCtx()">Remove from project</button><div class="sep"></div>`;
+  } else if(S.tier!=="pro"){
+    html += `<button onclick="closeCtx();proGate('Projects')">Move to project <span class="lk">PRO</span></button><div class="sep"></div>`;
+  }
+  html += `<button class="danger" onclick="deleteChat('${chatId}');closeCtx()">🗑 Delete chat</button>`;
+  m.innerHTML = html;
+  m.classList.add("show");
+  const x = Math.min(e.clientX, innerWidth-210), y = Math.min(e.clientY, innerHeight-190);
+  m.style.left = x+"px"; m.style.top = y+"px";
+}
+function closeCtx(){ $("ctxMenu").classList.remove("show"); }
+addEventListener("click", e=>{ if(!e.target.closest(".ctx") && !e.target.closest(".dots")) closeCtx(); });
+
+/* ===== account / profile ===== */
+function openAccount(){ renderAccount(); $("accountModal").classList.add("show"); }
+function closeAccount(){ $("accountModal").classList.remove("show"); }
+function renderAccount(){
+  const a=S.account, pro=S.tier==="pro";
+  const name=a?.username||"Guest", email=a?.email||"Not signed in";
+  const initial=a?.username?esc(a.username[0].toUpperCase()):CROWN_AV;
+  const usage = pro ? '<span class="v"><span style="color:var(--gold-bright);font-weight:700">∞</span> Unlimited</span>'
+    : `<span class="v">${S.tokensUsed.toLocaleString()} / ${S.freeLimit.toLocaleString()}</span>`;
+  let actions;
+  if(pro){
+    actions = `<button class="btn btn-ghost" onclick="manageSub()">Manage subscription</button><button class="btn btn-danger" onclick="signOut()">Sign out</button>`;
+  } else if(a){
+    actions = `<button class="btn btn-gold" onclick="closeAccount();openUpgrade()">Upgrade to Pro</button><button class="btn btn-danger" onclick="signOut()">Sign out</button>`;
+  } else {
+    actions = `<button class="btn btn-gold" onclick="closeAccount();openUpgrade()">Create account · Go Pro</button><button class="btn btn-ghost" onclick="closeAccount();openLogin()">Log in</button>`;
+  }
+  $("acctBody").innerHTML = `
+    <div class="acct-head"><div class="acct-av">${initial}</div>
+      <div class="acct-id"><div class="an">${esc(name)}</div><div class="ae">${esc(email)}</div></div></div>
+    ${a?`<button class="linkbtn" onclick="editName()">Edit display name</button>`:""}
+    <div class="acct-rows">
+      <div class="arow"><span class="k">Plan</span><span class="v">${pro?'<span class="pill pro">PRO</span>':'<span class="pill">FREE</span>'}</span></div>
+      <div class="arow"><span class="k">Usage</span>${usage}</div>
+      <div class="arow"><span class="k">Model</span><span class="v">${pro?'Crown · Pro':'Crown · Standard'}</span></div>
+      <div class="arow"><span class="k">Projects</span><span class="v">${pro?'Enabled':'Pro only'}</span></div>
+    </div>
+    <div class="acct-actions">${actions}</div>
+    <div class="mnote">Demo account. In production this reflects your real account and subscription, managed via secure Stripe billing.</div>`;
+}
+function editName(){ if(!S.account) return; openInput("Profile","Display name","Your name",S.account.username,v=>{ S.account.username=v; toast("Name updated"); render(); renderAccount(); }); }
+async function signOut(){
+  if(!IS_PREVIEW){ try{ await fetch("/api/logout",{method:"POST",credentials:"include"}); }catch(e){} }
+  S.account=null; S.tier="free"; S.tokensUsed=0; S.freeLimit=CONFIG.FREE_TOKEN_LIMIT; closeAccount(); render(); toast("Signed out");
+}
+async function manageSub(){
+  if(IS_PREVIEW){ toast("Billing portal opens on your live site"); return; }
+  toast("Opening billing portal…");
+  const { ok, status, d } = await apiPost("/api/portal", {});
+  if(ok && d.url){ window.location.href = d.url; return; }
+  if(status===401){ toast("Please log in first"); closeAccount(); openLogin(); return; }
+  if(status===404){ toast("No subscription found yet"); return; }
+  toast(d.message || "Couldn't open the billing portal");
+}
+
+/* ===== generic input modal (rename chat / edit name) ===== */
+let inputCb=null;
+function openInput(eyebrow,title,label,value,cb){
+  $("im-eyebrow").textContent=eyebrow; $("im-title").textContent=title; $("im-label").textContent=label;
+  $("im-input").value=value||""; inputCb=cb;
+  $("inputModal").classList.add("show"); setTimeout(()=>{ const i=$("im-input"); i.focus(); i.select(); },50);
+}
+function confirmInput(){ const v=$("im-input").value.trim(); if(!v) return; const cb=inputCb; closeInput(); if(cb) cb(v); }
+function closeInput(){ $("inputModal").classList.remove("show"); inputCb=null; }
+
+/* ===== upgrade / signup ===== */
+function proGate(feature){ toast(feature + " is a Pro feature"); openUpgrade(); }
+function openUpgrade(){ $("upgradeModal").classList.add("show"); setTimeout(()=>$("su-user").focus(),60); }
+function closeUpgrade(){ $("upgradeModal").classList.remove("show"); ["f-user","f-email","f-pass"].forEach(id=>$(id).classList.remove("bad")); }
+async function submitSignup(){
+  const u=$("su-user").value.trim(), em=$("su-email").value.trim(), pw=$("su-pass").value;
+  let ok=true;
+  const bad=(id,c)=>{ $(id).classList.toggle("bad",c); if(c) ok=false; };
+  bad("f-user", u.length<3);
+  bad("f-email", !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em));
+  bad("f-pass", pw.length<8);
+  if(!ok) return;
+  if(IS_PREVIEW){ S.account={username:u,email:em}; closeUpgrade(); render(); startCheckout(); return; }
+  const { ok:good, status, d } = await apiPost("/api/register", { username:u, email:em, password:pw });
+  if(!good){
+    if(status===409){ $("f-email").classList.add("bad"); }
+    toast(d.message || "Couldn't create your account"); return;
+  }
+  S.account={username:u,email:em}; S.tier="free"; S.freeLimit=d.user?.limit||S.freeLimit;
+  closeUpgrade(); render();
+  startCheckout(); // account created (and signed in) → continue to secure Stripe checkout for Pro
+}
+
+/* ===== login (existing users) ===== */
+function openLogin(){ $("loginModal").classList.add("show"); setTimeout(()=>$("li-email").focus(),60); }
+function closeLogin(){ $("loginModal").classList.remove("show"); ["lf-email","lf-pass"].forEach(id=>$(id).classList.remove("bad")); }
+async function submitLogin(){
+  const em=$("li-email").value.trim(), pw=$("li-pass").value;
+  let ok=true; const bad=(id,c)=>{ $(id).classList.toggle("bad",c); if(c) ok=false; };
+  bad("lf-email", !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em));
+  bad("lf-pass", pw.length<1);
+  if(!ok) return;
+  if(IS_PREVIEW){ S.account={username:em.split("@")[0],email:em}; S.tier="pro"; closeLogin(); render(); toast("👑 Welcome back"); return; }
+  const { ok:good, d } = await apiPost("/api/login", { email:em, password:pw });
+  if(!good){ $("lf-email").classList.add("bad"); $("lf-pass").classList.add("bad"); toast(d.message || "Wrong email or password"); return; }
+  closeLogin(); await refreshMe(); toast("👑 Welcome back, " + (S.account?.username || ""));
+}
+
+/* ===== Stripe checkout (uses your logged-in session) ===== */
+async function startCheckout(){
+  if(IS_PREVIEW){ S.tier="pro"; render(); toast("👑 Demo: upgraded to Pro"); return; }
+  const { ok, status, d } = await apiPost("/api/checkout", {});
+  if(ok && d.url){ window.location.href = d.url; return; }   // → Stripe hosted checkout
+  if(status===401){ toast("Please log in first"); openLogin(); return; }
+  if(status===503){ toast("Stripe isn't set up yet"); return; }
+  toast(d.message || "Couldn't start checkout");
+}
+
+/* ===== model call (auto-detects preview vs your metered backend) ===== */
+async function callModel(messages){
+  if(IS_PREVIEW || !CONFIG.BACKEND_URL){
+    const res = await fetch("https://api.anthropic.com/v1/messages", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ model:CONFIG.MODEL, max_tokens:1000, system:CONFIG.SYSTEM, messages }) });
+    if(!res.ok) throw new Error("Request failed ("+res.status+")");
+    const data = await res.json();
+    return Array.isArray(data.content) ? data.content.filter(b=>b.type==="text").map(b=>b.text).join("\n").trim() : (data.reply||"").trim();
+  }
+  const res = await fetch(CONFIG.BACKEND_URL, { method:"POST", headers:{"Content-Type":"application/json"}, credentials:"include", body:JSON.stringify({ messages }) });
+  const data = await res.json().catch(()=>({}));
+  if(res.status===402 || data.error==="limit"){ const e=new Error(data.message||"Limit reached"); e.code="limit"; throw e; }
+  if(res.status===429){ const e=new Error(data.message||"You're going a bit fast — give it a moment."); e.code="rate"; throw e; }
+  if(!res.ok) throw new Error(data.message || ("Request failed ("+res.status+")"));
+  if(data.usage){ // server is authoritative on plan + usage
+    if(typeof data.usage.used==="number") S.tokensUsed=data.usage.used;
+    if(typeof data.usage.limit==="number") S.freeLimit=data.usage.limit;
+    if(data.usage.tier) S.tier=data.usage.tier;
+  }
+  return (data.reply||"").trim();
+}
+
+let busy=false;
+const est = s => Math.max(1, Math.ceil((s||"").length/4));
+async function send(){
+  const text=$("input").value.trim(); if(!text||busy) return;
+  if(S.tier!=="pro" && S.tokensUsed>=S.freeLimit){ renderHead(); openUpgrade(); return; }
+  let c=activeChat(); if(!c){ newChat(); c=activeChat(); }
+  busy=true; $("send").disabled=true;
+  c.messages.push({role:"user",content:text});
+  if(c.title==="New chat") c.title = text.length>34 ? text.slice(0,34)+"…" : text;
+  $("input").value=""; $("input").style.height="28px";
+  render();
+  const chat=$("chat");
+  const t=document.createElement("div"); t.className="msg bot typing"; t.innerHTML='<div class="av">'+CROWN_AV+'</div><div class="mcol"><div class="mname">Crown</div><div class="bubble"><i></i><i></i><i></i></div></div>';
+  chat.appendChild(t); chat.scrollTop=chat.scrollHeight;
+  try{
+    const reply=await callModel(c.messages);
+    c.messages.push({role:"assistant",content:reply||"…"});
+    if(IS_PREVIEW && S.tier==="free"){ S.tokensUsed += est(text)+est(reply); }  // live usage comes from the server
+    render();
+  }catch(err){
+    if(err.code==="limit"){
+      c.messages.push({role:"assistant",content:"👑 "+err.message});
+      render(); if(S.tier!=="pro") openUpgrade();
+    }else if(err.code==="rate"){
+      c.messages.push({role:"assistant",content:err.message});
+      render();
+    }else{
+      c.messages.push({role:"assistant",content:"⚠️ Couldn't reach the model backend.\n\nOn your live site this calls /api/chat. If you see this there, check: sudo systemctl status crown — and that your API key is set in /etc/crown/crown.env.\n\n("+err.message+")"});
+      render();
+    }
+  }finally{ busy=false; $("send").disabled=false; renderHead(); $("input").focus(); }
+}
+function esc(s){ return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+$("send").onclick=send;
+$("input").addEventListener("keydown",e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); send(); }});
+$("input").addEventListener("input",function(){ this.style.height="28px"; this.style.height=Math.min(140,this.scrollHeight)+"px"; });
+addEventListener("keydown",e=>{ if(e.key==="Escape"){ closeUpgrade(); closeName(); closeCtx(); closeAccount(); closeInput(); closeLogin(); }});
+[$("upgradeModal"),$("nameModal"),$("accountModal"),$("inputModal"),$("loginModal")].forEach(m=>m.addEventListener("click",e=>{ if(e.target===m) m.classList.remove("show"); }));
+$("proj-name").addEventListener("keydown",e=>{ if(e.key==="Enter") confirmProject(); });
+$("im-input").addEventListener("keydown",e=>{ if(e.key==="Enter") confirmInput(); });
+$("li-pass").addEventListener("keydown",e=>{ if(e.key==="Enter") submitLogin(); });
+$("su-pass").addEventListener("keydown",e=>{ if(e.key==="Enter") submitSignup(); });
+
+let toastT;
+function toast(msg){ const t=$("toast"); t.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'+esc(msg); t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),2600); }
+
+/* init */
+newChat();
+refreshMe();   // pull real account + plan + usage from the server (no-op in preview)
+const _params = new URLSearchParams(location.search);
+if(_params.get("checkout")==="success"){ toast("👑 Payment received — welcome to Pro!"); history.replaceState({}, "", location.pathname); if(IS_PREVIEW){ S.tier="pro"; render(); } else { refreshMe(); } }
+else if(_params.get("checkout")==="cancel"){ toast("Checkout canceled — no charge was made"); history.replaceState({}, "", location.pathname); }
+if(location.hash==="#upgrade") openUpgrade();
+if(location.hash==="#login") openLogin();
+</script>
+</body>
+</html>
