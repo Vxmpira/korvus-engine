@@ -352,9 +352,27 @@ def _build_brand_prompt(layout: str, profile: dict) -> str:
         nm = (profile or {}).get("name", "the brand")
         profile_block = (f"Could not read the brand site. Write evergreen, professional copy for a brand "
                          f"called '{nm}'. Stay general; do NOT invent specific stats, prices, or claims.")
+    repurpose = ""
+    if layout == "classified":
+        repurpose = (
+            "This layout was built for a markets product, so a few fields are trading-shaped — "
+            "repurpose them for THIS brand: the three chips = short ALL-CAPS feature/benefit tags "
+            "(e.g. 'PRIVATE BY DESIGN'); 'c_conf' = just a tasteful number to display; 'c_dir' = use "
+            "NEUTRAL unless a directional word genuinely fits the brand; the eyebrow reads as a brand/"
+            "category line, not a market alert. Do NOT use markets/trading language unless the brand "
+            "profile is actually about markets."
+        )
+    elif layout == "engine":
+        repurpose = (
+            "This layout's 'news cards' were built for a markets product. For THIS brand, treat each "
+            "card as a short product moment or feature highlight: 'text' = a one-line benefit, 'tk' = a "
+            "short feature/tagline label (NOT stock tickers), and keep 'imp'/'dir'/'dk'/'cf' tasteful "
+            "and neutral. Avoid markets/trading framing unless the brand is about markets."
+        )
     parts = [
         f"Fill EVERY field of this promo '{layout}' mockup at once, personalized to the brand below.",
         profile_block,
+        repurpose,
         HEADLINE_NOTE if layout in ("classified", "statement") else "",
         "For stat tiles, use ONLY metrics that appear in the brand profile; if none, use evergreen, "
         "brand-true labels (their category / what they do) and avoid invented numbers."
