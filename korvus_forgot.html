@@ -74,7 +74,7 @@ btn.addEventListener('click', async () => {
                                             body: JSON.stringify({email})});
     const data = await res.json().catch(()=>({}));
     msg('ok', data.message || 'If an account exists for that email, a reset link is on its way.');
-  }catch(e){ msg('err','Network error — please try again.'); }
+  }catch(e){ msg('err','Network error, please try again.'); }
   btn.disabled = false; btn.textContent = label;
 });
 document.getElementById('email').addEventListener('keydown', e => { if(e.key==='Enter') btn.click(); });

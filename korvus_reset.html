@@ -55,7 +55,7 @@
       <span class="brand-name">Korvus</span>
     </div>
     <h1>Set a new password</h1>
-    <p class="desc">Choose a strong password — at least 8 characters.</p>
+    <p class="desc">Choose a strong password, at least 8 characters.</p>
     <div id="form">
       <label for="pw">New password</label>
       <input id="pw" type="password" autocomplete="new-password" placeholder="new password" />
@@ -94,7 +94,7 @@ save && save.addEventListener('click', async () => {
       save.disabled = false; save.textContent = label;
     }
   }catch(e){
-    msg('err','Network error — please try again.');
+    msg('err','Network error, please try again.');
     save.disabled = false; save.textContent = label;
   }
 });

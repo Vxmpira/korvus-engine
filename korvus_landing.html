@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script>document.documentElement.className += ' js';</script>
 <title>Korvus · Market Intelligence That Works While You Sleep · BlackCrownVxJ.LLC</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0Ij4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTUiIGZpbGw9IiMwMDAwMDAiLz4KPHJlY3QgeD0iMS40IiB5PSIxLjQiIHdpZHRoPSI2MS4yIiBoZWlnaHQ9IjYxLjIiIHJ4PSIxMy42IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZjFmNDQiIHN0cm9rZS13aWR0aD0iMi42Ii8+CjxnIGZpbGw9IiNmZjFmNDQiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDUuMyA2KSBzY2FsZSgxLjExMSkiPgo8cGF0aCBkPSJNNSAzNSBMOC4yIDE2LjUgTDE3IDIzLjUgTDI0IDkgTDMxIDIzLjUgTDM5LjggMTYuNSBMNDMgMzUgWiIvPgo8cmVjdCB4PSI2IiB5PSIzNC41IiB3aWR0aD0iMzYiIGhlaWdodD0iNSIgcng9IjEuMiIvPgo8L2c+Cjwvc3ZnPgo=">
+  <link rel="alternate icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="description" content="Korvus turns the firehose of market news and social chatter into clear, scored intelligence for index-futures traders. By BlackCrownVxJ.LLC." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -187,7 +190,7 @@
   @media(max-width:860px){.reassure{grid-template-columns:1fr;}.rcard{padding:34px 28px;}}
 
   /* ============================================================
-     MOTION PASS — scroll reveal · hover micro-interactions · mobile
+     MOTION PASS, scroll reveal · hover micro-interactions · mobile
      Reveal state applies only with .js on <html> (so no-JS visitors
      always see content) and is fully neutralised under reduced motion.
      ============================================================ */
@@ -247,7 +250,7 @@
      Driven by --p (0 at top → 1 at bottom of page), set on <html> by JS.
      Falls back to a calm "night" still (var(--p,0)=0) with no JS. */
   .scene{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
-  /* dawn — a crimson light rising from the horizon as the session opens */
+  /* dawn, a crimson light rising from the horizon as the session opens */
   .dawn{position:absolute;left:50%;bottom:-8vh;width:135vw;height:78vh;
     transform:translateX(-50%) translateY(calc(16vh - var(--p,0)*26vh));
     opacity:calc(.34 + var(--p,0)*.36);filter:blur(44px);
@@ -255,7 +258,7 @@
   /* the existing top glow recedes (parallax) and dims as the dawn takes over */
   .glow{transform:translateX(-50%) translateY(calc(var(--p,0) * -140px));opacity:calc(1 - var(--p,0)*.55);transition:opacity .15s linear;}
 
-  /* hero headline shimmer — graceful fallback to solid crimson */
+  /* hero headline shimmer, graceful fallback to solid crimson */
   @supports ((-webkit-background-clip:text) or (background-clip:text)){
     .hero h1 em{background:linear-gradient(100deg,var(--gold) 22%,#ff7a8c 42%,#ffffff 50%,#ff7a8c 58%,var(--gold) 78%);
       background-size:240% 100%;-webkit-background-clip:text;background-clip:text;
@@ -280,7 +283,7 @@
     font-family:var(--mono);font-size:11.5px;color:var(--ink-dim);}
   .win-tools{width:54px;}
 
-  /* terminal viewport — a clipped peek of the live app, em-scaled */
+  /* terminal viewport, a clipped peek of the live app, em-scaled */
   .kx{position:relative;height:clamp(420px,52vw,720px);overflow:hidden;
     font-family:var(--mono);color:var(--ink);font-size:clamp(7px,0.92vw,12px);
     background:radial-gradient(140% 120% at 50% 0%,#0a0b10,#000 72%);}
@@ -459,7 +462,7 @@
   .plan{transition:transform .3s cubic-bezier(.22,.61,.36,1),box-shadow .3s ease,border-color .3s ease;}
   .plan:hover{box-shadow:0 20px 50px -24px rgba(0,0,0,.7),0 0 44px -18px var(--crimson-glow);}
 
-  /* respect reduced motion — calm, content fully visible */
+  /* respect reduced motion, calm, content fully visible */
   @media(prefers-reduced-motion:reduce){
     .js #what .sec-title, .js #what .sec-intro, .js #what .feature,
     .js #how .sec-title, .js #how .step,
@@ -518,7 +521,7 @@
     <div class="container">
       <div class="eyebrow">Always-on market intelligence · News · Impact · SMT</div>
       <h1>Your edge while<br>the world <em>sleeps</em>.</h1>
-      <p>The headline that moves tomorrow's open is breaking <em>right now</em> &mdash; while most
+      <p>The headline that moves tomorrow's open is breaking <em>right now</em>, while most
          traders are asleep. Korvus reads the wires around the clock and puts the <em>why</em>
          in front of you: scored, in plain English, one glance away.</p>
       <div class="hero-cta">
@@ -537,7 +540,7 @@
     <div class="showcase-cap">
       <span class="sc-eyebrow"><i></i> THE LIVE TERMINAL &middot; korvus.industries</span>
       <h2 class="sc-title">This is exactly what you're walking into.</h2>
-      <p class="sc-sub">The terminal you log into &mdash; scored news, SMT divergence and full session context, all one glance away.</p>
+      <p class="sc-sub">The terminal you log into: scored news, SMT divergence and full session context, all one glance away.</p>
     </div>
 
     <div class="stage">
@@ -639,8 +642,8 @@
                 <div class="kx-mcol"><time>11:36 AM</time><span class="kx-imp">LOW</span></div>
                 <div class="kx-acol">
                   <div class="kx-src"><span class="nw">NEWSWIRE</span> INVESTING.COM</div>
-                  <h4>Elon Musk to attend ASML tech conference to talk Terafab &mdash; Bloomberg</h4>
-                  <p>Musk confirmed to speak at ASML on Terafab, a Tesla/SpaceX manufacturing initiative &mdash; continued focus on advanced chip fabrication.</p>
+                  <h4>Elon Musk to attend ASML tech conference to talk Terafab, Bloomberg</h4>
+                  <p>Musk confirmed to speak at ASML on Terafab, a Tesla/SpaceX manufacturing initiative, continued focus on advanced chip fabrication.</p>
                   <div class="kx-vf"><span class="v neu">&#9670; Neutral</span><span class="kx-tk">TSLA</span><span class="conf">conf 35% <i style="width:35%"></i></span></div>
                 </div>
               </article>
@@ -649,7 +652,7 @@
             <div class="kx-rail">
               <div class="kx-card">
                 <div class="kx-ch"><b>SMT Divergence</b><span class="kx-sym">NQ &middot; ES &middot; YM</span></div>
-                <div class="kx-confirm"><b>&#10003; Confirming &mdash; aligned weakness</b><p>All three indices are near session lows together, confirming each other to the downside. No divergence.</p></div>
+                <div class="kx-confirm"><b>&#10003; Confirming, aligned weakness</b><p>All three indices are near session lows together, confirming each other to the downside. No divergence.</p></div>
                 <div class="kx-leg"><div><b>NQ</b><span>via QQQ</span></div><u>CLOSED</u></div>
                 <div class="kx-leg"><div><b>ES</b><span>via SPY</span></div><u>CLOSED</u></div>
                 <div class="kx-leg"><div><b>YM</b><span>via DIA</span></div><u>CLOSED</u></div>
@@ -696,7 +699,7 @@
           <div class="fnum">01 / NEVER MISS</div>
           <h3>It watches so you don't have to</h3>
           <p>A 24/7 engine reads the financial wires and market chatter the instant they
-             break — across every instrument that actually moves the indices. The print
+             break, across every instrument that actually moves the indices. The print
              that would've caught you flat-footed at the open? You saw it last night, while
              the desk that's about to chase it was offline. That quiet head start is the
              whole point.</p>
@@ -705,7 +708,7 @@
           <div class="fnum">02 / KNOW WHY</div>
           <h3>The story behind the move</h3>
           <p>Every item is read, summarized in plain English, and scored for real market
-             impact, direction, and confidence — with the pure noise stripped out. No more
+             impact, direction, and confidence, with the pure noise stripped out. No more
              drowning in fifty headlines wondering which one matters. You see the few that
              do, and exactly <em>why</em> they do, before the candle prints.</p>
         </div>
@@ -738,25 +741,25 @@
     <div class="container">
       <div class="sec-label">Before you decide</div>
       <div class="sec-title">The honest version.</div>
-      <p class="sec-intro">Two questions every trader asks before letting something new onto their desk. Here are the straight answers — no hype, no fine print.</p>
+      <p class="sec-intro">Two questions every trader asks before letting something new onto their desk. Here are the straight answers, no hype, no fine print.</p>
       <div class="reassure">
         <div class="rcard">
           <div class="eyebrow2">How it feels</div>
           <h3>&ldquo;What am I getting myself into?&rdquo;</h3>
-          <p>Not another firehose of red alerts, and not a guru in your inbox promising green days. Korvus is the <em>quiet</em> part of your routine — the market's overnight chaos arrives already read, weighed, and ranked, so the first thing you feel at the open is <em>recognition</em>, not panic.</p>
-          <p>You wake up, you glance, and you already know what moved and why. No twelve tabs. No 6&nbsp;a.m. scramble. No <em>&ldquo;wait — when did that happen?&rdquo;</em> Just the calm of walking in informed while the rest of the desk is still catching up.</p>
-          <p>And the part that matters most: the call stays <em>yours</em>. Korvus hands you the context — it never pretends to know your trade.</p>
+          <p>Not another firehose of red alerts, and not a guru in your inbox promising green days. Korvus is the <em>quiet</em> part of your routine, the market's overnight chaos arrives already read, weighed, and ranked, so the first thing you feel at the open is <em>recognition</em>, not panic.</p>
+          <p>You wake up, you glance, and you already know what moved and why. No twelve tabs. No 6&nbsp;a.m. scramble. No <em>&ldquo;wait, when did that happen?&rdquo;</em> Just the calm of walking in informed while the rest of the desk is still catching up.</p>
+          <p>And the part that matters most: the call stays <em>yours</em>. Korvus hands you the context, it never pretends to know your trade.</p>
         </div>
         <div class="rcard facts">
           <div class="eyebrow2">No surprises</div>
           <h3>&ldquo;What am I signing up for?&rdquo;</h3>
           <ul class="flist">
-            <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>A free account — no credit card.</b> Setup takes about a minute.</span></li>
+            <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>A free account, no credit card.</b> Setup takes about a minute.</span></li>
             <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>The full 24/7 scored news feed,</b> free on the Observer tier.</span></li>
             <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Your watchlist and settings, saved to you</b> and synced across devices.</span></li>
-            <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Email only when it matters.</b> No spam — unsubscribe in one click.</span></li>
+            <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Email only when it matters.</b> No spam, unsubscribe in one click.</span></li>
             <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Your data stays yours.</b> Leave or delete your account anytime.</span></li>
-            <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Pro is optional</b> — $3.99/mo, cancel anytime, no lock-in.</span></li>
+            <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Pro is optional</b>, $3.99/mo, cancel anytime, no lock-in.</span></li>
             <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>A tool, not advice.</b> Korvus informs your decision; it never makes it.</span></li>
           </ul>
         </div>
@@ -802,9 +805,9 @@
             <li><span class="ck">✓</span> Eclipse-X community access</li>
           </ul>
           <div style="font-family:var(--mono);font-size:10px;color:var(--ink-faint);text-align:center;margin:-2px 0 12px;line-height:1.5;">
-            Live price panels stream during US market hours (9:30 AM–4:00 PM ET). Outside those hours they show a clear CLOSED state — the 24/7 scored news feed and high-impact alerts keep running.
+            Live price panels stream during US market hours (9:30 AM–4:00 PM ET). Outside those hours they show a clear CLOSED state, the 24/7 scored news feed and high-impact alerts keep running.
           </div>
-          <a href="/signup" class="btn btn-gold">Go Pro — $3.99/mo</a>
+          <a href="/signup" class="btn btn-gold">Go Pro, $3.99/mo</a>
           <div style="font-family:var(--mono);font-size:10px;color:var(--ink-faint);text-align:center;margin-top:12px;line-height:1.5;">
             Secure checkout by Stripe. Subscription auto-renews monthly until cancelled; cancel anytime from your account.<br>
             <a href="/legal#tos" style="color:var(--ink-faint);text-decoration:underline;">Terms</a> ·

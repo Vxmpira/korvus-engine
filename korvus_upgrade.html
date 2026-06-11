@@ -90,8 +90,8 @@
     </div>
 
     <h1>Trade on live data, not a 15-minute echo.</h1>
-    <p class="lede">The free terminal runs the full Korvus engine — scored news, the futures board,
-      SMT divergence, macro confluence, the session map — on a feed delayed about 15 minutes.
+    <p class="lede">The free terminal runs the full Korvus engine, scored news, the futures board,
+      SMT divergence, macro confluence, the session map, on a feed delayed about 15 minutes.
       Pro removes the delay, so what you see is what the market is doing right now.</p>
 
     <div class="banner" id="banner"></div>
@@ -117,10 +117,10 @@
 
       <div class="plan pro">
         <div class="ptier">Pro</div>
-        <div class="pprice" id="price">—<small> / month</small></div>
+        <div class="pprice" id="price">-<small> / month</small></div>
         <div class="pwhat">The same terminal, in real time.</div>
         <ul>
-          <li><span class="ck">✓</span>Real-time quotes — no 15-minute delay</li>
+          <li><span class="ck">✓</span>Real-time quotes, no 15-minute delay</li>
           <li><span class="ck">✓</span>Live futures board, SMT &amp; macro confluence on fresh prints</li>
           <li><span class="ck">✓</span>Session map &amp; levels updating live</li>
           <li><span class="ck">✓</span>Everything in Free, the moment it happens</li>
@@ -132,7 +132,7 @@
       </div>
     </div>
 
-    <p class="foot">Payments are processed by Stripe — your card details never touch Korvus servers.<br>
+    <p class="foot">Payments are processed by Stripe, your card details never touch Korvus servers.<br>
       Informational and educational use only · not financial advice. <a href="/legal#tos">Terms</a> · <a href="/legal#risk">Risk Disclosure</a></p>
   </div>
 
@@ -145,8 +145,8 @@ const ctaNote = document.getElementById('ctaNote');
 function banner(kind, msg){ bannerEl.className = 'banner ' + kind; bannerEl.textContent = msg; }
 
 const st = params.get('status');
-if(st === 'success') banner('ok', 'Welcome to Pro — your terminal goes live during US market hours (9:30 AM–4:00 PM ET). Outside those hours the price panels show a CLOSED state.');
-else if(st === 'cancel') banner('info', "Checkout canceled — you weren't charged.");
+if(st === 'success') banner('ok', 'Welcome to Pro, your terminal goes live during US market hours (9:30 AM–4:00 PM ET). Outside those hours the price panels show a CLOSED state.');
+else if(st === 'cancel') banner('info', "Checkout canceled, you weren't charged.");
 
 function fmtDate(iso){
   try{ return new Date(iso).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}); }
@@ -159,8 +159,8 @@ function parsePrice(x){ const m = (x||'').match(/(\d+(?:\.\d+)?)/); return m ? p
 function paintPrice(){
   const monthly = ME.price_display || '', yearly = ME.price_display_yearly || '';
   const el = document.getElementById('price');
-  if(interval === 'year' && ME.yearly_enabled){ el.innerHTML = (yearly || '—') + '<small> / year</small>'; }
-  else { el.innerHTML = (monthly || '—') + '<small> / month</small>'; }
+  if(interval === 'year' && ME.yearly_enabled){ el.innerHTML = (yearly || '-') + '<small> / year</small>'; }
+  else { el.innerHTML = (monthly || '-') + '<small> / month</small>'; }
 }
 function setupCycle(){
   if(!ME.yearly_enabled || ME.tier === 'pro') return;
@@ -218,7 +218,7 @@ cta.addEventListener('click', async () => {
     if(res.ok && data.url){ location.href = data.url; return; }
     banner('err', data.error || 'Something went wrong. Please try again.');
   }catch(e){
-    banner('err', 'Network error — please try again.');
+    banner('err', 'Network error, please try again.');
   }
   cta.disabled = false; cta.textContent = label;
 });

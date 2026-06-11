@@ -96,7 +96,7 @@
       <!-- Engine -->
       <div class="card">
         <h2>Engine health</h2>
-        <p class="desc">The 24/7 intelligence engine — ingestion and scoring.</p>
+        <p class="desc">The 24/7 intelligence engine, ingestion and scoring.</p>
         <div class="erow" id="engineRow"></div>
       </div>
 
@@ -115,14 +115,14 @@
       You don't have access to this page.
     </div>
 
-    <p class="foot">Korvus · BlackCrownVxJ.LLC — private owner view.</p>
+    <p class="foot">Korvus · BlackCrownVxJ.LLC, private owner view.</p>
   </div>
 
 <script>
 const $ = id => document.getElementById(id);
 
-function num(n){ return (n===null||n===undefined) ? '—' : Number(n).toLocaleString(); }
-function money(n, sym){ return (n===null||n===undefined) ? '—' : (sym||'$') + Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function num(n){ return (n===null||n===undefined) ? '-' : Number(n).toLocaleString(); }
+function money(n, sym){ return (n===null||n===undefined) ? '-' : (sym||'$') + Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function sym(disp){ const m=(disp||'').match(/^[^\d\s]+/); return m ? m[0] : '$'; }
 
 function statCard(k, v, sub, cls){
@@ -132,14 +132,14 @@ function statCard(k, v, sub, cls){
 
 function render(d){
   const m = d.members || {};
-  if(m.error){ $('memberGrid').innerHTML = `<div class="stat"><div class="k">Members</div><div class="sub">DB not ready yet — ${m.error}</div></div>`; }
+  if(m.error){ $('memberGrid').innerHTML = `<div class="stat"><div class="k">Members</div><div class="sub">DB not ready yet, ${m.error}</div></div>`; }
   else {
     const csym = sym(d.price_display);
     $('memberGrid').innerHTML =
       statCard('Total members', num(m.total)) +
       statCard('Pro', num(m.pro), 'active subs: ' + num(m.active_subs), 'green') +
       statCard('Free', num(m.free)) +
-      statCard('Est. MRR', money(d.mrr_est, csym), num(m.active_subs) + ' active × ' + (d.price_display||'—'), 'accent') +
+      statCard('Est. MRR', money(d.mrr_est, csym), num(m.active_subs) + ' active × ' + (d.price_display||'-'), 'accent') +
       statCard('Verified', num(m.verified), 'of ' + num(m.total) + ' members') +
       statCard('Signups · 7d', num(m.signups_7d), '30d: ' + num(m.signups_30d)) +
       statCard('Online now', num(d.online), 'last 5 min');
@@ -147,13 +147,13 @@ function render(d){
 
   const e = d.engine || {};
   if(e.error || (!e.total && e.total!==0)){
-    $('engineRow').innerHTML = `<div><div class="k">Status</div><div class="v">—</div></div>`;
+    $('engineRow').innerHTML = `<div><div class="k">Status</div><div class="v">-</div></div>`;
   } else {
     $('engineRow').innerHTML =
       `<div><div class="k">Items total</div><div class="v">${num(e.total)}</div></div>` +
       `<div><div class="k">Scored</div><div class="v">${num(e.scored)}</div></div>` +
       `<div><div class="k">High-impact</div><div class="v" style="color:var(--crimson-bright)">${num(e.high_impact)}</div></div>` +
-      `<div><div class="k">Last update</div><div class="v" style="font-size:15px">${e.last_update || '—'}</div></div>`;
+      `<div><div class="k">Last update</div><div class="v" style="font-size:15px">${e.last_update || '-'}</div></div>`;
   }
 
   const subs = d.subscribers || [];
@@ -162,9 +162,9 @@ function render(d){
   } else {
     let rows = subs.map(s => {
       const active = (s.status||'').toLowerCase()==='active' || (s.status||'').toLowerCase()==='trialing';
-      return `<tr><td class="user">${s.username||'—'}</td>`
-           + `<td><span class="sbadge ${active?'active':'other'}">${s.status||'—'}</span></td>`
-           + `<td>${s.renews||'—'}</td><td>${s.joined||'—'}</td></tr>`;
+      return `<tr><td class="user">${s.username||'-'}</td>`
+           + `<td><span class="sbadge ${active?'active':'other'}">${s.status||'-'}</span></td>`
+           + `<td>${s.renews||'-'}</td><td>${s.joined||'-'}</td></tr>`;
     }).join('');
     $('subsWrap').innerHTML =
       `<table><thead><tr><th>Member</th><th>Status</th><th>Renews</th><th>Joined</th></tr></thead><tbody>${rows}</tbody></table>`;

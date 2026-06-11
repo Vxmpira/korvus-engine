@@ -138,7 +138,7 @@
 
     <!-- Identity -->
     <div class="card" style="--d:.05s">
-      <div class="eyebrow">01 — Identity</div>
+      <div class="eyebrow">01, Identity</div>
       <h2>Login &amp; email</h2>
       <p class="desc">Your username is how you sign in. Updating your email re-sends a verification link to the new address.</p>
       <label for="username">Username</label>
@@ -157,9 +157,9 @@
 
     <!-- Security -->
     <div class="card" style="--d:.13s">
-      <div class="eyebrow">02 — Security</div>
+      <div class="eyebrow">02, Security</div>
       <h2>Password</h2>
-      <p class="desc">Choose a strong password — at least 8 characters.</p>
+      <p class="desc">Choose a strong password, at least 8 characters.</p>
       <label for="curpw">Current password</label>
       <input id="curpw" type="password" autocomplete="current-password" />
       <div class="row2">
@@ -178,7 +178,7 @@
 
     <!-- Membership & billing -->
     <div class="card" style="--d:.21s">
-      <div class="eyebrow">03 — Membership</div>
+      <div class="eyebrow">03, Membership</div>
       <h2>Membership &amp; billing</h2>
       <div class="billhead">
         <div>
@@ -189,9 +189,9 @@
       </div>
       <div class="dgrid">
         <div class="drow"><span class="dk">Plan</span><span class="dv" id="dPlan">Free</span></div>
-        <div class="drow"><span class="dk">Status</span><span class="dv" id="dStatus">—</span></div>
+        <div class="drow"><span class="dk">Status</span><span class="dv" id="dStatus">-</span></div>
         <div class="drow"><span class="dk">Price</span><span class="dv" id="dPrice">$0</span></div>
-        <div class="drow"><span class="dk">Renews</span><span class="dv" id="dRenews">—</span></div>
+        <div class="drow"><span class="dk">Renews</span><span class="dv" id="dRenews">-</span></div>
       </div>
       <button class="btn block" id="billBtn">Go Pro</button>
       <div class="msg" id="billMsg"></div>
@@ -207,7 +207,7 @@
 
     <!-- Support -->
     <div class="card" style="--d:.29s">
-      <div class="eyebrow">04 — Support</div>
+      <div class="eyebrow">04, Support</div>
       <h2>Contact Korvus</h2>
       <p class="desc">Questions about your account, billing, or the platform? Here's how to reach the team behind Korvus.</p>
       <div class="contact">
@@ -218,13 +218,13 @@
       </div>
     </div>
 
-    <p class="foot">Payments are handled by Stripe — your card details never touch Korvus servers.<br>
+    <p class="foot">Payments are handled by Stripe, your card details never touch Korvus servers.<br>
       Manage billing opens the secure Stripe portal for your payment method, invoices, and cancellation.</p>
   </div>
 
 <script>
 function setMsg(id, kind, text){ const e=document.getElementById(id); e.className='msg '+kind; e.textContent=text; }
-function fmtDate(iso){ try{ return new Date(iso).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}); }catch(e){ return '—'; } }
+function fmtDate(iso){ try{ return new Date(iso).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}); }catch(e){ return '-'; } }
 function statusBadge(s){
   s = (s||'').toLowerCase();
   if(s==='active')   return {cls:'ok',   text:'Active',   label:'Active'};
@@ -241,7 +241,7 @@ async function load(){
   try{ ME = await (await fetch('/api/me',{cache:'no-store'})).json(); }catch(e){ ME = {}; }
   if(ME.auth === false){ location.href='/login'; return; }
 
-  document.getElementById('hello').textContent = 'Signed in as ' + (ME.username || '—');
+  document.getElementById('hello').textContent = 'Signed in as ' + (ME.username || '-');
   document.getElementById('username').value = ME.username || '';
   document.getElementById('email').value = ME.email || '';
 
@@ -269,7 +269,7 @@ async function load(){
     dPlan.textContent   = 'Operator (Pro)';
     dStatus.textContent = b.label;
     dPrice.textContent  = ME.price_display || '$3.99/mo';
-    dRenews.textContent = ME.current_period_end ? fmtDate(ME.current_period_end) : '—';
+    dRenews.textContent = ME.current_period_end ? fmtDate(ME.current_period_end) : '-';
     billBtn.textContent = 'Manage billing'; billBtn.dataset.action = 'portal'; billBtn.disabled = false;
   } else {
     planName.textContent = 'Observer';
@@ -278,7 +278,7 @@ async function load(){
     dPlan.textContent   = 'Observer (Free)';
     dStatus.textContent = 'No active subscription';
     dPrice.textContent  = '$0';
-    dRenews.textContent = '—';
+    dRenews.textContent = '-';
     if(ME.billing_enabled){ billBtn.textContent='Go Pro'; billBtn.dataset.action='upgrade'; billBtn.disabled=false; }
     else { billBtn.textContent='Memberships open soon'; billBtn.disabled=true; }
   }
@@ -292,7 +292,7 @@ async function load(){
     an.textContent = 'An email the moment the engine flags a high-impact event.';
   } else {
     at.disabled = true;
-    an.textContent = 'A Pro feature — upgrade to get an email the moment a high-impact event hits.';
+    an.textContent = 'A Pro feature, upgrade to get an email the moment a high-impact event hits.';
   }
 }
 

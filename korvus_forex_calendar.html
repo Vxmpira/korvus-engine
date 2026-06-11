@@ -3,9 +3,9 @@
 <head>
 <!--
   ============================================================================
-  KORVUS — Forex / Gov News · Economic Calendar     (by BlackCrownVxJ.LLC)
+  KORVUS, Forex / Gov News · Economic Calendar     (by BlackCrownVxJ.LLC)
   ============================================================================
-  A sibling page to korvus_dashboard.html — same vanta / neon-white / crimson
+  A sibling page to korvus_dashboard.html, same vanta / neon-white / crimson
   design system, same crown, same header + footer chrome. Served at /forex.
 
   DATA:
@@ -13,7 +13,7 @@
     the table is never empty and even works opened as a bare file). Then it
     silently upgrades to LIVE by fetching /api/ff-calendar (see korvus_calendar.py).
     The Forex Factory free feed is CORS-blocked + rate-limited, so it is fetched
-    SERVER-SIDE and cached — never from the browser.
+    SERVER-SIDE and cached, never from the browser.
 
   THEME:
     Light / dark toggle in the header, remembered per browser via localStorage.
@@ -23,7 +23,7 @@
 -->
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Korvus — Forex / Gov News · Economic Calendar · BlackCrownVxJ</title>
+<title>Korvus, Forex / Gov News · Economic Calendar · BlackCrownVxJ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -230,9 +230,9 @@
   @media(max-width:820px){
     .colhead{display:none;}
     /* CLEAN STACKED CARD on phones:
-         row 1 — time · currency · impact
-         row 2 — event title (full width)
-         row 3 — three SEPARATE labelled stat chips (Actual / Forecast / Previous)
+         row 1, time · currency · impact
+         row 2, event title (full width)
+         row 3, three SEPARATE labelled stat chips (Actual / Forecast / Previous)
        Each value gets its own column, so the numbers can never collide the way
        they did when Actual + Previous shared one cell. */
     .erow{grid-template-columns:repeat(3,1fr);grid-auto-rows:auto;gap:11px 10px;padding:15px 16px;align-items:center;}
@@ -250,7 +250,7 @@
     .titlestrip h1{font-size:20px;}
   }
 
-  /* very narrow phones — keep the three chips legible */
+  /* very narrow phones, keep the three chips legible */
   @media(max-width:380px){
     .erow{gap:9px 7px;padding:14px 13px;}
     .enum{padding:7px 8px;font-size:11.5px;}
@@ -334,10 +334,10 @@
   <footer>
     <div class="frow">
       <span class="pill" id="srcPill">◆ ECONOMIC CALENDAR</span>
-      <span id="srcNote">Government data releases — fetched and cached by the Korvus server.</span>
+      <span id="srcNote">Government data releases, fetched and cached by the Korvus server.</span>
       <span style="flex:1"></span>
       <span class="rt">● THIS WEEK</span>
-      <span id="lastUpd">last update —</span>
+      <span id="lastUpd">last update,</span>
     </div>
     <div class="legal">
       <span class="cpy">© 2026 BlackCrownVxJ LLC</span>
@@ -356,7 +356,7 @@ let _impSet = new Set();   // multi-select; empty = ALL (no impact filter)
 let _ccyFilter = 'all';
 
 /* ============================================================================
-   SAMPLE DATA — built relative to THIS week so the page is never empty and
+   SAMPLE DATA, built relative to THIS week so the page is never empty and
    always looks current. Replaced by live data from /api/ff-calendar when the
    server is running. dayOffset is days from Monday (0=Mon … 4=Fri).
    ============================================================================ */
@@ -463,12 +463,12 @@ function render(){
       const aCls = actualClass(e.actual, e.forecast);
       html += `<div class="erow ${isNext?'next':''} ${passed?'passed':''}">
         <span class="etime">${timeCell}</span>
-        <span class="eccy">${e.country||'—'}</span>
+        <span class="eccy">${e.country||'-'}</span>
         <span class="eimp ${ic}"><span class="d"></span>${e.impact||'Low'}</span>
         <span class="etitle">${e.title||''}</span>
-        <span class="enum eactual ${aCls}"><span class="lbl">Act</span>${e.actual||'—'}</span>
-        <span class="enum eforecast"><span class="lbl">Fcst</span>${e.forecast||'—'}</span>
-        <span class="enum eprevious"><span class="lbl">Prev</span>${e.previous||'—'}</span>
+        <span class="enum eactual ${aCls}"><span class="lbl">Act</span>${e.actual||'-'}</span>
+        <span class="enum eforecast"><span class="lbl">Fcst</span>${e.forecast||'-'}</span>
+        <span class="enum eprevious"><span class="lbl">Prev</span>${e.previous||'-'}</span>
       </div>`;
     });
     html += `</div>`;
@@ -485,7 +485,7 @@ function buildCcyChips(){
 
 function setImp(v){
   // "All" clears the filter (everything shows). Each level toggles on/off and
-  // stacks — e.g. enable High, then Medium, to see both together. Turning the
+  // stacks, e.g. enable High, then Medium, to see both together. Turning the
   // last active level off reverts to All.
   if(v==='all'){ _impSet.clear(); }
   else { _impSet.has(v) ? _impSet.delete(v) : _impSet.add(v); }
@@ -508,7 +508,7 @@ function setBadge(isLive){
 }
 
 /* ============================================================================
-   THEME TOGGLE — light / dark, remembered per browser
+   THEME TOGGLE, light / dark, remembered per browser
    ============================================================================ */
 (function(){
   const root = document.documentElement,
@@ -533,7 +533,7 @@ function tick(){
 }
 
 /* ============================================================================
-   LIVE DATA — pulls the cached calendar from the Korvus server. Accepts either
+   LIVE DATA, pulls the cached calendar from the Korvus server. Accepts either
    a bare array or {events:[...]}. Falls back to sample data when offline.
    ============================================================================ */
 async function loadLive(){
@@ -548,14 +548,14 @@ async function loadLive(){
       render();
       setBadge(true);
       document.getElementById('lastUpd').textContent = 'last update ' + new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true}).format(new Date()) + ' ET';
-      document.getElementById('srcNote').textContent = 'Government data releases — fetched and cached by the Korvus server.';
+      document.getElementById('srcNote').textContent = 'Government data releases, fetched and cached by the Korvus server.';
       return;
     }
     throw new Error('empty');
   }catch(e){
     // keep sample data (already rendered) and label it
     setBadge(false);
-    document.getElementById('srcNote').textContent = 'Sample week — start korvus_server.py for the live calendar feed.';
+    document.getElementById('srcNote').textContent = 'Sample week, start korvus_server.py for the live calendar feed.';
   }
 }
 

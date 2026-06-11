@@ -141,8 +141,8 @@
   <div class="databar">
     <div class="row1">
       <div class="ctx">
-        <div class="blk"><span class="k">📰 Top market driver</span><span class="v" id="ctx-news">—</span></div>
-        <div class="blk"><span class="k">⚖ SMT read · NQ/ES/YM</span><span class="v" id="ctx-smt">—</span></div>
+        <div class="blk"><span class="k">📰 Top market driver</span><span class="v" id="ctx-news">-</span></div>
+        <div class="blk"><span class="k">⚖ SMT read · NQ/ES/YM</span><span class="v" id="ctx-smt">-</span></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span class="src-status"><span class="sdot" id="sdot"></span><span id="sstatus">no data</span></span>
@@ -157,8 +157,8 @@
     <div class="manual" id="manual">
       <div class="f" style="flex:2 1 320px"><label>Top headline</label><input type="text" id="m-head" placeholder="e.g. CPI comes in hot, indices roll over" /></div>
       <div class="f" style="flex:0 0 130px"><label>Impact</label>
-        <select id="m-impact"><option value="">—</option><option>HIGH</option><option>MED</option><option>LOW</option></select></div>
-      <div class="f" style="flex:2 1 320px"><label>SMT read</label><input type="text" id="m-smt" placeholder="e.g. NQ making new highs, ES lagging — bearish divergence" /></div>
+        <select id="m-impact"><option value="">-</option><option>HIGH</option><option>MED</option><option>LOW</option></select></div>
+      <div class="f" style="flex:2 1 320px"><label>SMT read</label><input type="text" id="m-smt" placeholder="e.g. NQ making new highs, ES lagging, bearish divergence" /></div>
     </div>
 
     <!-- endpoint config -->
@@ -182,13 +182,13 @@
 
       <span class="lbl">Angle</span>
       <div class="chips" id="angle">
-        <button class="chip active" data-v="Don't get blindsided — the emotional relief of always knowing what's moving markets">Don't get blindsided</button>
-        <button class="chip" data-v="Know why while the world sleeps — the overnight / 24-7 edge of being informed first">World sleeps</button>
-        <button class="chip" data-v="SMT divergence edge across NQ / ES / YM — spotting when the indices disagree">SMT divergence</button>
+        <button class="chip active" data-v="Don't get blindsided, the emotional relief of always knowing what's moving markets">Don't get blindsided</button>
+        <button class="chip" data-v="Know why while the world sleeps, the overnight / 24-7 edge of being informed first">World sleeps</button>
+        <button class="chip" data-v="SMT divergence edge across NQ / ES / YM, spotting when the indices disagree">SMT divergence</button>
         <button class="chip" data-v="The news scoring engine that rates real market impact and filters out the noise">News scoring</button>
-        <button class="chip" data-v="One live dashboard — news impact, divergence signals, and funds/session status in real time">All-in-one terminal</button>
-        <button class="chip" data-v="Build-in-public / founder voice — building Korvus in the open for serious day traders">Build-in-public</button>
-        <button class="chip" data-v="React to the current market driver shown in the live context — make today's news the whole hook">Today's driver</button>
+        <button class="chip" data-v="One live dashboard, news impact, divergence signals, and funds/session status in real time">All-in-one terminal</button>
+        <button class="chip" data-v="Build-in-public / founder voice, building Korvus in the open for serious day traders">Build-in-public</button>
+        <button class="chip" data-v="React to the current market driver shown in the live context, make today's news the whole hook">Today's driver</button>
       </div>
 
       <span class="lbl">Tone</span>
@@ -214,10 +214,10 @@
       <div class="out-head"><h2>Output</h2><span class="ccount" id="ctx-label"></span></div>
       <div id="output">
         <div class="empty">
-          The agent writes <b>3 on-brand variants</b> for your platform, angle &amp; tone —<br>
+          The agent writes <b>3 on-brand variants</b> for your platform, angle &amp; tone,<br>
           and weaves in <b>today's real market driver</b> when live context is on.<br>
           TikTok &amp; Instagram return <b>hook + caption + a Reel script</b>.<br><br>
-          Intelligence &amp; awareness only — never profit promises or advice.
+          Intelligence &amp; awareness only, never profit promises or advice.
         </div>
       </div>
       <details class="shelf" id="shelf"><summary>Saved posts</summary><div id="saved"></div></details>
@@ -225,7 +225,7 @@
   </div>
 
   <div class="foot">
-    <b>KORVUS PROMO STUDIO</b> · drafts only — review before publishing.<br>
+    <b>KORVUS PROMO STUDIO</b> · drafts only, review before publishing.<br>
     Guardrails: no guaranteed returns / win-rates / advice framing, no fabricated numbers. Korvus is market intelligence, not a recommendation to trade. Index-futures trading carries substantial risk.
   </div>
 </div>
@@ -264,7 +264,7 @@ function parseSMT(raw){
   if(typeof v==="string"&&v.trim())return v.trim();
   const div=getField(raw,["divergence","divergent","isDivergence"]);
   if(div===true)return "Divergence detected across NQ / ES / YM";
-  if(div===false||getField(raw,["aligned"])===true)return "NQ / ES / YM aligned — no clear divergence";
+  if(div===false||getField(raw,["aligned"])===true)return "NQ / ES / YM aligned, no clear divergence";
   if(typeof raw==="object"){const s=JSON.stringify(raw);return s.length>180?s.slice(0,177)+"…":s;}
   return String(raw);
 }
@@ -274,8 +274,8 @@ function setStatus(mode,label){live.mode=mode;const d=$("sdot");d.className="sdo
 
 function renderCtx(){
   const head=$("m-head").value.trim(),imp=$("m-impact").value,smt=$("m-smt").value.trim();
-  $("ctx-news").innerHTML = head?(escapeHtml(head)+(imp?'<span class="impact '+imp+'">'+imp+'</span>':"")+(live.news&&live.news.desc&&head===live.news.headline?'<span class="desc">'+escapeHtml(live.news.desc)+'</span>':"")):"—";
-  $("ctx-smt").textContent = smt||"—";
+  $("ctx-news").innerHTML = head?(escapeHtml(head)+(imp?'<span class="impact '+imp+'">'+imp+'</span>':"")+(live.news&&live.news.desc&&head===live.news.headline?'<span class="desc">'+escapeHtml(live.news.desc)+'</span>':"")):"-";
+  $("ctx-smt").textContent = smt||"-";
 }
 ["m-head","m-impact","m-smt"].forEach(id=>$(id).addEventListener("input",renderCtx));
 
@@ -289,7 +289,7 @@ async function pullLive(){
   try{const s=parseSMT(await fetchJSON(base+$("c-smt").value));if(s){live.smt=s;$("m-smt").value=s;okAny=true;}}catch(e){errs.push("smt ("+$("c-smt").value+"): "+e.message);}
   renderCtx();
   if(okAny){setStatus("live","live · korvus.industries");}
-  else{setStatus("blocked","blocked — using manual");$("manual").classList.add("show");
+  else{setStatus("blocked","blocked, using manual");$("manual").classList.add("show");
     $("src-err").style.display="block";
     $("src-err").innerHTML="Couldn't read live data:<br>"+errs.map(escapeHtml).join("<br>")+
       "<br><br>Likely cross-origin (CORS) or the path needs confirming. Set paths with ⚙, type context by hand above, or add the server endpoint from the chat. The generator still works on manual context.";}
@@ -301,7 +301,7 @@ function liveContextBlock(){
   if($("tg-ctx").dataset.on!=="1")return "";
   const head=$("m-head").value.trim(),imp=$("m-impact").value,smt=$("m-smt").value.trim();
   if(!head&&!smt)return "";
-  let b="LIVE MARKET CONTEXT (real and current — weave in naturally; do NOT invent any number, price, or fact beyond these lines):";
+  let b="LIVE MARKET CONTEXT (real and current, weave in naturally; do NOT invent any number, price, or fact beyond these lines):";
   if(head)b+="\n- Top market driver: "+head+(imp?" (impact: "+imp+")":"");
   if(smt)b+="\n- SMT read across NQ/ES/YM: "+smt;
   return b;
@@ -321,10 +321,10 @@ function buildPrompt(){
   const schema=video
     ?'Return ONLY a raw JSON array of exactly 3 objects, each {"hook":"...","caption":"...","script":"..."}. No markdown, no code fences, no commentary.'
     :'Return ONLY a raw JSON array of exactly 3 objects, each {"post":"..."}. No markdown, no code fences, no commentary.';
-  const cta=wantCta?(video?"End the caption with a soft CTA — 'link in bio' or korvus.industries.":"End with a soft CTA pointing to korvus.industries."):"No links or CTA.";
+  const cta=wantCta?(video?"End the caption with a soft CTA, 'link in bio' or korvus.industries.":"End with a soft CTA pointing to korvus.industries."):"No links or CTA.";
   const hash=wantHash?(video?"Put 3-6 relevant non-spammy hashtags in the caption (e.g. #daytrading #futures #NQ #ES #trading).":"Include 2-4 relevant non-spammy hashtags where the platform expects them."):"No hashtags.";
   return{
-    system:"You are the promo copywriter for KORVUS — a 24/7 market-intelligence platform for index-futures day traders (korvus.industries), by BlackCrownVxJ.LLC. Korvus puts three things on one live dashboard: (1) a NEWS SCORING engine rating the real market impact of headlines and filtering noise, (2) SMT DIVERGENCE signals across NQ/ES/YM that flag when the indices disagree, (3) FUNDS & SESSION status in real time. Core promise: AWARENESS — knowing what's moving markets and WHY, including overnight while most traders sleep, so you're never blindsided. Voice: sharp, confident, nocturnal, a touch outlaw, always credible. You sell a feeling: relief from being caught off guard and the quiet edge of being informed first. HARD RULES, never broken: never promise profits, returns, win-rates, or guaranteed outcomes; never frame it as financial advice or signals to act on (it is intelligence/awareness); never invent statistics, prices, or testimonials, and never go beyond any live context you're given; keep feature claims accurate; index-futures trading carries real risk and you never imply otherwise.",
+    system:"You are the promo copywriter for KORVUS, a 24/7 market-intelligence platform for index-futures day traders (korvus.industries), by BlackCrownVxJ.LLC. Korvus puts three things on one live dashboard: (1) a NEWS SCORING engine rating the real market impact of headlines and filtering noise, (2) SMT DIVERGENCE signals across NQ/ES/YM that flag when the indices disagree, (3) FUNDS & SESSION status in real time. Core promise: AWARENESS, knowing what's moving markets and WHY, including overnight while most traders sleep, so you're never blindsided. Voice: sharp, confident, nocturnal, a touch outlaw, always credible. You sell a feeling: relief from being caught off guard and the quiet edge of being informed first. HARD RULES, never broken: never promise profits, returns, win-rates, or guaranteed outcomes; never frame it as financial advice or signals to act on (it is intelligence/awareness); never invent statistics, prices, or testimonials, and never go beyond any live context you're given; keep feature claims accurate; index-futures trading carries real risk and you never imply otherwise.",
     user:[
       "Write 3 distinct "+p+" promo "+(video?"concepts":"posts")+" for Korvus.",
       ctx,
@@ -333,7 +333,7 @@ function buildPrompt(){
       extra?"ALSO WEAVE IN: "+extra+".":"",
       "PLATFORM RULES: "+platformRules,
       hash,cta,
-      ctx?"":"No live context provided — keep it evergreen and do not reference specific current events.",
+      ctx?"":"No live context provided, keep it evergreen and do not reference specific current events.",
       "The 3 variants must differ genuinely in hook and structure, not three rewrites of one line.",
       schema
     ].filter(Boolean).join("\n")
@@ -357,7 +357,7 @@ async function generate(){
     else if(text)renderItems([{post:text}]);
     else throw new Error("Empty response");
   }catch(err){clearInterval(tick);
-    out.innerHTML='<div class="err">Couldn\'t reach the writing engine.<br>'+(err.message||err)+'<br><br>This calls the model from inside Claude.ai — if you\'re previewing elsewhere it won\'t complete. Try again from the artifact view.</div>';
+    out.innerHTML='<div class="err">Couldn\'t reach the writing engine.<br>'+(err.message||err)+'<br><br>This calls the model from inside Claude.ai, if you\'re previewing elsewhere it won\'t complete. Try again from the artifact view.</div>';
   }finally{btn.disabled=false;}
 }
 
