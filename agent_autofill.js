@@ -1,22 +1,18 @@
 /* ============================================================================
    Korvus Promo Studio — AI Auto-fill add-on
    ----------------------------------------------------------------------------
-   This file is served by korvus_fill_api.py at /agent_autofill.js and is wired
-   into agent.html by patch_autofill.py, which injects right before </body>:
+   Served at /agent_autofill.js by korvus_fill_api.py; injected before </body>
+   by patch_autofill.py. Runs AFTER agent.html's inline script, so it uses the
+   globals that script defines: S, syncInputs, render, and (optionally)
+   window.korvusBg from agent_backgrounds.js.
 
-       <script src="/agent_autofill.js"></script>
-
-   It runs AFTER agent.html's own <script>, so it can use the globals that
-   script defines: S, syncInputs, render.
-
-   It adds, near the top of the controls sidebar:
-     • "✦ Auto-fill this layout with AI" — fills EVERY field for the current
-        layout in one click. Press again -> a fresh take (button becomes ↻).
-     • "Use live engine feed" toggle — when on, it pulls the top scored item
-        from /api/news (+ the SMT read from /api/smt) and grounds the mockup in
-        the real, current market story. Off -> evergreen Korvus copy.
-
-   Backend: POST /api/promo-fill  (korvus_fill_api.py). Owner-gated.
+   Adds "✦ Auto-fill this layout with AI":
+     • Korvus brand  -> fills in the Korvus voice; if "live" is on, pulls the
+       top scored item from /api/news (+ /api/smt) and grounds the mockup.
+     • Other brands  -> the server reads that brand's front page and writes the
+       ad to match it. ("live" toggle becomes "Pull from the brand's site".)
+     • Every fill also applies a suggested background + accent (mood match).
+     • Press again -> a fresh take (button becomes ↻ Regenerate).
    ========================================================================== */
 (function () {
   "use strict";
@@ -25,48 +21,51 @@
     if (document.readyState !== "loading") fn();
     else document.addEventListener("DOMContentLoaded", fn);
   }
-
   function el(html) {
     const t = document.createElement("template");
     t.innerHTML = html.trim();
     return t.content.firstChild;
   }
-
   function esc(s) {
     return String(s == null ? "" : s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
   }
+  function normUrl(u) {
+    u = String(u || "").trim();
+    if (!u) return "";
+    if (!/^https?:\/\//i.test(u)) u = "https://" + u;
+    return u;
+  }
 
   ready(function () {
-    // These globals come from agent.html's inline script.
     if (typeof S === "undefined" || typeof syncInputs !== "function" || typeof render !== "function") {
       console.warn("[autofill] agent.html globals not found — load this AFTER the page script.");
       return;
     }
 
-    /* ---------- build + insert the UI block ---------- */
+    /* ---------- UI ---------- */
     const block = el(`
       <div class="grp" id="af-grp">
         <span class="lbl">AI auto-fill</span>
         <button class="mini" id="af-go" style="margin-bottom:8px">\u2726 Auto-fill this layout with AI</button>
         <div class="toggle" style="margin-bottom:8px">
-          <span>Use live engine feed</span>
+          <span id="af-live-label">Use live engine feed</span>
           <div class="sw on" id="af-live"></div>
         </div>
         <div class="ai-note" id="af-note">Fills every field for the current layout. Press again for a fresh take.</div>
         <div class="ai-note" id="af-ctx" style="margin-top:6px;display:none"></div>
       </div>
     `);
-
     const aside = document.querySelector("aside.controls") || document.querySelector("aside") || document.querySelector(".controls");
     const anchor = (aside && aside.querySelector(".lay-fields")) || (aside && aside.firstElementChild);
     if (aside && anchor) aside.insertBefore(block, anchor);
     else if (aside) aside.appendChild(block);
     else document.body.appendChild(block);
 
-    const btn    = document.getElementById("af-go");
-    const note   = document.getElementById("af-note");
+    const btn = document.getElementById("af-go");
+    const note = document.getElementById("af-note");
     const ctxBox = document.getElementById("af-ctx");
     const liveSw = document.getElementById("af-live");
+    const liveLabel = document.getElementById("af-live-label");
 
     let useLive = true;
     liveSw.addEventListener("click", () => {
@@ -75,15 +74,22 @@
       if (!useLive) ctxBox.style.display = "none";
     });
 
-    /* ---------- live context puller (mirrors korvus_promo_studio.html) ---------- */
+    function updateLiveLabel() {
+      const isK = (S.brand || "korvus") === "korvus";
+      liveLabel.textContent = isK ? "Use live engine feed" : "Pull from the brand's site";
+    }
+    updateLiveLabel();
+    // refresh the label after the page's own brand handler runs
+    const brandSeg = document.getElementById("seg-brand");
+    if (brandSeg) brandSeg.addEventListener("click", () => setTimeout(updateLiveLabel, 0));
+
+    /* ---------- Korvus live context (engine feed) ---------- */
     function rankImp(imp) {
       imp = String(imp || "").toLowerCase();
       return imp === "high" ? 3 : imp === "med" ? 2 : imp === "low" ? 1 : 0;
     }
-
-    async function pullContext() {
+    async function pullKorvusContext() {
       const ctx = {};
-      // top scored news item
       try {
         const r = await fetch("/api/news", { cache: "no-store", credentials: "same-origin" });
         if (r.ok) {
@@ -96,34 +102,32 @@
           });
           const t = list[0];
           if (t) {
-            ctx.headline    = t.headline || "";
-            ctx.summary     = t.summary || "";
-            ctx.impact      = String(t.impact || "").toUpperCase();
-            ctx.direction   = t.dir || "neut";
-            ctx.confidence  = t.conf || 0;
+            ctx.headline = t.headline || "";
+            ctx.summary = t.summary || "";
+            ctx.impact = String(t.impact || "").toUpperCase();
+            ctx.direction = t.dir || "neut";
+            ctx.confidence = t.conf || 0;
             ctx.instruments = t.inst || [];
-            ctx.time        = t.time || "";
+            ctx.time = t.time || "";
           }
         }
-      } catch (e) { /* offline / not logged in -> evergreen */ }
-
-      // SMT divergence read (optional, non-fatal)
+      } catch (e) { /* offline -> evergreen */ }
       try {
         const r = await fetch("/api/smt", { cache: "no-store", credentials: "same-origin" });
         if (r.ok) {
           const d = await r.json();
-          if (d && d.verdict) {
-            ctx.smt = (d.verdict.title ? d.verdict.title + " — " : "") + (d.verdict.note || "");
-          }
+          if (d && d.verdict) ctx.smt = (d.verdict.title ? d.verdict.title + " — " : "") + (d.verdict.note || "");
         }
       } catch (e) { /* ignore */ }
-
       return ctx;
     }
 
-    /* ---------- map the returned fields onto S, then redraw ---------- */
-    function applyFill(fields) {
-      if (!fields || typeof fields !== "object") return;
+    /* ---------- apply returned fields + bg/accent ---------- */
+    function applyFill(data) {
+      const fields = (data && (data.fields || data)) || {};
+      if (data && data.accent && ["indigo", "gold", "crimson"].indexOf(data.accent) >= 0) {
+        S.accent = data.accent;
+      }
       Object.keys(fields).forEach(k => {
         if (k === "e1" || k === "e2") {
           if (fields[k] && typeof fields[k] === "object") S[k] = Object.assign({}, S[k], fields[k]);
@@ -133,9 +137,12 @@
       });
       syncInputs();
       render();
+      if (data && data.bg && window.korvusBg && typeof window.korvusBg.apply === "function") {
+        window.korvusBg.apply(data.bg);
+      }
     }
 
-    /* ---------- the click: pull context -> generate -> apply ---------- */
+    /* ---------- click: gather context -> generate -> apply ---------- */
     let filledOnce = false;
     btn.addEventListener("click", async function () {
       btn.disabled = true;
@@ -143,11 +150,15 @@
       btn.textContent = "Thinking\u2026";
       note.textContent = "Drafting a full fill\u2026";
 
+      const brand = S.brand || "korvus";
+      const isKorvus = brand === "korvus";
+      let context = null;
+      let brandUrl = null;
+
       try {
-        let context = null;
-        if (useLive) {
+        if (useLive && isKorvus) {
           note.textContent = "Reading the live engine feed\u2026";
-          context = await pullContext();
+          context = await pullKorvusContext();
           if (context && context.headline) {
             const h = context.headline.length > 80 ? context.headline.slice(0, 77) + "\u2026" : context.headline;
             ctxBox.style.display = "";
@@ -157,6 +168,12 @@
             note.textContent = "No live items right now \u2014 writing evergreen copy\u2026";
             context = null;
           }
+        } else if (useLive && !isKorvus) {
+          brandUrl = normUrl(S.url);
+          const host = brandUrl ? brandUrl.replace(/^https?:\/\//i, "").replace(/\/.*$/, "") : "";
+          ctxBox.style.display = host ? "" : "none";
+          if (host) ctxBox.innerHTML = "reading site \u2192 " + esc(host);
+          note.textContent = "Reading the brand's front page\u2026";
         } else {
           ctxBox.style.display = "none";
         }
@@ -165,16 +182,23 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "same-origin",
-          body: JSON.stringify({ layout: S.layout, context: context })
+          body: JSON.stringify({ layout: S.layout, brand: brand, context: context, brand_url: brandUrl })
         });
         const data = await res.json();
         if (!res.ok || data.error) throw new Error(data.error || ("HTTP " + res.status));
 
-        applyFill(data.fields || data);
+        applyFill(data);
         filledOnce = true;
         note.className = "ai-note";
-        note.textContent = data.grounded ? "Filled from the live feed. Press \u21BB for a different take."
-                                         : "Done. Press \u21BB to regenerate a fresh take.";
+        if (!isKorvus) {
+          note.textContent = data.grounded
+            ? "Filled from " + esc(data.brand_name || "the site") + ". Press \u21BB for another take."
+            : "Couldn't read the site \u2014 wrote evergreen brand copy. Press \u21BB to retry.";
+        } else {
+          note.textContent = data.grounded
+            ? "Filled from the live feed. Press \u21BB for a different take."
+            : "Done. Press \u21BB to regenerate a fresh take.";
+        }
         btn.textContent = "\u21BB Regenerate";
       } catch (err) {
         note.className = "ai-note";
