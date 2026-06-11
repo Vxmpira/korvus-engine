@@ -1,0 +1,47 @@
+<!--
+  ============================================================================
+  BLACKCROWN FAMILY BAR
+  Paste this whole block immediately after the opening <body> tag on
+  korvus.industries and blackcrown-intelligence.com. It is fully self-contained
+  (inline styles, no dependencies), so it will not interfere with the host site.
+  On each site, change the data-current value to highlight the active property:
+  data-current="korvus"  |  "intelligence"  |  "blackcrown"
+  ============================================================================
+-->
+<div class="bc-familybar" data-current="korvus" style="
+  font-family:'JetBrains Mono','SF Mono',ui-monospace,monospace;
+  background:#0A0A0D;border-bottom:1px solid rgba(255,45,149,.28);
+  display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  padding:.55rem clamp(1rem,4vw,2.5rem);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;">
+
+  <a href="https://blackcrownvxj.com" style="display:flex;align-items:center;gap:.5rem;text-decoration:none;color:#FFFFFF;">
+    <svg width="20" height="16" viewBox="0 0 36 30" fill="none" stroke="#FF2D95" stroke-width="1.9"
+      stroke-linejoin="round" stroke-linecap="round" style="filter:drop-shadow(0 0 5px rgba(255,45,149,.7))">
+      <path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><line x1="7" y1="28" x2="29" y2="28"/>
+    </svg>
+    <span style="font-weight:700;letter-spacing:.04em;">BlackCrown</span>
+  </a>
+
+  <nav style="display:flex;align-items:center;gap:1.4rem;flex-wrap:wrap;">
+    <a href="https://blackcrownvxj.com" data-key="blackcrown" style="text-decoration:none;color:#85838F;">Home</a>
+    <a href="https://korvus.industries" data-key="korvus" style="text-decoration:none;color:#85838F;">Korvus</a>
+    <a href="https://blackcrown-intelligence.com" data-key="intelligence" style="text-decoration:none;color:#85838F;">Intelligence</a>
+    <a href="https://discord.gg/xmuSA5mMTN" target="_blank" rel="noopener" style="text-decoration:none;color:#85838F;">Collective</a>
+  </nav>
+</div>
+
+<script>
+  (function(){
+    var bar=document.currentScript.previousElementSibling;
+    if(!bar||!bar.classList.contains('bc-familybar')) return;
+    var cur=bar.getAttribute('data-current');
+    bar.querySelectorAll('a[data-key]').forEach(function(a){
+      a.addEventListener('mouseenter',function(){a.style.color='#FF2D95';a.style.textShadow='0 0 8px rgba(255,45,149,.5)';});
+      a.addEventListener('mouseleave',function(){
+        var active=a.getAttribute('data-key')===cur;
+        a.style.color=active?'#FF2D95':'#85838F';a.style.textShadow=active?'0 0 8px rgba(255,45,149,.5)':'none';
+      });
+      if(a.getAttribute('data-key')===cur){a.style.color='#FF2D95';a.style.textShadow='0 0 8px rgba(255,45,149,.5)';}
+    });
+  })();
+</script>
