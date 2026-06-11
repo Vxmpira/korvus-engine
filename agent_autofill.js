@@ -38,8 +38,33 @@
       const pr = cv && cv.querySelector(".botrow .pr");
       if (pr) pr.textContent = f;
     }
+
+    /* ---- auto-fit: scale the type down so nothing overflows the frame
+       (the creative is overflow:hidden with a fixed height, so a tall layout
+       like Engine clips at the bottom in Square 1:1 — this prevents that) ---- */
+    function fitToFrame() {
+      const cv = document.getElementById("creative");
+      if (!cv) return;
+      cv.style.fontSize = "";                       // restore natural calc(15px * --k)
+      const avail = cv.clientHeight;
+      if (!avail) return;
+      if (cv.scrollHeight <= avail + 1) return;      // already fits — leave it alone
+      const base = parseFloat(getComputedStyle(cv).fontSize) || 15;
+      let fs = base * (avail / cv.scrollHeight) * 0.985;   // proportional first guess
+      cv.style.fontSize = fs + "px";
+      let guard = 0;                                  // refine for line-wrap nonlinearity
+      while (cv.scrollHeight > cv.clientHeight + 1 && guard < 14 && fs > 5) {
+        fs *= 0.97; cv.style.fontSize = fs + "px"; guard++;
+      }
+    }
+
     const _render = render;
-    render = function () { const out = _render.apply(this, arguments); try { applyFooter(); } catch (e) {} return out; };
+    render = function () {
+      const out = _render.apply(this, arguments);
+      try { applyFooter(); } catch (e) {}
+      try { fitToFrame(); } catch (e) {}
+      return out;
+    };
     window.render = render;
 
     /* ---- build + insert the two sidebar groups ---- */
@@ -212,5 +237,8 @@
         capNote.className = "ai-note"; capNote.textContent = "Couldn\u2019t write caption: " + (err.message || err);
       } finally { capBtn.disabled = false; capBtn.textContent = lbl; }
     });
+
+    /* ---- fit the initial render too (covers a Square 1:1 that's already on screen) ---- */
+    try { render(); } catch (e) {}
   });
 })();
