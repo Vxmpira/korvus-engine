@@ -1201,8 +1201,11 @@ function renderSMT(d){
     </div>`;
   }).join('');
   const icon = v.state==='warn' ? '⚠' : '✓';
+  const fmap = {live:['LIVE','var(--bull)'], delayed:['15-MIN DELAYED','var(--med)'], last_close:['LAST CLOSE','var(--ink-faint)']};
+  const fb = v.freshness ? (fmap[v.freshness] || fmap.live) : null;
+  const badge = fb ? `<span style="display:inline-block;margin-left:8px;padding:2px 7px;border:1px solid ${fb[1]};color:${fb[1]};border-radius:6px;font:600 9px/1.4 var(--mono,ui-monospace,monospace);letter-spacing:.1em;vertical-align:middle">${fb[0]}</span>` : '';
   document.getElementById('smt').innerHTML=
-    `<div class="verdict ${v.state}"><b>${icon} ${v.title}</b>${v.note}</div>
+    `<div class="verdict ${v.state}"><b>${icon} ${v.title}${badge}</b>${v.note}</div>
      <div class="corr">${legs}</div>`;
 }
 

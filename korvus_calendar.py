@@ -255,6 +255,75 @@ def _ts(s):
         return None
 
 
+# --- actual-value sanity + unit normalization -------------------------------
+# FMP returns actuals as bare numbers ("0.5", "229", "336.12") with no unit,
+# while Forex Factory's forecast/previous carry the unit ("0.3%", "220K"). Two
+# things were garbling the Actual column:
+#   1) the unit was dropped, so "0.5" sat next to "0.3%" and "229" next to "220K".
+#   2) on a loose title match, FMP's INDEX level (e.g. Core CPI = 336.12) got
+#      attached to a y/y % event, printing nonsense like "336.12" beside "2.9%".
+# Fix both: reject an actual whose magnitude is incompatible with the event's own
+# forecast/previous (it's the wrong series), and append the event's unit to a
+# good one so the column reads consistently.
+_NUM_RE = re.compile(r"-?\d[\d,]*\.?\d*")
+
+def _num(s):
+    """Leading numeric value of a string like '0.3%', '220K', '1.4M', '336.12'."""
+    if s is None:
+        return None
+    m = _NUM_RE.search(str(s).replace(",", ""))
+    if not m:
+        return None
+    try:
+        return float(m.group())
+    except Exception:
+        return None
+
+def _unit(s):
+    """Unit suffix of a value string: '%', 'K', 'M', 'B' or ''."""
+    su = str(s or "").strip().upper()
+    if "%" in su:        return "%"
+    if su.endswith("K"): return "K"
+    if su.endswith("M"): return "M"
+    if su.endswith("B"): return "B"
+    return ""
+
+def _ref_unit(forecast, previous):
+    return _unit(forecast) or _unit(previous)
+
+def _actual_compatible(a, forecast, previous):
+    """True if actual `a` sits in a believable range vs the event's own
+    forecast/previous. Catches an index value (336) attached to a % event (2.9)."""
+    refs = [r for r in (_num(forecast), _num(previous)) if r is not None]
+    if not refs:
+        return True                       # nothing to compare against, trust it
+    for r in refs:
+        if abs(r) < 1e-9:
+            if abs(a) <= 5:               # reference ~0 and actual small -> fine
+                return True
+            continue
+        if 0.1 <= abs(a) / abs(r) <= 10:  # within 10x of a reference -> believable
+            return True
+    return False
+
+def _fmt_actual(act, forecast, previous):
+    """Display-ready actual matching the event's units, or None to reject
+    (wrong series / nonsense magnitude)."""
+    a = _num(act)
+    if a is None:
+        return None
+    if not _actual_compatible(a, forecast, previous):
+        return None
+    m = _NUM_RE.search(str(act).strip().replace(",", ""))
+    raw = m.group() if m else str(act).strip()
+    if "." in raw:                        # trim trailing zeros: 0.50->0.5, 229.0->229
+        raw = raw.rstrip("0").rstrip(".")
+    u = _ref_unit(forecast, previous)
+    if u and not raw.upper().endswith(("%", "K", "M", "B")):
+        raw += u
+    return raw
+
+
 def _merge() -> list:
     ff  = _cached("ff",  _forexfactory, TTL_FF)
     if not ff:
@@ -313,8 +382,10 @@ def _merge() -> list:
             continue
         act = m.get("actual")
         if act not in (None, ""):
-            e["actual"] = str(act)
-            matched += 1
+            fixed = _fmt_actual(act, e.get("forecast"), e.get("previous"))
+            if fixed is not None:          # rejects wrong-series / nonsense magnitudes
+                e["actual"] = fixed
+                matched += 1
     nfp = next((x for x in ff if _canon(x.get("title")) == "nonfarm payrolls"), None)
     if nfp is not None:
         print(f"  [calendar] merge: NFP '{nfp.get('title')}' actual -> "

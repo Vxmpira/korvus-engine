@@ -541,7 +541,10 @@ def api_smt():
     is_pro = current_user.is_authenticated and current_user.tier == "pro"
     proxies = [p for _, p in _SMT_LEGS]
     data = get_quotes(proxies, force_delayed=not is_pro)
-    data.pop("_meta", None)
+    meta = data.pop("_meta", {}) or {}
+    market_open = bool(meta.get("market_open"))
+    provider    = meta.get("provider", "")
+    delayed     = provider in ("finnhub", "alphavantage-delayed")
 
     legs = []
     for sym, proxy in _SMT_LEGS:
@@ -561,49 +564,89 @@ def api_smt():
             else:             tag = "LL"    # near session lows
             has_data = True
         else:
-            pos, tag, has_data = None, "—", False
+            pos, tag, has_data = None, "-", False
         legs.append({"sym": sym, "proxy": proxy, "chg": round(chg, 2),
                      "pos": (round(pos, 2) if pos is not None else None),
                      "swing": tag, "has_data": has_data})
 
-    # ---- verdict, computed honestly from the leg positions ----
+    # ---- freshness: are we reading live RTH prices, a delayed feed, or a frozen
+    # last-session close? The verdict is computed the same way, but we label its
+    # provenance honestly instead of presenting a stale read as if it were live.
+    if not market_open:
+        freshness = "last_close"
+        fresh_note = (" Markets are closed, so this reflects the last regular-session "
+                      "close: the QQQ / SPY / DIA proxies do not trade overnight. Live "
+                      "divergence resumes at the 9:30 AM ET open.")
+    elif delayed:
+        freshness = "delayed"
+        fresh_note = (" Reading a 15-minute-delayed feed, so the position trails live "
+                      "price by a few minutes.")
+    else:
+        freshness = "live"
+        fresh_note = ""
+
+    # ---- verdict, computed honestly from the leg positions + direction ----
     valid = [l for l in legs if l["has_data"]]
     if len(valid) < 2:
         verdict = {"state": "ok", "title": "Awaiting data",
-                   "note": "Index-range data isn't available right now "
-                           "(markets may be closed — proxies only trade during "
-                           "regular US hours). Divergence resumes when they reopen."}
+                   "note": ("Index-range data is not available right now. The QQQ / SPY / DIA "
+                            "proxies only trade during regular US hours (9:30 AM to 4:00 PM ET); "
+                            "divergence resumes when they reopen.")}
     else:
         positions = [l["pos"] for l in valid]
-        spread = max(positions) - min(positions)   # how far apart the indices are in their ranges
-        leader = max(valid, key=lambda l: l["pos"])
-        laggard = min(valid, key=lambda l: l["pos"])
+        spread = max(positions) - min(positions)   # how far apart the indices sit in their ranges
         avg = sum(positions) / len(positions)
-        if spread >= 0.45:
-            # genuine non-confirmation: one index strong, another clearly lagging
-            bias = "bearish" if avg < 0.55 else "watch"
-            verdict = {
-                "state": "warn",
-                "title": f"Divergence — {leader['sym']} leading, {laggard['sym']} lagging",
-                "note": (f"{leader['sym']} is holding near its session highs while "
-                         f"{laggard['sym']} is lagging in its range — the indices are "
-                         f"NOT confirming each other. Classic non-confirmation; favor "
-                         f"caution until they realign.")
-            }
-        elif avg >= 0.70:
-            verdict = {"state": "ok", "title": "Confirming — aligned strength",
-                       "note": "All three indices are holding near session highs and "
-                               "confirming each other. No divergence — trend in agreement."}
-        elif avg <= 0.30:
-            verdict = {"state": "ok", "title": "Confirming — aligned weakness",
-                       "note": "All three indices are near session lows together and "
-                               "confirming each other to the downside. No divergence."}
-        else:
-            verdict = {"state": "ok", "title": "In line — no divergence",
-                       "note": "The indices are moving together in mid-range. No "
-                               "meaningful non-confirmation to flag right now."}
+        leader  = max(valid, key=lambda l: l["pos"])
+        laggard = min(valid, key=lambda l: l["pos"])
+        # directional divergence: do the complexes disagree on the day's DIRECTION?
+        # (one green while another is red). This is the cleanest, highest-confidence
+        # non-confirmation and is caught even when range positions look similar.
+        ups   = [l for l in valid if l["chg"] >  0.03]
+        downs = [l for l in valid if l["chg"] < -0.03]
+        directional = bool(ups) and bool(downs)
 
-    return jsonify({"legs": legs, "verdict": verdict})
+        if directional:
+            up_s = " / ".join(l["sym"] for l in ups)
+            dn_s = " / ".join(l["sym"] for l in downs)
+            verdict = {"state": "warn",
+                "title": f"Divergence: {up_s} up, {dn_s} down",
+                "note": (f"The index complexes disagree on direction, {up_s} green while "
+                         f"{dn_s} red. A clear non-confirmation: one is not following the "
+                         f"others. Favor caution until they realign.")}
+        elif spread >= 0.45:
+            # genuine non-confirmation: one index strong, another clearly lagging
+            verdict = {"state": "warn",
+                "title": f"Divergence: {leader['sym']} leading, {laggard['sym']} lagging",
+                "note": (f"{leader['sym']} is holding near its session highs while "
+                         f"{laggard['sym']} lags in its range, so the indices are NOT confirming "
+                         f"each other. Classic non-confirmation; favor caution until they realign.")}
+        elif avg >= 0.70:
+            verdict = {"state": "ok", "title": "Confirming: aligned strength",
+                       "note": "All three indices are holding near session highs and confirming "
+                               "each other. No divergence, trend in agreement."}
+        elif avg <= 0.30:
+            verdict = {"state": "ok", "title": "Confirming: aligned weakness",
+                       "note": "All three indices are near session lows together and confirming "
+                               "each other to the downside. No divergence."}
+        else:
+            verdict = {"state": "ok", "title": "In line: no divergence",
+                       "note": "The indices are moving together in mid-range. No meaningful "
+                               "non-confirmation to flag right now."}
+
+        # Frozen overnight data: keep the read accurate but frame it as the prior
+        # session and drop the live alarm state so a stale divergence cannot look live.
+        if freshness == "last_close":
+            verdict["title"] = "Last session: " + verdict["title"]
+            verdict["state"] = "ok"
+
+    verdict["note"] = (verdict.get("note", "") + fresh_note).strip()
+    verdict["freshness"]   = freshness
+    verdict["delayed"]     = delayed
+    verdict["market_open"] = market_open
+
+    return jsonify({"legs": legs, "verdict": verdict,
+                    "freshness": freshness, "delayed": delayed,
+                    "market_open": market_open})
 
 
 @app.route("/api/watchlist", methods=["GET", "POST"])
