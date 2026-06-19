@@ -6,8 +6,5 @@ flask-login
 boto3
 websocket-client>=1.7.0
 stripe>=7.0.0
-
-# Real CME futures feed (Databento). DORMANT: uncomment and `pip install -U
-# databento` only when QUOTES_PROVIDER=databento + DATABENTO_API_KEY are set.
-# Pulls in pandas/pyarrow/numpy, so left off until the license is active.
-# databento>=0.34.0
+pandas/pyarrow/numpy
+databento>=0.34.0
