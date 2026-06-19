@@ -1285,6 +1285,22 @@ function tick(){
 }
 
 /* ----------------------------- boot ----------------------------- */
+// Declared here, ABOVE the first boot calls, so the renderRibbon/tick calls
+// below (which read these via _futuresStateET/_holidayToday) don't hit a
+// temporal-dead-zone error. Server stays authoritative via MARKET_FS; the
+// holiday map is the offline fallback for the client clock.
+let MARKET_FS = null;       // 'rth' | 'globex' | 'closed' (null = use client fallback)
+let MARKET_HOLIDAY = null;  // holiday name (e.g. 'Juneteenth') or null
+const _EQUITY_HOLIDAYS = {
+  '2026-01-01':"New Year's Day",'2026-01-19':'Martin Luther King Jr. Day',
+  '2026-02-16':"Presidents' Day",'2026-04-03':'Good Friday','2026-05-25':'Memorial Day',
+  '2026-06-19':'Juneteenth','2026-07-03':'Independence Day (observed)','2026-09-07':'Labor Day',
+  '2026-11-26':'Thanksgiving','2026-12-25':'Christmas',
+  '2027-01-01':"New Year's Day",'2027-01-18':'Martin Luther King Jr. Day',
+  '2027-02-15':"Presidents' Day",'2027-03-26':'Good Friday','2027-05-31':'Memorial Day',
+  '2027-06-18':'Juneteenth (observed)','2027-07-05':'Independence Day (observed)',
+  '2027-09-06':'Labor Day','2027-11-25':'Thanksgiving','2027-12-24':'Christmas (observed)'
+};
 renderRibbon(SAMPLE_FUT);
 renderSMT(SAMPLE_SMT);
 loadSMT();
@@ -1549,11 +1565,6 @@ document.getElementById('importReset').onclick = async () => {
 let USER_TIER = 'free';   // default; loadMe() updates it
 let IS_OWNER = false;     // only the TRADOVATE_OWNER account; gates the live feed
 let NATIVE_FUTURES = false; // true when the feed serves REAL CME futures (Databento, Pro)
-// Authoritative market state from the server's /api/quotes meta. The server
-// decides this from live-feed freshness + the US holiday calendar, so it is
-// correct on bank holidays / early closes that a naive clock would miss.
-let MARKET_FS = null;       // 'rth' | 'globex' | 'closed' (null = use client fallback)
-let MARKET_HOLIDAY = null;  // holiday name (e.g. 'Juneteenth') or null
 let PRICE_DISPLAY = '';   // monthly price string from billing (e.g. "$3.99")
 // Gold crown shown beside the Account button for Pro (Operator) members.
 const PRO_CROWN_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" '
@@ -1710,19 +1721,6 @@ const SESSIONS = [
   { nm:'London',   s:0,  e:8  },  // 12:00 AM – 8:00 AM ET
   { nm:'New York', s:8,  e:17 },  // 8:00 AM – 5:00 PM ET
 ];
-// US equity full-day closures, mirrored from the server so the client fallback
-// (when /api/quotes meta is unavailable) is also holiday-correct. The server is
-// still authoritative via MARKET_FS; this is only the offline safety net.
-const _EQUITY_HOLIDAYS = {
-  '2026-01-01':"New Year's Day",'2026-01-19':'Martin Luther King Jr. Day',
-  '2026-02-16':"Presidents' Day",'2026-04-03':'Good Friday','2026-05-25':'Memorial Day',
-  '2026-06-19':'Juneteenth','2026-07-03':'Independence Day (observed)','2026-09-07':'Labor Day',
-  '2026-11-26':'Thanksgiving','2026-12-25':'Christmas',
-  '2027-01-01':"New Year's Day",'2027-01-18':'Martin Luther King Jr. Day',
-  '2027-02-15':"Presidents' Day",'2027-03-26':'Good Friday','2027-05-31':'Memorial Day',
-  '2027-06-18':'Juneteenth (observed)','2027-07-05':'Independence Day (observed)',
-  '2027-09-06':'Labor Day','2027-11-25':'Thanksgiving','2027-12-24':'Christmas (observed)'
-};
 function _etDateStr(){ // YYYY-MM-DD in ET
   const p = new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',
     year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
