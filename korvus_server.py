@@ -298,6 +298,15 @@ def api_me():
     if current_user.is_authenticated:
         _online[current_user.id] = dt.datetime.now(dt.timezone.utc)
         u = auth.get_user_by_id(current_user.id) or {}
+        # Whether the configured feed serves REAL CME futures (Databento) AND this
+        # user is entitled (Pro). Free users always get the delayed proxy feed, so
+        # the board only requests/show real contracts when this is true.
+        _native_fut = False
+        try:
+            from korvus_quotes import native_futures
+            _native_fut = bool(native_futures()) and (u.get("tier") == "pro")
+        except Exception:
+            _native_fut = False
         return jsonify({"auth": True,
                         "username": u.get("username"),
                         "email": u.get("email"),
@@ -307,6 +316,7 @@ def api_me():
                         "current_period_end": u.get("current_period_end"),
                         "alert_opt_in": int(u.get("alert_opt_in") if u.get("alert_opt_in") is not None else 1),
                         "is_owner": bool(TRADOVATE_OWNER and u.get("username") == TRADOVATE_OWNER),
+                        "native_futures": _native_fut,
                         "billing_enabled": billing.billing_enabled(),
                         "price_display": billing.price_display(),
                         "yearly_enabled": billing.yearly_enabled(),

@@ -6,11 +6,18 @@
  Live price provider for the Futures Board, SMT panel, and Funds Watch.
 
  Swappable, just like the news layer. Set QUOTES_PROVIDER in .env to:
-   "alphavantage"  -> true live/realtime (PREMIUM key required)  [recommended]
-   "finnhub"       -> free tier (~15-20 min delayed)             [no cost]
+   "databento"     -> REAL CME futures (MNQ/MES/etc.), licensed feed  [accurate]
+   "alphavantage"  -> ETF-proxy live/realtime (PREMIUM key required)
+   "finnhub"       -> ETF-proxy free tier (~15-20 min delayed)        [no cost]
    "off"           -> panels stay on the dashboard's sample numbers
 
  Upgrading from free to live = change ONE line in .env. No code changes.
+
+ NOTE ON ACCURACY: alphavantage/finnhub price the ETF PROXIES (QQQ for NQ, SPY
+ for ES, ...), so the board shows the proxy's % move, not the real contract.
+ "databento" pulls the ACTUAL CME contract (MNQ ~21,000), so the board, session
+ map and prices match a futures chart. It is DORMANT until DATABENTO_API_KEY is
+ set AND QUOTES_PROVIDER=databento (see korvus_databento.py).
 
  IMPORTANT — market hours:
    US equities (and the ETF proxies QQQ/SPY/DIA) only trade ~9:30am-4:00pm ET.
@@ -34,6 +41,13 @@ load_dotenv()
 QUOTES_PROVIDER  = os.getenv("QUOTES_PROVIDER", "finnhub").lower().strip()
 ALPHAVANTAGE_KEY = os.getenv("ALPHAVANTAGE_KEY", "")
 FINNHUB_KEY      = os.getenv("FINNHUB_KEY", "")
+
+# --- Databento (real CME futures; dormant until a licensed key is set) -------
+# Set QUOTES_PROVIDER=databento and DATABENTO_API_KEY=... in .env to activate.
+# With no key this provider returns {} and the board stays on the proxy feed.
+DATABENTO_API_KEY = os.getenv("DATABENTO_API_KEY", "").strip()
+# Futures roots Databento can serve from GLBX.MDP3 (VX is CBOE -> proxy only).
+DATABENTO_FUT = {"MNQ", "MES", "MYM", "M2K", "CL", "GC", "ZN", "6E"}
 
 # --- Tradovate (real CME futures; dormant until credentials are set) ---------
 # NOTE: Tradovate does NOT use a single paste-in API key. Auth is:
@@ -132,6 +146,8 @@ def get_quotes(symbols: list[str], force_delayed: bool = False) -> dict:
             out = {}
         _delayed_provider = ("finnhub" if FINNHUB_KEY
                              else ("alphavantage-delayed" if ALPHAVANTAGE_KEY else "none"))
+    elif QUOTES_PROVIDER == "databento":
+        out = _databento_quotes(symbols)
     elif QUOTES_PROVIDER == "alphavantage":
         out = _alphavantage_quotes(symbols)
     elif QUOTES_PROVIDER == "finnhub":
@@ -147,6 +163,14 @@ def get_quotes(symbols: list[str], force_delayed: bool = False) -> dict:
     _cache["data"][cache_key] = out
     _cache["at"] = now
     return out
+
+
+def native_futures() -> bool:
+    """True when the configured feed serves REAL CME futures (Databento), so the
+    dashboard can request the actual contracts (MNQ/MES/...) instead of proxies.
+    The server gates this to Pro users in /api/me, since free users are always
+    forced onto the delayed proxy feed regardless of provider."""
+    return QUOTES_PROVIDER == "databento" and bool(DATABENTO_API_KEY)
 
 
 # --- Alpha Vantage PREMIUM (true live; bulk endpoint, up to 100 symbols) ----
@@ -227,8 +251,39 @@ def _finnhub_quotes(symbols: list[str]) -> dict:
     return out
 
 
-# --- Tradovate (real CME futures) -------------------------------------------
-# Activation: set in .env ->
+# --- Databento (real CME futures) -------------------------------------------
+# Activation (.env):
+#   QUOTES_PROVIDER=databento
+#   DATABENTO_API_KEY=db-...        your 32-char Databento key (paid + licensed)
+#   DATABENTO_ROLL=c                optional: c=calendar front (default), n=OI, v=volume
+#
+# On first call this starts a background live stream (korvus_databento.py) that
+# subscribes to the CME Globex feed and maintains a latest-quote snapshot keyed
+# by ROOT (MNQ, MES, ...). Each call here just reads that snapshot (non-blocking).
+# Returns {} when unconfigured, when the `databento` package isn't installed, or
+# before the first bars arrive — so the dashboard simply keeps its prior numbers.
+def _databento_quotes(symbols: list[str]) -> dict:
+    if not DATABENTO_API_KEY:
+        print("  [quotes] no DATABENTO_API_KEY — set it in .env (provider dormant)")
+        return {}
+    try:
+        from korvus_databento import get_client
+    except Exception as e:
+        print(f"  [quotes] Databento client unavailable: {e}")
+        return {}
+    roots = [s for s in symbols if s in DATABENTO_FUT]
+    if not roots:
+        return {}
+    client = get_client(DATABENTO_API_KEY)
+    client.start(sorted(DATABENTO_FUT))   # idempotent: stream starts once
+    quotes = client.get(roots)
+    if not quotes:
+        print("  [quotes] Databento: connected/starting — no bars cached yet "
+              "(first 1-min bar can take up to ~60s; check license if it persists)")
+    return quotes
+
+
+
 #   QUOTES_PROVIDER=tradovate
 #   TRADOVATE_ENV=live            (use 'demo' to test against the demo system)
 #   TRADOVATE_USERNAME=...        your Tradovate login

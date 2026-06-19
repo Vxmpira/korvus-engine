@@ -1020,6 +1020,21 @@ function spark(series,up){
 function renderRibbon(list){
   const live = _proxiesLive();
   document.getElementById('ribbon').innerHTML = list.map(f=>{
+    const hasReal = f.real && typeof f.price === 'number' && f.price > 0;
+    // Real CME contract (licensed feed): show the ACTUAL price + true %. Futures
+    // trade ~23h, so this is valid overnight and ignores the proxy-hours gate.
+    if(hasReal){
+      const up = f.chg >= 0;
+      const px = f.price >= 1000
+        ? f.price.toLocaleString(undefined,{maximumFractionDigits:2})
+        : f.price.toFixed(2);
+      return `<div class="fut">
+        <div class="sym">${f.sym}<small>${f.name}</small></div>
+        <div class="chg ${up?'up':'down'} big">${sign(f.chg)}${f.chg.toFixed(2)}%</div>
+        ${spark(f.series,up)}
+        <div class="viaproxy" style="opacity:.9;color:var(--ink-dim)">${px} · CME</div>
+      </div>`;
+    }
     if(!live){
       return `<div class="fut">
         <div class="sym">${f.sym}<small>${f.name}</small></div>
@@ -1328,11 +1343,14 @@ async function loadLiveQuotes(){
   // reflect the session on the Funds Watch dot + ribbon badge right away
   _setWatchStatus(_futuresStateET());
   setFeedBadge(_futuresStateET());
-  // gather every symbol we need: proxies for futures + SMT, plus watchlist
+  // gather every symbol we need: proxies for futures + SMT, plus watchlist.
+  // When a licensed CME feed is live (Databento, Pro), also request the REAL
+  // contract roots (MNQ/MES/...) so the board can show actual prices, not proxies.
   const futProxies = Object.values(FUT_PROXY);
+  const futRoots   = NATIVE_FUTURES ? SAMPLE_FUT.map(f => f.sym) : [];
   const smtProxies = ['QQQ','SPY','DIA'];
   const watchSyms  = collectWatchSymbols(SAMPLE_WATCH);
-  const all = [...new Set([...futProxies, ...smtProxies, ...watchSyms])];
+  const all = [...new Set([...futProxies, ...futRoots, ...smtProxies, ...watchSyms])];
 
   try{
     const res = await fetch('/api/quotes?symbols=' + all.join(','), {cache:'no-store'});
@@ -1342,12 +1360,20 @@ async function loadLiveQuotes(){
     if(Object.keys(q).length === 0){ _setWatchStatus(_futuresStateET()); setFeedBadge(_futuresStateET()); return; } // provider 'off' or no key / after hours: keep samples, but show real session
     const open = data.meta && data.meta.market_open;
 
-    // 1) Futures Board, show the proxy's % move (accurate for index direction).
-    //    We intentionally do NOT show the proxy's dollar price as a futures price:
-    //    MNQ (~21,000) and QQQ (~740) are different scales. The % is what transfers.
+    // 1) Futures Board. With a licensed CME feed (Databento) we show the REAL
+    //    contract: its actual price AND true daily %. Without it we fall back to
+    //    the ETF proxy and show only the proxy's % move (we never print the
+    //    proxy's dollar price as a futures price; the scales differ).
     SAMPLE_FUT.forEach(f => {
-      const px = q[f.proxy];
-      if(px){ f.chg = px.chg_pct; }
+      const real = q[f.sym];      // real CME contract (Databento), when present
+      const prox = q[f.proxy];    // ETF proxy fallback
+      if(real && typeof real.price === 'number' && real.price > 0){
+        f.chg = real.chg_pct; f.price = real.price; f.real = true;
+        if(typeof real.high === 'number') f.high = real.high;
+        if(typeof real.low === 'number')  f.low  = real.low;
+      } else if(prox){
+        f.chg = prox.chg_pct; f.real = false; f.price = null;
+      }
     });
     renderRibbon(SAMPLE_FUT);
 
@@ -1370,7 +1396,7 @@ async function loadLiveQuotes(){
     if(fs === 'closed'){
       tag = '● FUTURES CLOSED';
     } else if(fs === 'globex'){
-      tag = '● GLOBEX · proxy at last close';
+      tag = NATIVE_FUTURES ? '● GLOBEX · REAL-TIME' : '● GLOBEX · proxy at last close';
     } else { // 'rth', proxies trading live
       tag = (USER_TIER === 'pro') ? '● REAL-TIME' : '● DELAYED 15 MIN';
     }
@@ -1410,7 +1436,11 @@ function setFeedBadge(fs){
   if(!b) return;
   let txt, cls;
   if(fs === 'closed'){ txt = '● CLOSED'; cls = 'fb-closed'; }
-  else if(fs === 'globex'){ txt = '● GLOBEX · LAST CLOSE'; cls = 'fb-globex'; }
+  else if(fs === 'globex'){
+    // Real futures trade overnight; the ETF proxy doesn't. Reflect that honestly.
+    if(NATIVE_FUTURES){ txt = '● GLOBEX · LIVE'; cls = 'fb-live'; }
+    else { txt = '● GLOBEX · LAST CLOSE'; cls = 'fb-globex'; }
+  }
   else { // 'rth', proxies trading live
     if(USER_TIER === 'pro'){ txt = '● LIVE · REAL-TIME'; cls = 'fb-live'; }
     else { txt = '● DELAYED 15 MIN'; cls = 'fb-delayed'; }
@@ -1496,6 +1526,7 @@ document.getElementById('importReset').onclick = async () => {
 // ---- who's logged in + their tier (drives the header label) ----
 let USER_TIER = 'free';   // default; loadMe() updates it
 let IS_OWNER = false;     // only the TRADOVATE_OWNER account; gates the live feed
+let NATIVE_FUTURES = false; // true when the feed serves REAL CME futures (Databento, Pro)
 let PRICE_DISPLAY = '';   // monthly price string from billing (e.g. "$3.99")
 // Gold crown shown beside the Account button for Pro (Operator) members.
 const PRO_CROWN_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" '
@@ -1515,6 +1546,7 @@ async function loadMe(){
     if(me.auth){
       USER_TIER = me.tier || 'free';
       IS_OWNER = !!me.is_owner;
+      NATIVE_FUTURES = !!me.native_futures;
       // Owner-only tools, Promo Studio + Admin, exclusive to the Vxmpira.N account.
       // Gated on the server's is_owner flag (TRADOVATE_OWNER), with the username as
       // an explicit fallback. The buttons are cosmetic; /agent and /admin enforce
@@ -1739,32 +1771,56 @@ function renderSessions(){
   }
 }
 
-// key levels for MNQ (priced via the QQQ proxy), honest snapshot O/H/L/prev/current
+// key levels for MNQ. With a licensed CME feed (Databento) these are the REAL
+// front-month contract's O/H/L/prev. Without it we fall back to the QQQ proxy,
+// shown HONESTLY as the proxy (we never print the QQQ price under an MNQ label).
 function renderSessionLevels(q){
   const el = document.getElementById('sessionLevels'); if(!el) return;
   const item = (k,v) => `<div class="lvl"><span class="lk">${k}</span><span class="lv">${v}</span></div>`;
+  const fx = v => (typeof v==='number' && v>0
+    ? (v>=1000 ? v.toLocaleString(undefined,{maximumFractionDigits:2}) : v.toFixed(2))
+    : '-');
+  const rangebar = pos => (pos!=null
+    ? `<div class="lvl"><span class="lk">Range</span><div class="rangebar" title="where price sits in today's range"><i style="left:${pos}%"></i></div></div>`
+    : '');
+
+  // 1) Real MNQ contract (licensed feed) — actual price + session O/H/L.
+  const real = q && q.MNQ;
+  if(real && typeof real.price==='number' && real.price>0){
+    const price = real.price;
+    const hasOHLC = ['open','high','low'].every(k=>typeof real[k]==='number' && real[k]>0);
+    const pos = (hasOHLC && real.high>real.low) ? Math.min(100,Math.max(0,(price-real.low)/(real.high-real.low)*100)) : null;
+    el.innerHTML = item('MNQ', fx(price))
+      + item('Open', fx(real.open)) + item('High', fx(real.high))
+      + item('Low', fx(real.low)) + item('Prev', fx(real.prev_close))
+      + rangebar(pos)
+      + `<div class="ctxnote">live CME front-month · today's session range</div>`;
+    return;
+  }
+
+  // 2) Proxy fallback. Closed: dashes. Open: QQQ levels, labeled as the proxy.
   if(!_proxiesLive()){
-    el.innerHTML = item('MNQ','-') + item('Open','-') + item('High','-')
+    el.innerHTML = item('NQ proxy','-') + item('Open','-') + item('High','-')
       + item('Low','-') + item('Prev','-')
       + `<div class="ctxnote">market closed, levels resume at 9:30 ET</div>`;
     return;
   }
   const d = (q && q.QQQ) ? q.QQQ : null;
-  const fx = v => (typeof v==='number' && v>0 ? v.toFixed(2) : '-');
   const price = d && typeof d.price==='number' ? d.price : null;
   const hasOHLC = d && ['open','high','low'].every(k=>typeof d[k]==='number' && d[k]>0);
   const pos = (hasOHLC && d.high>d.low && price!=null) ? Math.min(100,Math.max(0,(price-d.low)/(d.high-d.low)*100)) : null;
-  el.innerHTML = item('MNQ', price!=null?fx(price):'-')
+  el.innerHTML = item('QQQ', price!=null?fx(price):'-')
     + item('Open', fx(d&&d.open)) + item('High', fx(d&&d.high))
     + item('Low', fx(d&&d.low)) + item('Prev', fx(d&&d.prev_close))
-    + (pos!=null ? `<div class="lvl"><span class="lk">Range</span><div class="rangebar" title="where price sits in today's range"><i style="left:${pos}%"></i></div></div>` : '')
-    + `<div class="ctxnote">${hasOHLC ? "via QQQ · today's range · per-session liquidity needs an intraday feed" : 'awaiting OHLC from the feed'}</div>`;
+    + rangebar(pos)
+    + `<div class="ctxnote">${hasOHLC ? "QQQ proxy (NQ stand-in) · today's range · live MNQ needs a licensed feed" : 'awaiting OHLC from the feed'}</div>`;
 }
 
 // dedicated lean fetch so the bands always get clean data (esp. QQQ), decoupled
 // from the larger board fetch, which can drop symbols under provider rate limits.
 async function loadContextBands(){
   const syms = ['QQQ','UUP','IEF','GLD','USO','HYG','VIXY'];
+  if(NATIVE_FUTURES) syms.push('MNQ');   // real CME front-month so the session map matches the board
   try{
     const res = await fetch('/api/quotes?symbols=' + syms.join(','), {cache:'no-store'});
     if(!res.ok) throw new Error('no quotes');
