@@ -157,6 +157,11 @@ class DatabentoMD:
         # root -> session label currently accumulated (for O/H/L reset)
         self._sess = {}
         self._roots = list(DATABENTO_ROOTS)
+        # wall-clock (epoch) of the most recent bar we received. Drives the
+        # "is the market actually trading right now" freshness check: when bars
+        # stop arriving (holiday early-close, weekend, maintenance, halt) this
+        # stops advancing, so the dashboard can flip the board to CLOSED.
+        self._last_recv = None
 
     # ---- prior-session close (for chg_pct) ---------------------------------
     def _fetch_prev_closes(self):
@@ -275,6 +280,7 @@ class DatabentoMD:
                     except Exception:
                         q["chg_pct"] = 0.0
                 self._quotes[root] = q
+                self._last_recv = time.time()
         except Exception as e:
             print(f"  [db] record handler error: {e}")
 
@@ -344,6 +350,17 @@ class DatabentoMD:
                     out[r] = dict(self._quotes[r])
         return out
 
+    def seconds_since_last_bar(self):
+        """Age in seconds of the most recent bar we received, or None if we've
+        never received one. A large/None value means the feed is quiet, i.e. the
+        market is not trading right now (holiday close, weekend, maintenance,
+        or a halt). This is the freshness signal the status layer trusts over
+        any hardcoded clock, since CME holiday hours shift year to year."""
+        with self._lock:
+            if self._last_recv is None:
+                return None
+            return time.time() - self._last_recv
+
 
 # module-level singleton the quotes layer imports
 _client: Optional[DatabentoMD] = None
@@ -354,6 +371,18 @@ def get_client(key: str = "") -> DatabentoMD:
     if _client is None:
         _client = DatabentoMD(key or DATABENTO_API_KEY)
     return _client
+
+
+def feed_age():
+    """Seconds since the live feed last produced a bar, or None if the stream
+    hasn't started / no bars yet. Lets the quotes layer decide whether the CME
+    market is actually trading right now without trusting a fixed clock."""
+    if _client is None:
+        return None
+    try:
+        return _client.seconds_since_last_bar()
+    except Exception:
+        return None
 
 
 if __name__ == "__main__":

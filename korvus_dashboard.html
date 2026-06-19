@@ -1019,6 +1019,7 @@ function spark(series,up){
 /* ----------------------------- render: ribbon ----------------------------- */
 function renderRibbon(list){
   const live = _proxiesLive();
+  const futClosed = (_futuresStateET() === 'closed'); // holiday / early-close / weekend / halt
   document.getElementById('ribbon').innerHTML = list.map(f=>{
     const hasReal = f.real && typeof f.price === 'number' && f.price > 0;
     // Real CME contract (licensed feed): show the ACTUAL price + true %. Futures
@@ -1028,11 +1029,16 @@ function renderRibbon(list){
       const px = f.price >= 1000
         ? f.price.toLocaleString(undefined,{maximumFractionDigits:2})
         : f.price.toFixed(2);
+      // When the CME session is closed (holiday early-close, weekend, halt), the
+      // price is the last print, not live. Label it honestly instead of "· CME".
+      const tag = futClosed
+        ? `<div class="viaproxy" style="color:var(--ink-faint)">${px} · CLOSED</div>`
+        : `<div class="viaproxy" style="opacity:.9;color:var(--ink-dim)">${px} · CME</div>`;
       return `<div class="fut">
         <div class="sym">${f.sym}<small>${f.name}</small></div>
         <div class="chg ${up?'up':'down'} big">${sign(f.chg)}${f.chg.toFixed(2)}%</div>
         ${spark(f.series,up)}
-        <div class="viaproxy" style="opacity:.9;color:var(--ink-dim)">${px} · CME</div>
+        ${tag}
       </div>`;
     }
     if(!live){
@@ -1262,8 +1268,19 @@ function tick(){
   document.getElementById('clock').textContent=et;
   const p=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour12:false,weekday:'short',hour:'2-digit'}).formatToParts(now);
   const wd=p.find(x=>x.type==='weekday').value, hr=+p.find(x=>x.type==='hour').value;
-  const closed=(wd==='Sat')||(wd==='Sun'&&hr<18)||(wd==='Fri'&&hr>=17)||(hr===17);
-  document.getElementById('sess').innerHTML=closed?'SESSION <b style="color:var(--bear)">CLOSED</b>':'SESSION <b>OPEN</b>';
+  const sessEl = document.getElementById('sess');
+  const hol = _holidayToday();
+  const fs = _futuresStateET();
+  if(hol){
+    sessEl.innerHTML = 'SESSION <b style="color:var(--bear)">CLOSED</b>';
+    sessEl.title = hol + ' — US markets closed';
+  } else if(fs === 'closed'){
+    sessEl.innerHTML = 'SESSION <b style="color:var(--bear)">CLOSED</b>';
+    sessEl.title = '';
+  } else {
+    sessEl.innerHTML = 'SESSION <b>OPEN</b>';
+    sessEl.title = '';
+  }
   document.getElementById('lastUpd').textContent='last update '+et+' ET';
 }
 
@@ -1356,6 +1373,10 @@ async function loadLiveQuotes(){
     const res = await fetch('/api/quotes?symbols=' + all.join(','), {cache:'no-store'});
     if(!res.ok) throw new Error('no quotes');
     const data = await res.json();
+    // Capture the server's authoritative market state (freshness + holiday aware)
+    // before anything else, so badges and the board are correct even when the
+    // feed returns no quotes (e.g. a closed holiday).
+    if(data.meta){ MARKET_FS = data.meta.futures_session || null; MARKET_HOLIDAY = data.meta.holiday || null; }
     const q = data.quotes || {};
     if(Object.keys(q).length === 0){ _setWatchStatus(_futuresStateET()); setFeedBadge(_futuresStateET()); return; } // provider 'off' or no key / after hours: keep samples, but show real session
     const open = data.meta && data.meta.market_open;
@@ -1435,10 +1456,11 @@ function setFeedBadge(fs){
   const b = document.getElementById('feedBadge');
   if(!b) return;
   let txt, cls;
-  if(fs === 'closed'){ txt = '● CLOSED'; cls = 'fb-closed'; }
+  const hol = _holidayToday();
+  if(fs === 'closed'){ txt = hol ? '● CLOSED · ' + hol.toUpperCase() : '● CLOSED'; cls = 'fb-closed'; }
   else if(fs === 'globex'){
     // Real futures trade overnight; the ETF proxy doesn't. Reflect that honestly.
-    if(NATIVE_FUTURES){ txt = '● GLOBEX · LIVE'; cls = 'fb-live'; }
+    if(NATIVE_FUTURES){ txt = hol ? '● GLOBEX · ' + hol.toUpperCase() : '● GLOBEX · LIVE'; cls = 'fb-live'; }
     else { txt = '● GLOBEX · LAST CLOSE'; cls = 'fb-globex'; }
   }
   else { // 'rth', proxies trading live
@@ -1527,6 +1549,11 @@ document.getElementById('importReset').onclick = async () => {
 let USER_TIER = 'free';   // default; loadMe() updates it
 let IS_OWNER = false;     // only the TRADOVATE_OWNER account; gates the live feed
 let NATIVE_FUTURES = false; // true when the feed serves REAL CME futures (Databento, Pro)
+// Authoritative market state from the server's /api/quotes meta. The server
+// decides this from live-feed freshness + the US holiday calendar, so it is
+// correct on bank holidays / early closes that a naive clock would miss.
+let MARKET_FS = null;       // 'rth' | 'globex' | 'closed' (null = use client fallback)
+let MARKET_HOLIDAY = null;  // holiday name (e.g. 'Juneteenth') or null
 let PRICE_DISPLAY = '';   // monthly price string from billing (e.g. "$3.99")
 // Gold crown shown beside the Account button for Pro (Operator) members.
 const PRO_CROWN_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" '
@@ -1683,6 +1710,25 @@ const SESSIONS = [
   { nm:'London',   s:0,  e:8  },  // 12:00 AM – 8:00 AM ET
   { nm:'New York', s:8,  e:17 },  // 8:00 AM – 5:00 PM ET
 ];
+// US equity full-day closures, mirrored from the server so the client fallback
+// (when /api/quotes meta is unavailable) is also holiday-correct. The server is
+// still authoritative via MARKET_FS; this is only the offline safety net.
+const _EQUITY_HOLIDAYS = {
+  '2026-01-01':"New Year's Day",'2026-01-19':'Martin Luther King Jr. Day',
+  '2026-02-16':"Presidents' Day",'2026-04-03':'Good Friday','2026-05-25':'Memorial Day',
+  '2026-06-19':'Juneteenth','2026-07-03':'Independence Day (observed)','2026-09-07':'Labor Day',
+  '2026-11-26':'Thanksgiving','2026-12-25':'Christmas',
+  '2027-01-01':"New Year's Day",'2027-01-18':'Martin Luther King Jr. Day',
+  '2027-02-15':"Presidents' Day",'2027-03-26':'Good Friday','2027-05-31':'Memorial Day',
+  '2027-06-18':'Juneteenth (observed)','2027-07-05':'Independence Day (observed)',
+  '2027-09-06':'Labor Day','2027-11-25':'Thanksgiving','2027-12-24':'Christmas (observed)'
+};
+function _etDateStr(){ // YYYY-MM-DD in ET
+  const p = new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',
+    year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  return p; // en-CA formats as YYYY-MM-DD
+}
+function _holidayToday(){ return MARKET_HOLIDAY || _EQUITY_HOLIDAYS[_etDateStr()] || null; }
 function _etNow(){
   const p = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour12:false,
     hour:'2-digit',minute:'2-digit',second:'2-digit'}).formatToParts(new Date());
@@ -1706,8 +1752,14 @@ function _sessLabel(k){
   return f(k.s) + '–' + f(k.e);
 }
 // CME equity-index futures (MNQ/MES...): Sun 6pm ET -> Fri 5pm ET, daily 5-6pm ET break.
+// Prefers the server's freshness+holiday-aware verdict (MARKET_FS); the clock
+// logic below is only the fallback when the server hasn't reported yet.
 function _futuresStateET(){
+  if(MARKET_FS) return MARKET_FS;
   const t=_etNow(), wd=_etWeekday();
+  // Full US equity holiday (e.g. Juneteenth): proxies dark all day; CME futures
+  // typically early-close ~1pm ET. Never 'rth' (proxies aren't trading).
+  if(_holidayToday()) return t < 13 ? 'globex' : 'closed';
   if(wd>=1 && wd<=5 && t>=9.5 && t<=16) return 'rth';   // proxies live (stock RTH)
   if(wd===6) return 'closed';                            // Saturday
   if(wd===0) return t>=18 ? 'globex' : 'closed';         // Sunday: opens 6pm ET
@@ -1794,7 +1846,7 @@ function renderSessionLevels(q){
       + item('Open', fx(real.open)) + item('High', fx(real.high))
       + item('Low', fx(real.low)) + item('Prev', fx(real.prev_close))
       + rangebar(pos)
-      + `<div class="ctxnote">live CME front-month · today's session range</div>`;
+      + `<div class="ctxnote">${_futuresStateET()==='closed' ? 'CME front-month · last session (market closed)' : "live CME front-month · today's session range"}</div>`;
     return;
   }
 

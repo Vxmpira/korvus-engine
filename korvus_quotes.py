@@ -67,40 +67,123 @@ TRADOVATE_SECRET    = os.getenv("TRADOVATE_SECRET", "")     # API "sec" (persona
 _cache = {"at": 0, "data": {}}
 _CACHE_SECONDS = 25
 
+# ---------------------------------------------------------------------------
+# Market-holiday awareness
+# ---------------------------------------------------------------------------
+# US equity full-day closures (NYSE / Nasdaq). On these dates the QQQ/SPY/DIA
+# proxies do not trade at all. Source: NYSE/Nasdaq published 2026-2027 calendars.
+# Refresh this once a year; the live-feed freshness check below is the safety
+# net for any date or early-close time not captured here.
+_EQUITY_HOLIDAYS = {
+    "2026-01-01": "New Year's Day",
+    "2026-01-19": "Martin Luther King Jr. Day",
+    "2026-02-16": "Presidents' Day",
+    "2026-04-03": "Good Friday",
+    "2026-05-25": "Memorial Day",
+    "2026-06-19": "Juneteenth",
+    "2026-07-03": "Independence Day (observed)",
+    "2026-09-07": "Labor Day",
+    "2026-11-26": "Thanksgiving",
+    "2026-12-25": "Christmas",
+    "2027-01-01": "New Year's Day",
+    "2027-01-18": "Martin Luther King Jr. Day",
+    "2027-02-15": "Presidents' Day",
+    "2027-03-26": "Good Friday",
+    "2027-05-31": "Memorial Day",
+    "2027-06-18": "Juneteenth (observed)",
+    "2027-07-05": "Independence Day (observed)",
+    "2027-09-06": "Labor Day",
+    "2027-11-25": "Thanksgiving",
+    "2027-12-24": "Christmas (observed)",
+}
+# US equity half-days: regular open, early close at 1:00 PM ET.
+_EQUITY_EARLY_CLOSE = {
+    "2026-11-27": "Day after Thanksgiving",
+    "2026-12-24": "Christmas Eve",
+    "2027-11-26": "Day after Thanksgiving",
+}
+# A bar older than this means the live CME feed has gone quiet -> not trading.
+# 1-min OHLCV bars arrive every minute while open, so ~2.5 min of silence is a
+# reliable "market closed / halted" signal that needs no hardcoded clock.
+_FEED_STALE_SECONDS = 150
 
-def market_is_open() -> bool:
-    """Stock RTH check in ET (Mon-Fri 9:30-16:00). Ignores holidays.
-    This reflects whether the ETF PROXIES (QQQ/SPY/DIA) are actively trading,
-    i.e. whether the price data is FRESH. See futures_session() for whether the
-    futures themselves (MNQ/MES on Globex) are tradable."""
+
+def _et_now() -> dt.datetime:
     try:
         from zoneinfo import ZoneInfo
-        now = dt.datetime.now(ZoneInfo("America/New_York"))
+        return dt.datetime.now(ZoneInfo("America/New_York"))
     except Exception:
-        now = dt.datetime.now(dt.timezone(dt.timedelta(hours=-4)))
+        return dt.datetime.now(dt.timezone(dt.timedelta(hours=-4)))
+
+
+def market_holiday():
+    """Return the holiday name if today is a full US equity-market closure,
+    else None. Used so the board can honestly show CLOSED / the holiday name
+    instead of pretending a frozen last price is live."""
+    return _EQUITY_HOLIDAYS.get(_et_now().date().isoformat())
+
+
+def _equity_early_close_today():
+    return _EQUITY_EARLY_CLOSE.get(_et_now().date().isoformat())
+
+
+def _databento_feed_age():
+    """Seconds since the live CME feed last produced a bar (databento provider
+    only), or None when that feed isn't the active source. None means 'no
+    freshness signal available', so the clock-based logic is used instead."""
+    if QUOTES_PROVIDER != "databento" or not DATABENTO_API_KEY:
+        return None
+    try:
+        from korvus_databento import feed_age
+        return feed_age()
+    except Exception:
+        return None
+
+
+def market_is_open() -> bool:
+    """Stock RTH check in ET (Mon-Fri 9:30-16:00), now holiday-aware.
+    This reflects whether the ETF PROXIES (QQQ/SPY/DIA) are actively trading,
+    i.e. whether the price data is FRESH. Returns False on weekends, full US
+    equity holidays, and outside trading hours; on half-days it closes at 1pm.
+    See futures_session() for whether the futures themselves are tradable."""
+    now = _et_now()
     if now.weekday() >= 5:           # Sat/Sun
         return False
+    if market_holiday():             # full equity closure (e.g. Juneteenth)
+        return False
     mins = now.hour * 60 + now.minute
-    return (9 * 60 + 30) <= mins <= (16 * 60)
+    close_min = (13 * 60) if _equity_early_close_today() else (16 * 60)
+    return (9 * 60 + 30) <= mins <= close_min
 
 
 def futures_session() -> str:
     """CME index-futures (Globex) session state for MNQ/MES/etc., ET.
-    Globex runs Sun 6:00pm ET -> Fri 5:00pm ET, with a daily maintenance
-    halt 5:00pm-6:00pm ET (Mon-Thu). Returns one of:
-       "rth"     - stock regular hours: futures open AND proxy prices fresh
-       "globex"  - futures open, but ETF-proxy prices are at last close (stale)
-       "closed"  - futures closed (weekend gap / daily maintenance break)
-    Ignores holidays (good enough for a status label)."""
-    try:
-        from zoneinfo import ZoneInfo
-        now = dt.datetime.now(ZoneInfo("America/New_York"))
-    except Exception:
-        now = dt.datetime.now(dt.timezone(dt.timedelta(hours=-4)))
+    Returns "rth" | "globex" | "closed".
+
+    Truth order:
+      1) LIVE FEED FRESHNESS (databento): if real bars have stopped arriving,
+         the market is not trading right now, full stop. This catches holiday
+         early-closes, the daily maintenance halt, weekends, and trading halts
+         without trusting a fixed clock (CME holiday hours shift yearly).
+      2) FULL EQUITY HOLIDAY: cash is closed all day; CME runs a modified,
+         usually early-closing schedule, so after ~1pm ET we call it closed.
+      3) CLOCK fallback (no live feed): the standard Globex weekly schedule."""
+    # 1) Live-feed freshness wins when we have it.
+    age = _databento_feed_age()
+    if age is not None and age > _FEED_STALE_SECONDS:
+        return "closed"
+
+    now = _et_now()
     wd   = now.weekday()                 # Mon=0 .. Sun=6
     mins = now.hour * 60 + now.minute
 
-    # Stock regular trading hours -> proxies are live
+    # 2) Full US equity holiday (e.g. Juneteenth): proxies dark all day; CME
+    #    futures typically early-close ~1pm ET. Before that, treat as globex
+    #    (futures open, proxies stale); after, closed.
+    if market_holiday():
+        return "globex" if mins < (13 * 60) else "closed"
+
+    # 3) Clock fallback. Stock regular trading hours -> proxies are live.
     if wd < 5 and (9 * 60 + 30) <= mins <= (16 * 60):
         return "rth"
 
@@ -159,7 +242,8 @@ def get_quotes(symbols: list[str], force_delayed: bool = False) -> dict:
 
     out["_meta"] = {"provider": (_delayed_provider if force_delayed else QUOTES_PROVIDER),
                     "market_open": market_is_open(),
-                    "futures_session": futures_session()}
+                    "futures_session": futures_session(),
+                    "holiday": market_holiday()}
     _cache["data"][cache_key] = out
     _cache["at"] = now
     return out
