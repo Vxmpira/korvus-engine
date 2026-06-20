@@ -1029,16 +1029,22 @@ function renderRibbon(list){
       const px = f.price >= 1000
         ? f.price.toLocaleString(undefined,{maximumFractionDigits:2})
         : f.price.toFixed(2);
-      // When the CME session is closed (holiday early-close, weekend, halt), the
-      // price is the last print, not live. Label it honestly instead of "· CME".
-      const tag = futClosed
-        ? `<div class="viaproxy" style="color:var(--ink-faint)">${px} · CLOSED</div>`
-        : `<div class="viaproxy" style="opacity:.9;color:var(--ink-dim)">${px} · CME</div>`;
+      // When the CME session is closed (weekend, holiday, daily break, halt) the
+      // numbers are the last print, not live. Don't dress them up as an active
+      // session: drop the colored % and sparkline and show a quiet last-close
+      // reference, matching the proxy-closed rows for a consistent board.
+      if(futClosed){
+        return `<div class="fut">
+          <div class="sym">${f.sym}<small>${f.name}</small></div>
+          <div class="chg big" style="color:var(--ink-faint);letter-spacing:.06em">CLOSED</div>
+          <div class="viaproxy" style="color:var(--ink-faint)">${px} · last close</div>
+        </div>`;
+      }
       return `<div class="fut">
         <div class="sym">${f.sym}<small>${f.name}</small></div>
         <div class="chg ${up?'up':'down'} big">${sign(f.chg)}${f.chg.toFixed(2)}%</div>
         ${spark(f.series,up)}
-        ${tag}
+        <div class="viaproxy" style="opacity:.9;color:var(--ink-dim)">${px} · CME</div>
       </div>`;
     }
     if(!live){
