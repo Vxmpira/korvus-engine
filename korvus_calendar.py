@@ -40,6 +40,7 @@
 """
 import os
 import re
+import json
 import time
 import datetime as dt
 
@@ -71,6 +72,34 @@ TTL_MERGE = 5 * 60       # merge: recompute from the sub-caches every 5 min
 
 # module-level cache: survives across requests within one server process
 _cache = {"data": [], "ts": 0.0, "ttl": TTL_FF, "provider": ""}
+
+# Disk-backed last-good cache so a server restart never shows a blank calendar
+# while the first live fetch is in flight (or if the feed is rate-limited at that
+# moment). Only reused when recent enough to still be "this week".
+_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "calendar_cache.json")
+_DISK_MAX_AGE = 24 * 60 * 60     # don't reuse a saved calendar older than ~1 day
+
+def _load_disk_cache():
+    try:
+        with open(_CACHE_FILE, "r") as f:
+            d = json.load(f)
+    except Exception:
+        return
+    data = d.get("data") if isinstance(d, dict) else None
+    ts   = float(d.get("ts", 0) or 0) if isinstance(d, dict) else 0
+    if data and (time.time() - ts) < _DISK_MAX_AGE:
+        _cache.update({"data": data, "ts": ts,
+                       "ttl": d.get("ttl", TTL_FF), "provider": d.get("provider", "")})
+        print(f"  [calendar] restored {len(data)} events from disk cache "
+              f"({int((time.time()-ts)/60)} min old)")
+
+def _save_disk_cache():
+    try:
+        with open(_CACHE_FILE, "w") as f:
+            json.dump({"data": _cache["data"], "ts": _cache["ts"],
+                       "ttl": _cache["ttl"], "provider": _cache["provider"]}, f)
+    except Exception as e:
+        print(f"  [calendar] disk cache save failed: {e}")
 
 # per-source sub-caches so merge mode can refresh FMP (actuals) every 5 min
 # while only hitting the rate-limited Forex Factory feed hourly.
@@ -430,10 +459,16 @@ def get_calendar(force_refresh: bool = False) -> list:
 
     if data:
         _cache.update({"data": data, "ts": now, "ttl": ttl, "provider": provider})
+        _save_disk_cache()                  # survive restarts with last-good data
         return data
 
     # fetch failed — serve whatever we had before rather than nothing
     return _cache["data"]
+
+
+# On import, seed the in-memory cache from disk so the very first request after a
+# restart serves last-good data instead of a blank week while the feed is fetched.
+_load_disk_cache()
 
 
 if __name__ == "__main__":

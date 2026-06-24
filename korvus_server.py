@@ -708,6 +708,53 @@ def not_found(e):
     return redirect("/")
 
 
+# ----------------------------------------------------------------------------
+# Background warmer
+# ----------------------------------------------------------------------------
+# Keeps the full quote universe (futures + every Funds Watch / SMT / macro
+# equity) and the economic calendar hot, so opening the terminal shows populated
+# panels immediately instead of waiting on a cold fetch, and they refresh on a
+# steady cadence. One daemon thread per worker process; starts on the first
+# request (so it also works under Gunicorn's post-fork model) and on direct run.
+import threading as _threading
+import time as _time
+
+_warmer_started = False
+_warmer_lock = _threading.Lock()
+
+def _warm_loop():
+    last_cal = 0.0
+    while True:
+        try:
+            from korvus_quotes import warm_quotes
+            warm_quotes()               # also idempotently starts the CME feed
+        except Exception as e:
+            print(f"  [warm] quotes: {e}")
+        now = _time.time()
+        if now - last_cal > 180:        # economic calendar every 3 minutes
+            try:
+                from korvus_calendar import get_calendar
+                get_calendar()
+                last_cal = now
+            except Exception as e:
+                print(f"  [warm] calendar: {e}")
+        _time.sleep(30)                 # quote-universe refresh cadence
+
+def _start_warmer():
+    global _warmer_started
+    with _warmer_lock:
+        if _warmer_started:
+            return
+        _warmer_started = True
+    _threading.Thread(target=_warm_loop, name="korvus-warmer", daemon=True).start()
+    print("  [warm] background warmer started")
+
+@app.before_request
+def _ensure_warmer():
+    if not _warmer_started:             # starts once per worker, on first request
+        _start_warmer()
+
+
 if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("  KORVUS server — open this in your browser:")
@@ -717,4 +764,5 @@ if __name__ == "__main__":
         print("  ⚠  korvus.db not found yet. Run `python korvus_engine.py` first,")
         print("     then refresh the page. The dashboard will show live data once")
         print("     the engine has scored some items.\n")
+    _start_warmer()
     app.run(host="127.0.0.1", port=8000, debug=False)

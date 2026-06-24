@@ -63,9 +63,13 @@ TRADOVATE_APP_ID    = os.getenv("TRADOVATE_APP_ID", "")     # "appId" from your 
 TRADOVATE_CID       = os.getenv("TRADOVATE_CID", "")        # API "cid"
 TRADOVATE_SECRET    = os.getenv("TRADOVATE_SECRET", "")     # API "sec" (personal secret key)
 
-# simple in-memory cache so we don't hammer the API (quotes refresh every ~30s)
-_cache = {"at": 0, "data": {}}
-_CACHE_SECONDS = 25
+# Per-symbol quote cache so warming a superset keeps every subset request warm.
+# Keyed by tier-kind ("live"/"delayed") -> SYM -> {"data": {...}, "ts": epoch}.
+# Per-symbol (rather than per-request-list) is what lets the background warmer
+# pre-load the whole terminal universe once and have every panel read it
+# instantly, instead of each page load triggering its own cold fetch.
+_qcache = {"live": {}, "delayed": {}}
+_CACHE_SECONDS = 60   # symbol freshness window; the warmer refreshes within this
 
 # ---------------------------------------------------------------------------
 # Market-holiday awareness
@@ -201,52 +205,119 @@ def futures_session() -> str:
     return "globex"
 
 
+def _provider_label(force_delayed: bool) -> str:
+    if force_delayed:
+        return ("finnhub" if FINNHUB_KEY
+                else ("alphavantage-delayed" if ALPHAVANTAGE_KEY else "none"))
+    return QUOTES_PROVIDER
+
+
+def _fetch_quotes(symbols: list[str], force_delayed: bool) -> dict:
+    """Raw provider fetch for a symbol list (no cache, no _meta).
+
+    HYBRID in databento mode: the licensed CME feed only carries the futures
+    roots, so everything else (the ETF proxies plus every Funds Watch / SMT /
+    macro equity) is fetched from Finnhub. Without this, those panels get nothing
+    in databento mode and the page silently falls back to static sample numbers,
+    which is why Funds Watch read the same prices on every visit."""
+    if not symbols:
+        return {}
+    if force_delayed:
+        if FINNHUB_KEY:
+            return _finnhub_quotes(symbols)
+        if ALPHAVANTAGE_KEY:
+            return _alphavantage_quotes(symbols, delayed=True)
+        return {}
+    if QUOTES_PROVIDER == "databento":
+        out = _databento_quotes(symbols)                       # futures roots (CME)
+        rest = [s for s in symbols if s not in DATABENTO_FUT]  # equities / ETF proxies
+        if rest:
+            if FINNHUB_KEY:
+                out.update(_finnhub_quotes(rest))
+            elif ALPHAVANTAGE_KEY:
+                out.update(_alphavantage_quotes(rest))
+        return out
+    if QUOTES_PROVIDER == "alphavantage":
+        return _alphavantage_quotes(symbols)
+    if QUOTES_PROVIDER == "finnhub":
+        return _finnhub_quotes(symbols)
+    if QUOTES_PROVIDER == "tradovate":
+        return _tradovate_quotes(symbols)
+    return {}   # 'off' -> dashboard keeps its sample numbers
+
+
+def _is_live_future(sym: str, force_delayed: bool) -> bool:
+    """A real CME future served by the databento snapshot (its own live in-memory
+    cache), so it's read fresh every call instead of held in the TTL cache."""
+    return (not force_delayed) and QUOTES_PROVIDER == "databento" and sym in DATABENTO_FUT
+
+
 def get_quotes(symbols: list[str], force_delayed: bool = False) -> dict:
     """
-    Returns { "SYM": {"price": float, "chg_pct": float}, ... } plus a
-    "_meta" key with provider + market_open. Cached for ~25s.
+    Returns { "SYM": {"price","chg_pct","high","low","open","prev_close"}, ... }
+    plus a "_meta" key (provider, market_open, futures_session, holiday).
 
-    force_delayed=True (used for free-tier users) ignores the configured
-    provider and uses the delayed feed (finnhub), so live data is never
-    served to non-paying users even if alphavantage is configured.
+    Per-symbol cached (~60s) so the background warmer can pre-load the whole
+    terminal universe and have every panel read it instantly. Real CME futures
+    are read fresh from the live snapshot each call. force_delayed=True forces the
+    delayed feed for free / logged-out users regardless of the configured
+    provider, so live data is never served to non-paying users.
     """
     import time
     now = time.time()
-    cache_key = ("delayed:" if force_delayed else "live:") + ",".join(symbols)
-    if _cache["data"].get(cache_key) and (now - _cache["at"] < _CACHE_SECONDS):
-        return _cache["data"][cache_key]
+    kind = "delayed" if force_delayed else "live"
+    store = _qcache[kind]
 
-    if force_delayed:
-        # free tier / logged-out / public landing ticker: always delayed,
-        # never the premium live feed. Prefer Finnhub if configured; otherwise
-        # fall back to Alpha Vantage with entitlement=delayed so the public
-        # ticker still shows real (15-min delayed) prices using the same key.
-        if FINNHUB_KEY:
-            out = _finnhub_quotes(symbols)
-        elif ALPHAVANTAGE_KEY:
-            out = _alphavantage_quotes(symbols, delayed=True)
+    fresh, need = {}, []
+    for s in symbols:
+        if _is_live_future(s, force_delayed):
+            need.append(s)                       # always read the live snapshot
+            continue
+        c = store.get(s)
+        if c and (now - c["ts"] < _CACHE_SECONDS):
+            fresh[s] = c["data"]
         else:
-            out = {}
-        _delayed_provider = ("finnhub" if FINNHUB_KEY
-                             else ("alphavantage-delayed" if ALPHAVANTAGE_KEY else "none"))
-    elif QUOTES_PROVIDER == "databento":
-        out = _databento_quotes(symbols)
-    elif QUOTES_PROVIDER == "alphavantage":
-        out = _alphavantage_quotes(symbols)
-    elif QUOTES_PROVIDER == "finnhub":
-        out = _finnhub_quotes(symbols)
-    elif QUOTES_PROVIDER == "tradovate":
-        out = _tradovate_quotes(symbols)
-    else:
-        out = {}  # 'off' -> dashboard keeps its sample numbers
+            need.append(s)
 
-    out["_meta"] = {"provider": (_delayed_provider if force_delayed else QUOTES_PROVIDER),
+    if need:
+        got = _fetch_quotes(need, force_delayed)
+        for s in need:
+            if s in got:
+                fresh[s] = got[s]
+                if not _is_live_future(s, force_delayed):
+                    store[s] = {"data": got[s], "ts": now}
+
+    out = {s: fresh[s] for s in symbols if s in fresh}
+    out["_meta"] = {"provider": _provider_label(force_delayed),
                     "market_open": market_is_open(),
                     "futures_session": futures_session(),
                     "holiday": market_holiday()}
-    _cache["data"][cache_key] = out
-    _cache["at"] = now
     return out
+
+
+# Full symbol universe the terminal renders (futures roots + ETF proxies + the
+# Funds Watch / macro / SMT equities). The background warmer pre-fetches this so
+# every panel is already populated the instant a member opens the page.
+WARM_UNIVERSE = [
+    "MNQ", "MES", "MYM", "M2K", "CL", "GC", "ZN", "6E",
+    "QQQ", "SPY", "DIA", "IWM", "RSP", "IEF", "FXE", "USO", "GLD", "VIXY",
+    "UUP", "TLT", "HYG",
+    "NVDA", "AAPL", "MSFT", "AMZN", "META", "GOOGL", "TSLA",
+    "SMH", "SOXX", "XLK", "XLY", "XLF", "XLE", "XLV", "XLI",
+    "TAN", "FSLR", "ENPH", "SEDG", "RUN", "NEE",
+]
+
+
+def warm_quotes() -> int:
+    """Pre-fetch the whole terminal universe into the live cache. Returns the
+    count of symbols held fresh. Idempotently starts the CME feed on first call
+    (databento.start() is idempotent), so bars begin accumulating immediately."""
+    try:
+        data = get_quotes(WARM_UNIVERSE, force_delayed=False)
+        return max(0, len(data) - 1)             # minus the _meta key
+    except Exception as e:
+        print(f"  [quotes] warm error: {e}")
+        return 0
 
 
 def native_futures() -> bool:
