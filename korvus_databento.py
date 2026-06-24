@@ -173,6 +173,14 @@ class DatabentoMD:
         # price; a continuous-symbol baseline can land on the just-expired contract
         # and throw the change off by the whole quarterly roll spread.
         self._root_to_contract = {}
+        # root -> prior-session settle taken from the LIVE replay (authoritative
+        # baseline for the daily %). The historical daily-bar API lags by days on
+        # this account, so we read the prior session's settle-time close straight
+        # off the licensed live feed instead.
+        self._settle = {}
+        # root -> close of the latest bar at/before 16:00 ET (the 3pm-CT settle)
+        # in the session being accumulated; promoted to _settle at the rollover.
+        self._sess_settle = {}
         # root -> session label currently accumulated (for O/H/L reset)
         self._sess = {}
         self._roots = list(DATABENTO_ROOTS)
@@ -356,36 +364,56 @@ class DatabentoMD:
             if c is None:
                 return
 
-            # which trading day this bar belongs to (for O/H/L reset)
+            # which trading day this bar belongs to (O/H/L reset) + its ET
+            # wall-clock, so we can find the prior session's settle-time bar
             ts_ns = getattr(record, "ts_event", None)
             try:
                 ts_utc = dt.datetime.fromtimestamp(int(ts_ns) / 1e9, dt.timezone.utc)
                 skey = _session_key(ts_utc)
             except Exception:
+                ts_utc = dt.datetime.now(dt.timezone.utc)
                 skey = self._sess.get(root)
+            try:
+                from zoneinfo import ZoneInfo
+                et = ts_utc.astimezone(ZoneInfo("America/New_York"))
+            except Exception:
+                et = ts_utc.astimezone(dt.timezone(dt.timedelta(hours=-4)))
+            at_or_before_settle = (et.hour, et.minute) <= (16, 0)   # <= 4:00pm ET
+            today_key = _session_key(dt.datetime.now(dt.timezone.utc))
 
             with self._lock:
                 q = self._quotes.get(root)
                 new_session = (q is None) or (self._sess.get(root) != skey)
                 if new_session:
-                    # first bar of a new session: seed open/high/low fresh
+                    # Promote the session we're leaving: if it's a COMPLETED prior
+                    # session, its settle-time close is the baseline for the daily %.
+                    old_skey = self._sess.get(root)
+                    cand = self._sess_settle.get(root)
+                    if old_skey and cand and old_skey < today_key:
+                        self._settle[root] = cand
                     self._sess[root] = skey
+                    self._sess_settle[root] = None
                     q = {"price": c,
                          "open": o if o is not None else c,
                          "high": hi if hi is not None else c,
                          "low": lo if lo is not None else c,
                          "chg_pct": 0.0,
-                         "prev_close": self._prev_close.get(root, 0.0)}
+                         "prev_close": self._settle.get(root, 0.0)}
                 else:
                     q["price"] = c
                     if hi is not None:
                         q["high"] = max(q.get("high", hi), hi)
                     if lo is not None:
                         q["low"] = min(q.get("low", lo) or lo, lo)
-                # daily % vs prior settlement, else vs this session's open
-                base = self._prev_close.get(root) or q.get("open")
+                # remember this session's settle-time close (last bar at/before 4pm ET)
+                if at_or_before_settle:
+                    self._sess_settle[root] = c
+                # daily % vs the prior session's settle (live-derived); if we don't
+                # have it yet (e.g. replay didn't reach the prior session), fall
+                # back transparently to change-from-this-session's-open
+                base = self._settle.get(root) or q.get("open")
                 if base:
-                    q["prev_close"] = self._prev_close.get(root, q.get("prev_close", 0.0))
+                    q["prev_close"] = self._settle.get(root, q.get("prev_close", 0.0))
                     try:
                         q["chg_pct"] = (c - base) / base * 100.0
                     except Exception:
@@ -404,28 +432,37 @@ class DatabentoMD:
                 print("  [db] databento package not installed (pip install databento)")
                 return
             try:
-                self._prev_close = {}
-                self._fetch_prev_closes()
+                self._settle = {}
+                self._sess_settle = {}
                 live = db.Live(key=self._key)
                 self._live = live
                 syms = [_cont(r) for r in self._roots]
-                start = _session_open_utc().isoformat()
-                try:
-                    live.subscribe(dataset=DATASET, schema="ohlcv-1m",
-                                   stype_in="continuous", symbols=syms, start=start)
-                except Exception as e_sub:
-                    # if intraday replay is rejected, fall back to live-from-now
-                    print(f"  [db] replay subscribe failed ({e_sub}); live-from-now")
-                    live.subscribe(dataset=DATASET, schema="ohlcv-1m",
-                                   stype_in="continuous", symbols=syms)
+                # Replay far enough back to include the PRIOR session's settle-time
+                # bar so the daily-% baseline is taken from the live feed itself.
+                # Try the long window first; fall back to a shorter replay (current
+                # session O/H/L still correct), then live-from-now.
+                now = dt.datetime.now(dt.timezone.utc)
+                starts = [(now - dt.timedelta(hours=22)).isoformat(),
+                          _session_open_utc().isoformat(),
+                          None]
+                subscribed = False
+                for st in starts:
+                    try:
+                        kw = dict(dataset=DATASET, schema="ohlcv-1m",
+                                  stype_in="continuous", symbols=syms)
+                        if st:
+                            kw["start"] = st
+                        live.subscribe(**kw)
+                        subscribed = True
+                        print(f"  [db] subscribed ohlcv-1m (replay start={st or 'now'})")
+                        break
+                    except Exception as e_sub:
+                        print(f"  [db] subscribe start={st or 'now'} rejected ({e_sub})")
+                if not subscribed:
+                    raise RuntimeError("all ohlcv-1m subscribe attempts failed")
                 live.add_callback(self._handle)
                 print(f"  [db] live: {DATASET} ohlcv-1m {syms} (roll={DATABENTO_ROLL})")
                 live.start()
-                # Once the feed resolves the front contracts, re-pull the prior
-                # settle for those EXACT contracts so the daily-% baseline is the
-                # same contract month as the live price (fixes the post-roll gap).
-                threading.Thread(target=self._refresh_prev_for_contracts,
-                                 name="db-prevclose", daemon=True).start()
                 live.block_for_close()
             except Exception as e:
                 print(f"  [db] stream error: {e}")
