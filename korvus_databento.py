@@ -87,9 +87,23 @@ def _cont(root: str) -> str:
     return f"{root}.{DATABENTO_ROLL}.0"
 
 
-def _root_of(cont_symbol: str) -> str:
-    """'MNQ.c.0' -> 'MNQ'."""
-    return (cont_symbol or "").split(".")[0]
+def _root_of(sym: str) -> str:
+    """Map any symbol form back to its root.
+        continuous  'MNQ.c.0' -> 'MNQ'
+        resolved    'MNQU6'    -> 'MNQ'   ('6EU6' -> '6E')
+    The historical daily-bar query resolves the continuous symbol to the actual
+    front contract (e.g. 'MNQU6'), so a plain split('.') left the root
+    unrecognized and every prior-close row was silently dropped — which is what
+    forced the daily % onto the session-open fallback and made the board read a
+    wildly wrong change. Match the known root prefix instead so both the live
+    continuous symbol and the resolved historical contract map home."""
+    head = (sym or "").upper().split(".")[0]
+    if head in DATABENTO_ROOTS:
+        return head
+    for r in sorted(DATABENTO_ROOTS, key=len, reverse=True):
+        if head.startswith(r):
+            return r
+    return head
 
 
 def _px(v):
@@ -184,8 +198,9 @@ class DatabentoMD:
             if df is None or len(df) == 0:
                 return
             today_key = _session_key(now)
-            # 'symbol' column carries the continuous symbol when mapped
+            # 'symbol' column carries the (resolved) contract when mapped
             sym_col = "symbol" if "symbol" in df.columns else None
+            best = {}   # root -> (session_key, close): keep the MOST RECENT completed
             for _, row in df.iterrows():
                 cont = str(row[sym_col]) if sym_col else None
                 root = _root_of(cont) if cont else None
@@ -194,19 +209,25 @@ class DatabentoMD:
                 close = row.get("close")
                 if close is None:
                     continue
-                # skip a still-forming bar dated to the current session
-                ts = row.name
                 try:
-                    ts_utc = ts.to_pydatetime().astimezone(dt.timezone.utc)
-                    if _session_key(ts_utc) >= today_key:
-                        continue
+                    ts_utc = row.name.to_pydatetime().astimezone(dt.timezone.utc)
+                    skey = _session_key(ts_utc)
                 except Exception:
-                    pass
-                # rows are time-ordered; the last qualifying one wins = most recent close
-                self._prev_close[root] = float(close)
+                    continue
+                if skey >= today_key:          # skip the still-forming current session
+                    continue
+                prev = best.get(root)
+                if prev is None or skey > prev[0]:   # latest completed session wins
+                    best[root] = (skey, float(close))
+            for root, (skey, close) in best.items():
+                self._prev_close[root] = close
             if self._prev_close:
-                print(f"  [db] prev closes: "
+                print("  [db] prev closes (vs prior settle): "
                       + ", ".join(f"{k}={v:.2f}" for k, v in self._prev_close.items()))
+            else:
+                cols = list(df.columns)[:8]
+                print(f"  [db] prev-close fetch returned no usable rows "
+                      f"(df rows={len(df)}, cols={cols}) — falling back to session open")
         except Exception as e:
             print(f"  [db] prev-close fetch failed (chg vs open instead): {e}")
 
@@ -388,17 +409,32 @@ def feed_age():
 if __name__ == "__main__":
     # Manual smoke test (needs: pip install databento + a real key + license):
     #   DATABENTO_API_KEY=... python korvus_databento.py
+    # Prints, per root: prior settle (the daily-% baseline), the live price, and
+    # the resulting change — so you can confirm it matches your broker's daily %.
     if not DATABENTO_API_KEY:
         print("DATABENTO_API_KEY not set — dormant, nothing to test.")
         raise SystemExit(0)
-    roots = ["MNQ", "MES", "MYM"]
+    roots = ["MNQ", "MES", "MYM", "M2K", "CL", "GC", "ZN", "6E"]
     c = get_client()
     c.start(roots)
-    print("connecting… (Ctrl+C to stop)")
+    print("connecting + replaying session… (give it ~15s for the first bars)")
     try:
-        for _ in range(12):
+        for i in range(12):
             time.sleep(5)
-            print("quotes:", c.get(roots))
+            snap = c.get(roots)
+            if not snap:
+                print(f"  [{(i+1)*5:>3}s] no bars yet…")
+                continue
+            print(f"  --- snapshot at {(i+1)*5}s ---")
+            print(f"  {'root':5} {'prev_close':>11} {'price':>11} {'chg%':>8}")
+            for r in roots:
+                q = snap.get(r)
+                if not q:
+                    continue
+                pc = q.get("prev_close") or 0
+                base_note = "" if pc else "  (no prior settle -> chg vs session open)"
+                print(f"  {r:5} {pc:>11.2f} {q.get('price',0):>11.2f} "
+                      f"{q.get('chg_pct',0):>+7.2f}%{base_note}")
     except KeyboardInterrupt:
         pass
     finally:
