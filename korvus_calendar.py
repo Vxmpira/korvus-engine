@@ -54,6 +54,12 @@ except Exception:
 
 CALENDAR_PROVIDER = os.getenv("CALENDAR_PROVIDER", "auto").lower().strip()
 FMP_KEY           = os.getenv("FMP_KEY", "").strip()
+# Trading Economics: optional third actuals source. FMP does not redistribute
+# S&P Global's licensed PMI, so those rows stay blank no matter how good the
+# matching is. TE sources actuals from official releases and is permitted to
+# carry PMI. Set TE_KEY in .env to switch it on; with no key this is a no-op and
+# the calendar behaves exactly as before.
+TE_KEY            = os.getenv("TE_KEY", "").strip()
 
 FF_URL  = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
 # FMP moved the economic calendar to the /stable/ path; the old /api/v3/ route
@@ -62,12 +68,14 @@ FMP_URLS = [
     "https://financialmodelingprep.com/stable/economic-calendar",   # current
     "https://financialmodelingprep.com/api/v3/economic_calendar",   # legacy fallback
 ]
+TE_URL  = "https://api.tradingeconomics.com/calendar"
 
 UA = "Mozilla/5.0 (compatible; korvus-engine/0.2; +https://korvus.industries)"
 
 # cache TTLs (seconds)
 TTL_FF    = 60 * 60      # Forex Factory: refresh hourly (it's rate-limited)
 TTL_FMP   = 5 * 60       # FMP: 5 minutes is plenty for actuals to land
+TTL_TE    = 5 * 60       # Trading Economics: 5 minutes
 TTL_MERGE = 5 * 60       # merge: recompute from the sub-caches every 5 min
 
 # module-level cache: survives across requests within one server process
@@ -233,6 +241,85 @@ def _fmp() -> list:
 
 
 # ----------------------------------------------------------------------------
+# Provider: Trading Economics (optional). Actuals from official releases; unlike
+# FMP it is licensed to carry S&P Global PMI. Only used to fill actuals FMP/FF
+# can't supply. Inactive unless TE_KEY is set.
+# ----------------------------------------------------------------------------
+_TE_COUNTRY_CCY = {
+    "united states": "USD", "euro area": "EUR", "germany": "EUR", "france": "EUR",
+    "italy": "EUR", "spain": "EUR", "netherlands": "EUR", "united kingdom": "GBP",
+    "japan": "JPY", "china": "CNY", "canada": "CAD", "australia": "AUD",
+    "new zealand": "NZD", "switzerland": "CHF",
+}
+
+def _te_clean(v) -> str:
+    v = ("" if v is None else str(v)).strip()
+    return "" if v.lower() in ("null", "none") else v
+
+def _te_date_iso(s: str) -> str:
+    # TE sends "YYYY-MM-DDTHH:MM:SS" in UTC with no offset; tag it so the browser
+    # converts to ET correctly (same reasoning as the FMP normalizer).
+    s = (s or "").strip()
+    if not s:
+        return ""
+    if " " in s and "T" not in s:
+        s = s.replace(" ", "T", 1)
+    if "T" in s:
+        tail = s.split("T", 1)[1]
+        if not (tail.endswith("Z") or "+" in tail or "-" in tail):
+            return s + "+00:00"
+    return s
+
+def _te_impact(v) -> str:
+    try:
+        return {3: "High", 2: "Medium", 1: "Low"}.get(int(v), "Low")
+    except Exception:
+        return _norm_impact(v)
+
+def _tradingeconomics() -> list:
+    if not TE_KEY:
+        return []
+    today = dt.date.today()
+    frm = today - dt.timedelta(days=today.weekday())     # Monday of this week
+    to  = frm + dt.timedelta(days=6)                      # Sunday
+    url = f"{TE_URL}/country/All/{frm.isoformat()}/{to.isoformat()}"
+    try:
+        r = requests.get(url, params={"c": TE_KEY, "f": "json"}, timeout=20,
+                         headers={"User-Agent": UA})
+    except Exception as e:
+        print(f"  [calendar] Trading Economics request error: {e}")
+        return []
+    if r.status_code != 200:
+        print(f"  [calendar] Trading Economics returned {r.status_code} "
+              f"({(r.text or '')[:140]})")
+        return []
+    try:
+        raw = r.json()
+    except Exception:
+        print("  [calendar] Trading Economics returned non-JSON")
+        return []
+    if not isinstance(raw, list):
+        print(f"  [calendar] Trading Economics unexpected response: {str(raw)[:140]}")
+        return []
+    out = []
+    for e in raw:
+        cname = (e.get("Country") or "").strip().lower()
+        ccy = _TE_COUNTRY_CCY.get(cname, "")
+        out.append({
+            "title":    (e.get("Event") or "").strip(),
+            "country":  ccy,
+            "impact":   _te_impact(e.get("Importance")),
+            "date":     _te_date_iso(e.get("Date")),
+            "forecast": _te_clean(e.get("Forecast")) or _te_clean(e.get("TEForecast")),
+            "previous": _te_clean(e.get("Previous")),
+            "actual":   _te_clean(e.get("Actual")),
+        })
+    n_actual = sum(1 for e in out if e["actual"])
+    print(f"  [calendar] Trading Economics: {len(out)} events ({n_actual} with an actual)")
+    return out
+
+
+# ----------------------------------------------------------------------------
 # Provider: MERGE — Forex Factory curation (the events that matter, correct ET
 # times, majors only) enriched with FMP's ACTUAL values. FF is the whitelist;
 # FMP supplies the released number where the event titles correspond. This is
@@ -382,73 +469,96 @@ def _fmt_actual(act, forecast, previous):
     return raw
 
 
+def _has_actual(c):
+    a = c.get("actual") if c else None
+    return a not in (None, "")
+
+def _pick(cands, ref_date):
+    cands = [c for c in cands if c]            # drop any None from the fallback
+    if not cands:
+        return None
+    # Prefer candidates that actually carry a released value, so a duplicate or
+    # revision row with an empty actual can't shadow the real print (this is what
+    # was eating the Non-Farm Payrolls actual).
+    pool = [c for c in cands if _has_actual(c)] or cands
+    if len(pool) == 1:
+        return pool[0]
+    ref = _ts(ref_date)
+    if not ref:
+        return pool[0]
+    return min(pool, key=lambda c: abs(((_ts(c.get("date")) or ref) - ref).total_seconds()))
+
+def _index_rows(rows):
+    """Index a provider's rows by (canonical title, currency)."""
+    idx = {}
+    for e in rows:
+        idx.setdefault((_canon(e.get("title")), (e.get("country") or "").upper()), []).append(e)
+    return idx
+
+def _lookup_actual(e, rows, idx):
+    """Display-ready actual for FF event `e` from one provider, or None. Tries an
+    exact (canon, ccy) hit first, then a token-overlap fallback within the same
+    currency. Identical matcher for every provider, so FMP and Trading Economics
+    behave the same."""
+    ccy   = (e.get("country") or "").upper()
+    cands = idx.get((_canon(e.get("title")), ccy))
+    if not cands:
+        etoks = set(_strip_noise(_norm_title(e.get("title"))).split())
+        best, best_ov = None, 0.0
+        for fe in rows:
+            if (fe.get("country") or "").upper() != ccy:
+                continue
+            ftoks = set(_strip_noise(_norm_title(fe.get("title"))).split())
+            if not etoks or not ftoks:
+                continue
+            ov = len(etoks & ftoks) / len(etoks | ftoks)
+            if ov > best_ov:
+                best_ov, best = ov, fe
+        cands = [best] if (best and best_ov >= 0.6) else None
+    if not cands:
+        return None
+    m = _pick(cands, e.get("date"))
+    if not m:
+        return None
+    act = m.get("actual")
+    if act in (None, ""):
+        return None
+    return _fmt_actual(act, e.get("forecast"), e.get("previous"))   # None if nonsense
+
+
 def _merge() -> list:
     ff  = _cached("ff",  _forexfactory, TTL_FF)
+    fmp = _cached("fmp", _fmp, TTL_FMP) or []
+    te  = _cached("te",  _tradingeconomics, TTL_TE) or []
     if not ff:
-        return _cached("fmp", _fmp, TTL_FMP)   # no FF -> raw FMP (still has actuals)
-    fmp = _cached("fmp", _fmp, TTL_FMP)
-    if not fmp:
-        return ff                              # no FMP -> FF as-is (no actuals)
+        # no FF curation -> serve whichever raw provider has data (still has actuals)
+        return fmp or te
+    if not fmp and not te:
+        return ff                              # nothing to enrich with
 
-    # index FMP rows by (canonical title, currency)
-    idx = {}
-    for e in fmp:
-        idx.setdefault((_canon(e.get("title")), (e.get("country") or "").upper()), []).append(e)
+    fmp_idx = _index_rows(fmp)
+    te_idx  = _index_rows(te)
 
-    def _has_actual(c):
-        a = c.get("actual") if c else None
-        return a not in (None, "")
-
-    def _pick(cands, ref_date):
-        cands = [c for c in cands if c]            # drop any None from the fallback
-        if not cands:
-            return None
-        # Prefer candidates that actually carry a released value, so a duplicate
-        # or revision row with an empty actual can't shadow the real print
-        # (this is what was eating the Non-Farm Payrolls actual).
-        pool = [c for c in cands if _has_actual(c)] or cands
-        if len(pool) == 1:
-            return pool[0]
-        ref = _ts(ref_date)
-        if not ref:
-            return pool[0]
-        return min(pool, key=lambda c: abs(((_ts(c.get("date")) or ref) - ref).total_seconds()))
-
-    matched = 0
+    m_fmp = m_te = 0
     for e in ff:
-        ccy   = (e.get("country") or "").upper()
-        cands = idx.get((_canon(e.get("title")), ccy))
-        if not cands:
-            # token-overlap fallback within the same currency (handles small
-            # wording diffs like "ISM Manufacturing Prices" vs "...Prices Paid")
-            etoks = set(_strip_noise(_norm_title(e.get("title"))).split())
-            best, best_ov = None, 0.0
-            for fe in fmp:
-                if (fe.get("country") or "").upper() != ccy:
-                    continue
-                ftoks = set(_strip_noise(_norm_title(fe.get("title"))).split())
-                if not etoks or not ftoks:
-                    continue
-                ov = len(etoks & ftoks) / len(etoks | ftoks)
-                if ov > best_ov:
-                    best_ov, best = ov, fe
-            cands = [best] if (best and best_ov >= 0.6) else None
-        if not cands:
+        if _has_actual(e):                     # FF's own feed already carried it
             continue
-        m = _pick(cands, e.get("date"))
-        if not m:
+        a = _lookup_actual(e, fmp, fmp_idx)    # FMP first (movers, already proven)
+        if a is not None:
+            e["actual"] = a
+            m_fmp += 1
             continue
-        act = m.get("actual")
-        if act not in (None, ""):
-            fixed = _fmt_actual(act, e.get("forecast"), e.get("previous"))
-            if fixed is not None:          # rejects wrong-series / nonsense magnitudes
-                e["actual"] = fixed
-                matched += 1
+        a = _lookup_actual(e, te, te_idx)      # then Trading Economics (PMI, gaps)
+        if a is not None:
+            e["actual"] = a
+            m_te += 1
+
     nfp = next((x for x in ff if _canon(x.get("title")) == "nonfarm payrolls"), None)
     if nfp is not None:
         print(f"  [calendar] merge: NFP '{nfp.get('title')}' actual -> "
-              f"{nfp.get('actual') or '(none — FMP returned no actual for it at fetch time)'}")
-    print(f"  [calendar] merge: {len(ff)} FF events · {matched} actuals matched from FMP")
+              f"{nfp.get('actual') or '(none at fetch time)'}")
+    print(f"  [calendar] merge: {len(ff)} FF events · {m_fmp} from FMP · "
+          f"{m_te} from Trading Economics")
     return ff
 
 
@@ -462,7 +572,7 @@ def get_calendar(force_refresh: bool = False) -> list:
 
     provider = CALENDAR_PROVIDER
     if provider == "auto":
-        provider = "merge" if FMP_KEY else "forexfactory"
+        provider = "merge" if (FMP_KEY or TE_KEY) else "forexfactory"
 
     data, ttl = [], TTL_FF
     try:
@@ -502,7 +612,37 @@ _load_disk_cache()
 
 if __name__ == "__main__":
     import sys
-    prov = CALENDAR_PROVIDER if CALENDAR_PROVIDER != "auto" else ("merge" if FMP_KEY else "forexfactory")
+    prov = CALENDAR_PROVIDER if CALENDAR_PROVIDER != "auto" else (
+        "merge" if (FMP_KEY or TE_KEY) else "forexfactory")
+
+    # `python korvus_calendar.py te` -> validate a Trading Economics key BEFORE
+    # paying: shows the HTTP status, how many USD rows came back, and whether the
+    # S&P Global PMIs (the whole reason for adding TE) arrive WITH an actual.
+    if len(sys.argv) > 1 and sys.argv[1].lower() == "te":
+        if not TE_KEY:
+            print("TE_KEY is not set. Add TE_KEY=your:key to .env (or export it) and re-run.")
+            sys.exit(1)
+        te = _tradingeconomics()
+        te_usd = [e for e in te if (e.get("country") or "").upper() == "USD"]
+        print(f"\nTrading Economics USD rows: {len(te_usd)}")
+        for e in sorted(te_usd, key=lambda x: x.get("date", "")):
+            print(f"  {e.get('date','')[:16]:18} {e.get('impact',''):7} "
+                  f"act={str(e.get('actual') or '—'):>8}  {e.get('title','')[:44]}")
+        pmi = [e for e in te_usd if "pmi" in (e.get("title") or "").lower()]
+        print(f"\nUSD PMI rows from TE: {len(pmi)}  (this is the FMP gap we're filling)")
+        for e in pmi:
+            tag = "HAS ACTUAL" if e.get("actual") else "no actual yet"
+            print(f"  [{tag}] {e.get('title','')}: act={e.get('actual') or '—'} "
+                  f"fcst={e.get('forecast') or '—'} prev={e.get('previous') or '—'}")
+        if pmi and any(e.get("actual") for e in pmi):
+            print("\n=> Your TE plan returns USD PMI WITH actuals. Worth keeping.")
+        elif pmi:
+            print("\n=> TE lists the USD PMI but no actual right now (fine if it "
+                  "hasn't released this week; re-check just after a PMI prints).")
+        else:
+            print("\n=> Your TE plan returned NO USD PMI rows. This tier does not "
+                  "cover it — cancel the trial before it charges.")
+        sys.exit(0)
 
     # `python korvus_calendar.py usd` -> show the USD side of the merge so a
     # missing actual is easy to trace: what FMP returns, what FF shows, and which
@@ -532,7 +672,7 @@ if __name__ == "__main__":
                 print(f"  {e.get('title','')}  -> {_canon(e.get('title'))}")
         sys.exit(0)
 
-    print(f"Provider: {prov}  |  FMP_KEY set: {bool(FMP_KEY)}")
+    print(f"Provider: {prov}  |  FMP_KEY: {bool(FMP_KEY)}  |  TE_KEY: {bool(TE_KEY)}")
     events = get_calendar(force_refresh=True)
     print(f"Got {len(events)} events. First few:")
     for e in events[:12]:
