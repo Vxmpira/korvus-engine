@@ -168,6 +168,11 @@ class DatabentoMD:
         self._id_to_root = {}
         # root -> prior-session settlement (for the daily % change), best-effort
         self._prev_close = {}
+        # root -> the front contract the live feed resolved to, e.g. 'MNQ'->'MNQU6'.
+        # The daily % baseline must come from this SAME contract month as the live
+        # price; a continuous-symbol baseline can land on the just-expired contract
+        # and throw the change off by the whole quarterly roll spread.
+        self._root_to_contract = {}
         # root -> session label currently accumulated (for O/H/L reset)
         self._sess = {}
         self._roots = list(DATABENTO_ROOTS)
@@ -231,6 +236,86 @@ class DatabentoMD:
         except Exception as e:
             print(f"  [db] prev-close fetch failed (chg vs open instead): {e}")
 
+    def _refresh_prev_for_contracts(self):
+        """Wait for the live feed to resolve the front contracts, then re-pull
+        the prior settle for those EXACT contracts. Runs once per connection in a
+        daemon thread so it never blocks the stream."""
+        for _ in range(24):                       # up to ~12s for mappings to land
+            time.sleep(0.5)
+            with self._lock:
+                have = {r: c for r, c in self._root_to_contract.items() if c}
+            if len(have) >= len(self._roots):
+                break
+        with self._lock:
+            contracts = {r: c for r, c in self._root_to_contract.items() if c}
+        if contracts:
+            self._fetch_prev_closes_for_contracts(contracts)
+
+    def _fetch_prev_closes_for_contracts(self, contracts):
+        """Pull each root's prior-session close for the SPECIFIC front contract
+        the live feed resolved to (e.g. MNQ -> 'MNQU6'), so the daily-% baseline
+        is the same contract month as the live price. This is what removes the
+        roll-spread error a continuous-symbol baseline leaves right after a
+        quarterly roll. Best-effort: on any failure the existing baseline stays."""
+        if db is None or not self._key:
+            return
+        try:
+            now = dt.datetime.now(dt.timezone.utc)
+            start = (now - dt.timedelta(days=8)).date().isoformat()
+            sym_to_root, syms = {}, []
+            for root, contract in contracts.items():
+                c = (contract or "").upper().strip()
+                if c and "." not in c:            # a resolved raw symbol, not 'MNQ.c.0'
+                    sym_to_root[c] = root
+                    syms.append(c)
+            if not syms:
+                return
+            h = db.Historical(self._key)
+            data = h.timeseries.get_range(
+                dataset=DATASET, schema="ohlcv-1d",
+                stype_in="raw_symbol", symbols=syms, start=start,
+            )
+            df = data.to_df()
+            if df is None or len(df) == 0:
+                return
+            today_key = _session_key(now)
+            sym_col = "symbol" if "symbol" in df.columns else None
+            best = {}                             # root -> (session_key, close)
+            for _, row in df.iterrows():
+                sym = str(row[sym_col]).upper() if sym_col else None
+                root = sym_to_root.get(sym)
+                if root is None:
+                    continue
+                close = row.get("close")
+                if close is None:
+                    continue
+                try:
+                    ts_utc = row.name.to_pydatetime().astimezone(dt.timezone.utc)
+                    skey = _session_key(ts_utc)
+                except Exception:
+                    continue
+                if skey >= today_key:             # skip the still-forming session
+                    continue
+                prev = best.get(root)
+                if prev is None or skey > prev[0]:
+                    best[root] = (skey, float(close))
+            if not best:
+                return
+            with self._lock:
+                for root, (skey, close) in best.items():
+                    self._prev_close[root] = close
+                    q = self._quotes.get(root)    # correct the live quote right away
+                    if q and close:
+                        q["prev_close"] = close
+                        try:
+                            q["chg_pct"] = (q["price"] - close) / close * 100.0
+                        except Exception:
+                            pass
+            print("  [db] prev closes (front contract): "
+                  + ", ".join(f"{contracts.get(r, r)}={v[1]:.2f}" for r, v in best.items()))
+        except Exception as e:
+            print(f"  [db] front-contract prev-close fetch failed (keeping prior base): {e}")
+
     # ---- stream handling ---------------------------------------------------
     def _handle(self, record):
         """Callback for every live record. We only care about two kinds:
@@ -239,12 +324,17 @@ class DatabentoMD:
             # SymbolMappingMsg: learn which numeric instrument is which root
             si = getattr(record, "stype_in_symbol", None)
             if si is not None:
+                so = getattr(record, "stype_out_symbol", None)   # resolved contract e.g. 'MNQU6'
                 iid = getattr(record, "instrument_id", None)
                 if iid is None:
                     hd = getattr(record, "hd", None)
                     iid = getattr(hd, "instrument_id", None)
+                root = _root_of(si)
                 if iid is not None:
-                    self._id_to_root[int(iid)] = _root_of(si)
+                    self._id_to_root[int(iid)] = root
+                if so and root in self._roots:
+                    with self._lock:
+                        self._root_to_contract[root] = str(so).upper()
                 return
 
             # OHLCVMsg: open/high/low/close present; price-only records skipped
@@ -331,6 +421,11 @@ class DatabentoMD:
                 live.add_callback(self._handle)
                 print(f"  [db] live: {DATASET} ohlcv-1m {syms} (roll={DATABENTO_ROLL})")
                 live.start()
+                # Once the feed resolves the front contracts, re-pull the prior
+                # settle for those EXACT contracts so the daily-% baseline is the
+                # same contract month as the live price (fixes the post-roll gap).
+                threading.Thread(target=self._refresh_prev_for_contracts,
+                                 name="db-prevclose", daemon=True).start()
                 live.block_for_close()
             except Exception as e:
                 print(f"  [db] stream error: {e}")
@@ -426,14 +521,15 @@ if __name__ == "__main__":
                 print(f"  [{(i+1)*5:>3}s] no bars yet…")
                 continue
             print(f"  --- snapshot at {(i+1)*5}s ---")
-            print(f"  {'root':5} {'prev_close':>11} {'price':>11} {'chg%':>8}")
+            print(f"  {'root':5} {'contract':9} {'prev_close':>11} {'price':>11} {'chg%':>8}")
             for r in roots:
                 q = snap.get(r)
                 if not q:
                     continue
                 pc = q.get("prev_close") or 0
+                contract = c._root_to_contract.get(r, "?")
                 base_note = "" if pc else "  (no prior settle -> chg vs session open)"
-                print(f"  {r:5} {pc:>11.2f} {q.get('price',0):>11.2f} "
+                print(f"  {r:5} {contract:9} {pc:>11.2f} {q.get('price',0):>11.2f} "
                       f"{q.get('chg_pct',0):>+7.2f}%{base_note}")
     except KeyboardInterrupt:
         pass
