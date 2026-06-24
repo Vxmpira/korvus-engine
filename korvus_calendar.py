@@ -260,6 +260,26 @@ def _norm_title(t: str) -> str:
     t = re.sub(r"[^a-z0-9]+", " ", t).strip()
     return re.sub(r"\s+", " ", t)
 
+# Vendor prefixes and flash/prelim qualifiers that ONE feed prints and the other
+# omits, so the same release ends up with names that share too few tokens to
+# match. Forex Factory says "Flash Manufacturing PMI"; FMP says "S&P Global
+# Manufacturing PMI" — after normalization those share only {manufacturing, pmi}
+# (2 of 6 tokens, 33% overlap) and the actual never attaches. Stripping these
+# noise tokens collapses both to "manufacturing pmi" so they correspond.
+# Deliberately CONSERVATIVE: distinguishing words (ism, services, manufacturing,
+# composite, final, revised) are NOT in here, so genuinely different releases
+# (ISM vs S&P Global, Flash vs Final) never collapse into one another.
+_NOISE = {
+    "s", "p", "sp", "global", "markit", "hcob", "ihs", "caixin", "jibun", "au",
+    "flash", "prelim", "preliminary", "advance", "adv",
+}
+
+def _strip_noise(n: str) -> str:
+    """Drop vendor/qualifier tokens from a normalized title. Never returns empty
+    (if every token were noise, keep the original)."""
+    toks = [t for t in n.split() if t not in _NOISE]
+    return " ".join(toks) if toks else n
+
 def _canon(t: str) -> str:
     n = _norm_title(t)
     if n in _TITLE_ALIASES:
@@ -275,7 +295,7 @@ def _canon(t: str) -> str:
     has_nonfarm = ("nonfarm" in n) or ("non" in n and "farm" in n) or ("nfp" in n.split())
     if has_nonfarm and "private" not in n:
         return "adp employment change" if "adp" in n else "nonfarm payrolls"
-    return n
+    return _strip_noise(n)
 
 def _ts(s):
     try:
@@ -392,12 +412,12 @@ def _merge() -> list:
         if not cands:
             # token-overlap fallback within the same currency (handles small
             # wording diffs like "ISM Manufacturing Prices" vs "...Prices Paid")
-            etoks = set(_norm_title(e.get("title")).split())
+            etoks = set(_strip_noise(_norm_title(e.get("title"))).split())
             best, best_ov = None, 0.0
             for fe in fmp:
                 if (fe.get("country") or "").upper() != ccy:
                     continue
-                ftoks = set(_norm_title(fe.get("title")).split())
+                ftoks = set(_strip_noise(_norm_title(fe.get("title"))).split())
                 if not etoks or not ftoks:
                     continue
                 ov = len(etoks & ftoks) / len(etoks | ftoks)
@@ -472,7 +492,37 @@ _load_disk_cache()
 
 
 if __name__ == "__main__":
+    import sys
     prov = CALENDAR_PROVIDER if CALENDAR_PROVIDER != "auto" else ("merge" if FMP_KEY else "forexfactory")
+
+    # `python korvus_calendar.py usd` -> show the USD side of the merge so a
+    # missing actual is easy to trace: what FMP returns, what FF shows, and which
+    # FF events couldn't find an FMP actual (and what their canon key resolved to).
+    if len(sys.argv) > 1 and sys.argv[1].lower() == "usd":
+        ff  = _cached("ff",  _forexfactory, TTL_FF) or []
+        fmp = _cached("fmp", _fmp, TTL_FMP) or []
+        fmp_usd = [e for e in fmp if (e.get("country") or "").upper() == "USD"]
+        ff_usd  = [e for e in ff  if (e.get("country") or "").upper() == "USD"]
+        print(f"\nFMP USD rows: {len(fmp_usd)}  (title -> canon -> actual)")
+        for e in sorted(fmp_usd, key=lambda x: x.get("date", "")):
+            print(f"  {e.get('date','')[:16]:18} act={str(e.get('actual') or '—'):>8}  "
+                  f"{e.get('title','')[:38]:40} -> {_canon(e.get('title'))}")
+        idx = {}
+        for e in fmp_usd:
+            idx.setdefault(_canon(e.get("title")), []).append(e)
+        print(f"\nFF USD events: {len(ff_usd)}  (✓ = an FMP actual matched its canon)")
+        for e in sorted(ff_usd, key=lambda x: x.get("date", "")):
+            ck = _canon(e.get("title"))
+            hit = any((c.get("actual") not in (None, "")) for c in idx.get(ck, []))
+            mark = "✓" if ck in idx else ("·" if not hit else "✓")
+            print(f"  {mark} {e.get('date','')[:16]:18} {e.get('title','')[:38]:40} -> {ck}")
+        miss = [e for e in ff_usd if _canon(e.get("title")) not in idx]
+        if miss:
+            print(f"\nUnmatched FF USD events ({len(miss)}) — no FMP row shares their canon:")
+            for e in miss:
+                print(f"  {e.get('title','')}  -> {_canon(e.get('title'))}")
+        sys.exit(0)
+
     print(f"Provider: {prov}  |  FMP_KEY set: {bool(FMP_KEY)}")
     events = get_calendar(force_refresh=True)
     print(f"Got {len(events)} events. First few:")
