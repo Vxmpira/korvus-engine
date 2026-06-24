@@ -143,7 +143,11 @@ def _forexfactory() -> list:
         return []
     raw = r.json()
     out = []
+    n_actual = 0
     for e in raw:
+        act = (e.get("actual") or "").strip()
+        if act:
+            n_actual += 1
         out.append({
             "title":    (e.get("title") or "").strip(),
             "country":  (e.get("country") or "").strip().upper(),  # FF already gives CCY
@@ -151,9 +155,9 @@ def _forexfactory() -> list:
             "date":     e.get("date") or "",                       # ISO 8601 w/ offset
             "forecast": (e.get("forecast") or "").strip(),
             "previous": (e.get("previous") or "").strip(),
-            "actual":   "",                                        # FF free feed has none
+            "actual":   act,            # some FF weekly feeds DO carry released actuals
         })
-    print(f"  [calendar] Forex Factory: {len(out)} events")
+    print(f"  [calendar] Forex Factory: {len(out)} events ({n_actual} with an actual)")
     return out
 
 
@@ -251,6 +255,11 @@ _TITLE_ALIASES = {
     "average hourly earnings mom":      "average hourly earnings",
     "fomc statement":                   "fed interest rate decision",
     "federal funds rate":               "fed interest rate decision",
+    # FF name -> the name FMP uses for the same release (verified from the feed)
+    "richmond manufacturing index":     "richmond fed manufacturing index",
+    "natural gas storage":              "eia natural gas stocks change",
+    "core durable goods orders mom":    "durable goods orders ex transp mom",
+    "crude oil inventories":            "eia crude oil stocks change",
 }
 
 def _norm_title(t: str) -> str:
