@@ -111,11 +111,13 @@ def _save_disk_cache():
 
 # per-source sub-caches so merge mode can refresh FMP (actuals) every 5 min
 # while only hitting the rate-limited Forex Factory feed hourly.
-_sub = {"ff": {"data": None, "ts": 0.0}, "fmp": {"data": None, "ts": 0.0}}
+_sub = {"ff": {"data": None, "ts": 0.0}, "fmp": {"data": None, "ts": 0.0}, "te": {"data": None, "ts": 0.0}}
 
 def _cached(kind, fn, ttl):
     now = time.time()
-    c = _sub[kind]
+    # setdefault so a provider name that was never pre-registered in _sub creates
+    # its own slot instead of throwing KeyError and taking down the whole merge.
+    c = _sub.setdefault(kind, {"data": None, "ts": 0.0})
     if c["data"] is not None and (now - c["ts"] < ttl):
         return c["data"]
     d = fn()
