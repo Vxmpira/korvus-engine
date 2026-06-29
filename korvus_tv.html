@@ -113,6 +113,11 @@
     text-transform:uppercase; text-decoration:none; color:var(--ink-faint); white-space:nowrap;}
   .tab.active{color:var(--ink);}
   .tab:not(.active):hover{color:var(--ink-dim);}
+  /* Bloomberg: neon, underlined so it clearly reads as an external link */
+  .tab.neon{color:var(--crimson-bright); text-decoration:underline; text-underline-offset:3px; text-decoration-thickness:1px;
+    text-decoration-color:rgba(255,31,68,.6); text-shadow:0 0 6px rgba(255,31,68,.5), 0 0 14px rgba(255,31,68,.28); transition:color .18s, text-shadow .18s;}
+  .tab.neon:hover{color:#fff; text-decoration-color:var(--crimson-bright);
+    text-shadow:0 0 9px rgba(255,58,88,.85), 0 0 20px rgba(255,31,68,.55), 0 0 32px rgba(255,31,68,.32);}
   .wordmark{font-family:var(--disp); font-weight:600; font-size:clamp(13px,1vw,15px); letter-spacing:.42em; padding-left:.42em;
     text-transform:uppercase; color:var(--ink); white-space:nowrap; text-shadow:0 0 18px rgba(255,31,68,.35);}
   .cardcta{flex:1; display:flex; align-items:center; justify-content:flex-end; gap:14px; min-width:0;}
@@ -138,6 +143,10 @@
   .sdot.open{background:var(--bull); box-shadow:0 0 10px rgba(60,229,148,.6);}
   .sdot.globex{background:var(--amber); box-shadow:0 0 10px rgba(255,157,46,.5);}
   .sdot.closed{background:var(--ink-faint);}
+  .substats{display:flex; flex-direction:column; gap:14px; margin-top:2px;}
+  .sub{display:flex; flex-direction:column; gap:5px;}
+  .subval{font-family:var(--mono); font-weight:500; font-size:clamp(20px,2vw,28px); line-height:1; letter-spacing:-.01em;
+    color:var(--ink); font-variant-numeric:tabular-nums;}
   .ghost{position:absolute; left:-4px; bottom:-26px; font-family:var(--disp); font-weight:600;
     font-size:clamp(80px,11vw,150px); line-height:.8; letter-spacing:-.03em; color:var(--ink);
     opacity:.045; pointer-events:none; user-select:none;}
@@ -167,7 +176,7 @@
     gap:14px; text-align:center; padding:24px; background:rgba(6,6,8,.94);}
   .ytfallback.show{display:flex;}
   .ytfallback p{margin:0; max-width:46ch; color:var(--ink-dim); font-size:13px; line-height:1.6;}
-  .ytfallback .ybtn{display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:999px; text-decoration:none;
+  .ytfallback .ybtn{display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:999px; text-decoration:none; cursor:pointer;
     border:1px solid var(--crimson); color:#fff; background:rgba(255,31,68,.12);
     font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;}
   .ytfallback .ybtn:hover{background:rgba(255,31,68,.22);}
@@ -186,9 +195,11 @@
   .botbar{display:flex; align-items:center; justify-content:space-between; gap:14px; padding-top:4px; flex-wrap:wrap;}
   .botcenter{display:inline-flex; align-items:center; gap:13px;}
   .deckbtn{display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:999px;
-    border:1px solid var(--line); background:rgba(255,255,255,.02); color:var(--ink-dim); text-decoration:none;
-    font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; transition:.2s; white-space:nowrap;}
-  .deckbtn:hover{border-color:var(--crimson); color:var(--ink); background:rgba(255,31,68,.06); box-shadow:0 0 22px -8px var(--crimson-glow);}
+    border:1px solid rgba(255,31,68,.45); background:rgba(255,31,68,.05); color:var(--crimson-bright); text-decoration:none;
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; white-space:nowrap; transition:.2s;
+    text-shadow:0 0 8px rgba(255,31,68,.45); box-shadow:0 0 16px -7px var(--crimson-glow), inset 0 0 12px -9px var(--crimson-glow);}
+  .deckbtn:hover{border-color:var(--crimson-bright); color:#fff; background:rgba(255,31,68,.14);
+    text-shadow:0 0 10px rgba(255,58,88,.8); box-shadow:0 0 26px -6px var(--crimson-glow), inset 0 0 16px -7px var(--crimson-glow);}
   .eq{display:inline-flex; align-items:flex-end; gap:3px; height:14px;}
   .eq i{width:2.5px; background:var(--crimson-bright); height:40%; border-radius:1px; animation:eq 1.1s ease-in-out infinite;}
   .eq i:nth-child(2){animation-delay:.18s;} .eq i:nth-child(3){animation-delay:.36s;}
@@ -261,13 +272,11 @@
       <div class="cardbar">
         <div class="subnav">
           <span class="tab active"><span class="dotpulse"></span>:Live Markets</span>
-          <a class="tab" href="https://www.bloomberg.com/live/us-btv" target="_blank" rel="noopener noreferrer">:Bloomberg &#9656;</a>
+          <a class="tab neon" href="https://www.bloomberg.com/live/us-btv" target="_blank" rel="noopener noreferrer">:Bloomberg &#9656;</a>
         </div>
         <div class="wordmark">KORVUS</div>
         <div class="cardcta">
           <span class="onair"><span class="dotpulse"></span>On Air</span>
-          <span class="cdiv"></span>
-          <a class="popout" href="https://www.youtube.com/@YahooFinance/live" target="_blank" rel="noopener noreferrer">Open &#9656;</a>
         </div>
       </div>
 
@@ -280,6 +289,10 @@
           <div class="stat">
             <span class="slabel">:Session</span>
             <span class="sval sval-sm"><span class="sdot" id="sessDot"></span><span id="sessState">--</span></span>
+          </div>
+          <div class="substats">
+            <div class="sub"><span class="slabel" id="ctLabel">:To Cash Close</span><span class="subval" id="ctVal">--</span></div>
+            <div class="sub"><span class="slabel">:London</span><span class="subval" id="lonClock">--:--</span></div>
           </div>
           <div class="ghost">24/7</div>
         </div>
@@ -297,8 +310,8 @@
             <div class="ytshield" id="ytShield" title="Click for sound" aria-label="Click to toggle sound"></div>
             <div class="mutehint" id="muteHint"><span class="sdotc"></span><span id="hintTxt">Click for sound</span></div>
             <div class="ytfallback" id="ytFallback">
-              <p>The live feed is not loading right now. It can drop out between segments, or be blocked by a VPN or region restriction. Try again shortly, or open it on YouTube.</p>
-              <a class="ybtn" href="https://www.youtube.com/@YahooFinance/live" target="_blank" rel="noopener noreferrer">Open on YouTube &#9656;</a>
+              <p>The live feed is not loading right now. It can drop out between segments, or be blocked by a VPN or region restriction. Give it a moment, then retry.</p>
+              <button type="button" class="ybtn" id="retryBtn">Retry &#8635;</button>
             </div>
           </div>
 
@@ -342,10 +355,34 @@
   <script>
     /* ---------- ET clock ---------- */
     var fHM = new Intl.DateTimeFormat('en-US', {timeZone:'America/New_York', hour12:false, hour:'2-digit', minute:'2-digit'});
+    var fLON = new Intl.DateTimeFormat('en-GB', {timeZone:'Europe/London', hour12:false, hour:'2-digit', minute:'2-digit'});
+    var fETp = new Intl.DateTimeFormat('en-US', {timeZone:'America/New_York', weekday:'short', hour:'2-digit', minute:'2-digit', hour12:false});
+    function etNow(){
+      var o = {}; fETp.formatToParts(new Date()).forEach(function(p){ o[p.type] = p.value; });
+      var map = {Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6};
+      return {dow:map[o.weekday], min:(+o.hour) * 60 + (+o.minute)};
+    }
+    function fmtDur(m){ m = Math.max(0, Math.round(m));
+      var d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mm = m % 60;
+      if(d > 0) return d + 'd ' + h + 'h'; if(h > 0) return h + 'h ' + mm + 'm'; return mm + 'm'; }
+    function nextEvent(){
+      try{
+        var p = etNow(), now = p.dow * 1440 + p.min, WK = 10080, fs = clientSession();
+        if(fs === 'rth')    return {label:':To Cash Close',   text:fmtDur(((p.dow * 1440 + 960) - now + WK) % WK)};
+        if(fs === 'closed') return {label:':To Futures Open', text:fmtDur(((0 + 1080) - now + WK) % WK)};
+        var best = null; for(var d = 1; d <= 5; d++){ var diff = ((d * 1440 + 570) - now + WK) % WK; if(diff > 0 && (best === null || diff < best)) best = diff; }
+        return {label:':To Cash Open', text:fmtDur(best === null ? 0 : best)};
+      }catch(e){ return {label:':To Cash Open', text:'--'}; }
+    }
     function clockTick(){
       var hm; try{ hm = fHM.format(new Date()); }catch(e){ hm = '--:--'; }
       var a = document.getElementById('bigClock'); if(a) a.textContent = hm;
       var b = document.getElementById('topClock');  if(b) b.textContent = hm + ' ET';
+      var lon; try{ lon = fLON.format(new Date()); }catch(e){ lon = '--:--'; }
+      var L = document.getElementById('lonClock'); if(L) L.textContent = lon;
+      var ev = nextEvent();
+      var cl = document.getElementById('ctLabel'); if(cl) cl.textContent = ev.label;
+      var cv = document.getElementById('ctVal');   if(cv) cv.textContent = ev.text;
     }
     clockTick(); setInterval(clockTick, 1000);
 
@@ -469,6 +506,9 @@
       var s = document.getElementById('ytShield'); if(s) s.style.display = 'none';
       var h = document.getElementById('muteHint'); if(h) h.classList.remove('show');
     }, 6000);
+
+    var retryB = document.getElementById('retryBtn');
+    if(retryB) retryB.addEventListener('click', function(){ location.reload(); });
 
     (function(){ var t = document.createElement('script'); t.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(t); })();
   </script>
