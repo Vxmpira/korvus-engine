@@ -151,19 +151,17 @@
     border:1px solid rgba(255,255,255,.08); box-shadow:inset 0 0 0 1px rgba(255,255,255,.03), 0 30px 60px -34px rgba(0,0,0,.9), 0 0 90px -28px var(--crimson-glow);}
   .screen iframe{position:absolute; inset:0; width:100%; height:100%; border:0;}
 
-  /* our own player controls (YouTube native controls are off) */
-  .ytctrl{position:absolute; left:0; right:0; bottom:0; z-index:3; display:flex; align-items:center; justify-content:space-between;
-    gap:12px; padding:12px 13px; background:linear-gradient(to top, rgba(0,0,0,.6), transparent);
-    opacity:0; pointer-events:none; transition:opacity 0s;}
-  .screen:hover .ytctrl, .screen:focus-within .ytctrl{opacity:1; pointer-events:auto; transition:opacity .14s ease;}
-  .ytgrp{display:inline-flex; gap:8px;}
-  .ytbtn{display:inline-flex; align-items:center; gap:6px; padding:7px 12px; border-radius:999px; cursor:pointer;
-    border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.42); color:var(--ink-dim); text-decoration:none;
-    font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; transition:border-color .16s, color .16s, background .16s;}
-  .ytbtn:hover{border-color:var(--crimson); color:#fff; background:rgba(255,31,68,.16);}
-  .ytbig{position:absolute; inset:0; z-index:3; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.25);}
-  .ytbig button{width:64px; height:64px; border-radius:50%; cursor:pointer; display:grid; place-items:center;
-    border:1.5px solid var(--crimson); background:rgba(0,0,0,.5); color:#fff; box-shadow:0 0 30px -6px var(--crimson-glow);}
+  /* transparent hover shield: intercepts the mouse so YouTube's own title / share /
+     branding chrome never pops during playback (it is inside the iframe; we cannot
+     retime it). Clicking toggles sound. We never crop or hide YouTube branding. */
+  .ytshield{position:absolute; inset:0; z-index:3; cursor:pointer; background:transparent;}
+  .mutehint{position:absolute; left:14px; bottom:14px; z-index:4; display:inline-flex; align-items:center; gap:7px;
+    padding:7px 12px; border-radius:999px; pointer-events:none;
+    border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.5); color:#fff;
+    font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+    opacity:0; transition:opacity .3s ease;}
+  .mutehint.show{opacity:1;}
+  .mutehint .sdotc{width:6px; height:6px; border-radius:50%; background:var(--crimson-bright);}
 
   .idxstrip{position:relative; z-index:1; display:flex; align-items:center; flex-wrap:wrap; gap:clamp(12px,1.4vw,20px); margin-top:clamp(12px,1.4vw,18px);
     font-family:var(--mono); font-size:12px; letter-spacing:.04em;}
@@ -278,7 +276,7 @@
         </div>
 
         <div class="stagevid">
-          <!-- Yahoo Finance free live via YouTube's sanctioned embed; controls=0 so our own overlay controls drive it. -->
+          <!-- Yahoo Finance free live via YouTube's sanctioned embed. controls=0 plus a transparent hover-shield keeps YouTube's own title / share / branding chrome from popping during playback; clicking the screen toggles sound. -->
           <div class="screen" id="screen">
             <iframe id="ytframe"
               src="https://www.youtube.com/embed/live_stream?channel=UCEAZeUIeJs0IjQiqTCdVSIg&rel=0&controls=0&autoplay=1&mute=1&playsinline=1&enablejsapi=1"
@@ -287,22 +285,8 @@
               allowfullscreen
               referrerpolicy="strict-origin-when-cross-origin"></iframe>
 
-            <div class="ytbig" id="ytBig">
-              <button type="button" id="ytBigBtn" aria-label="Play">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-              </button>
-            </div>
-
-            <div class="ytctrl" id="ytctrl">
-              <span class="ytgrp">
-                <button type="button" class="ytbtn" id="btnPlay" aria-label="Play or pause"><span id="ppLabel">Pause</span></button>
-                <button type="button" class="ytbtn" id="btnMute" aria-label="Sound on or off"><span id="muteLabel">Muted</span></button>
-              </span>
-              <span class="ytgrp">
-                <button type="button" class="ytbtn" id="btnFull" aria-label="Fullscreen">Full</button>
-                <a class="ytbtn" href="https://www.youtube.com/@YahooFinance/live" target="_blank" rel="noopener noreferrer">Open &#9656;</a>
-              </span>
-            </div>
+            <div class="ytshield" id="ytShield" title="Click for sound" aria-label="Click to toggle sound"></div>
+            <div class="mutehint" id="muteHint"><span class="sdotc"></span><span id="hintTxt">Click for sound</span></div>
           </div>
 
           <div class="idxstrip">
@@ -430,43 +414,38 @@
     }
     loadMe().then(refreshMarket); setInterval(refreshMarket, 45000);
 
-    /* ---------- player: our own controls over YouTube's IFrame API ---------- */
+    /* ---------- player: clean feed via a hover shield + click-to-sound ----------
+       YouTube's title / share / branding overlays live inside its iframe and pop on
+       hover or pause; their timing is not ours to change. The transparent shield
+       intercepts the mouse so they stay hidden during playback, and a click toggles
+       sound (the feed autoplays muted by browser rule). If the IFrame API never
+       loads, the shield is dropped and YouTube's native controls are restored. */
     var ytPlayer = null, ytReady = false;
     window.onYouTubeIframeAPIReady = function(){
-      try{ ytPlayer = new YT.Player('ytframe', {events:{onReady:ytOnReady, onStateChange:ytOnState}}); }catch(e){}
+      try{ ytPlayer = new YT.Player('ytframe', {events:{onReady:ytOnReady}}); }catch(e){}
     };
-    function ytOnReady(){ ytReady = true; reflectMute(); reflectPlay(ytState()); }
-    function ytOnState(e){ reflectPlay(e.data); }
-    function ytState(){ try{ return ytPlayer.getPlayerState(); }catch(e){ return -1; } }
-    function reflectPlay(state){
-      var playing = (state === 1 || state === 3); // playing or buffering
-      var big = document.getElementById('ytBig'); if(big) big.style.display = playing ? 'none' : 'flex';
-      var pp = document.getElementById('ppLabel'); if(pp) pp.textContent = playing ? 'Pause' : 'Play';
+    function ytOnReady(){ ytReady = true; try{ ytPlayer.playVideo(); }catch(e){} reflectHint(); }
+    function reflectHint(){
+      var h = document.getElementById('muteHint'), t = document.getElementById('hintTxt'); if(!h) return;
+      var muted = true; try{ muted = ytPlayer.isMuted(); }catch(e){}
+      if(muted){ if(t) t.textContent = 'Click for sound'; h.classList.add('show');
+        clearTimeout(window._hintT); window._hintT = setTimeout(function(){ h.classList.remove('show'); }, 5000); }
+      else { h.classList.remove('show'); }
     }
-    function reflectMute(){
-      var m = document.getElementById('muteLabel'); if(!m || !ytPlayer || !ytPlayer.isMuted) return;
-      try{ m.textContent = ytPlayer.isMuted() ? 'Muted' : 'Sound'; }catch(e){}
-    }
-    function ytTogglePlay(){ if(!ytReady || !ytPlayer) return; var s = ytState();
-      if(s === 1 || s === 3) ytPlayer.pauseVideo(); else ytPlayer.playVideo(); }
-    function ytToggleMute(){ if(!ytReady || !ytPlayer) return;
-      try{ if(ytPlayer.isMuted()){ ytPlayer.unMute(); ytPlayer.setVolume(65); } else { ytPlayer.mute(); } }catch(e){}
-      reflectMute(); }
-    function ytFull(){ var s = document.getElementById('screen'); if(!s) return;
-      if(s.requestFullscreen) s.requestFullscreen(); else if(s.webkitRequestFullscreen) s.webkitRequestFullscreen(); }
+    var shield = document.getElementById('ytShield');
+    if(shield) shield.addEventListener('click', function(){
+      if(!ytReady || !ytPlayer) return;
+      try{ if(ytPlayer.isMuted()){ ytPlayer.unMute(); ytPlayer.setVolume(70); } else { ytPlayer.mute(); } }catch(e){}
+      reflectHint();
+    });
 
-    var bp = document.getElementById('btnPlay'); if(bp) bp.addEventListener('click', ytTogglePlay);
-    var bm = document.getElementById('btnMute'); if(bm) bm.addEventListener('click', ytToggleMute);
-    var bf = document.getElementById('btnFull'); if(bf) bf.addEventListener('click', ytFull);
-    var bb = document.getElementById('ytBigBtn'); if(bb) bb.addEventListener('click', function(){ if(ytReady && ytPlayer) ytPlayer.playVideo(); });
-
-    // safety net: if the IFrame API never loads, restore YouTube's native controls so the player is usable
+    // safety net: if the IFrame API never loads, drop the shield and restore YouTube's native controls
     setTimeout(function(){
       if(ytReady) return;
       var f = document.getElementById('ytframe');
       if(f && f.src.indexOf('controls=0') !== -1) f.src = f.src.replace('controls=0', 'controls=1');
-      var ov = document.getElementById('ytctrl'); if(ov) ov.style.display = 'none';
-      var big = document.getElementById('ytBig'); if(big) big.style.display = 'none';
+      var s = document.getElementById('ytShield'); if(s) s.style.display = 'none';
+      var h = document.getElementById('muteHint'); if(h) h.classList.remove('show');
     }, 6000);
 
     (function(){ var t = document.createElement('script'); t.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(t); })();
