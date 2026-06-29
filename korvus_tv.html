@@ -162,6 +162,15 @@
     opacity:0; transition:opacity .3s ease;}
   .mutehint.show{opacity:1;}
   .mutehint .sdotc{width:6px; height:6px; border-radius:50%; background:var(--crimson-bright);}
+  /* shown only if the embed errors (between segments, region/VPN block) instead of YouTube's bare gray screen */
+  .ytfallback{position:absolute; inset:0; z-index:5; display:none; flex-direction:column; align-items:center; justify-content:center;
+    gap:14px; text-align:center; padding:24px; background:rgba(6,6,8,.94);}
+  .ytfallback.show{display:flex;}
+  .ytfallback p{margin:0; max-width:46ch; color:var(--ink-dim); font-size:13px; line-height:1.6;}
+  .ytfallback .ybtn{display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:999px; text-decoration:none;
+    border:1px solid var(--crimson); color:#fff; background:rgba(255,31,68,.12);
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;}
+  .ytfallback .ybtn:hover{background:rgba(255,31,68,.22);}
 
   .idxstrip{position:relative; z-index:1; display:flex; align-items:center; flex-wrap:wrap; gap:clamp(12px,1.4vw,20px); margin-top:clamp(12px,1.4vw,18px);
     font-family:var(--mono); font-size:12px; letter-spacing:.04em;}
@@ -287,6 +296,10 @@
 
             <div class="ytshield" id="ytShield" title="Click for sound" aria-label="Click to toggle sound"></div>
             <div class="mutehint" id="muteHint"><span class="sdotc"></span><span id="hintTxt">Click for sound</span></div>
+            <div class="ytfallback" id="ytFallback">
+              <p>The live feed is not loading right now. It can drop out between segments, or be blocked by a VPN or region restriction. Try again shortly, or open it on YouTube.</p>
+              <a class="ybtn" href="https://www.youtube.com/@YahooFinance/live" target="_blank" rel="noopener noreferrer">Open on YouTube &#9656;</a>
+            </div>
           </div>
 
           <div class="idxstrip">
@@ -420,11 +433,20 @@
        intercepts the mouse so they stay hidden during playback, and a click toggles
        sound (the feed autoplays muted by browser rule). If the IFrame API never
        loads, the shield is dropped and YouTube's native controls are restored. */
-    var ytPlayer = null, ytReady = false;
+    var ytPlayer = null, ytReady = false, playedOk = false;
     window.onYouTubeIframeAPIReady = function(){
-      try{ ytPlayer = new YT.Player('ytframe', {events:{onReady:ytOnReady}}); }catch(e){}
+      try{ ytPlayer = new YT.Player('ytframe', {events:{onReady:ytOnReady, onStateChange:ytOnState, onError:ytOnError}}); }catch(e){}
     };
-    function ytOnReady(){ ytReady = true; try{ ytPlayer.playVideo(); }catch(e){} reflectHint(); }
+    function ytOnReady(){
+      ytReady = true; try{ ytPlayer.playVideo(); }catch(e){} reflectHint();
+      // watchdog: if it never reaches a playing state, the live is unavailable for this viewer (region/VPN/segment gap)
+      setTimeout(function(){ if(!playedOk) showFallback(); }, 9000);
+    }
+    function ytOnState(e){ if(e.data === 1){ playedOk = true; hideFallback(); } } // 1 = playing
+    function ytOnError(){ showFallback(); }
+    function showFallback(){ var f = document.getElementById('ytFallback'); if(f) f.classList.add('show');
+      var h = document.getElementById('muteHint'); if(h) h.classList.remove('show'); }
+    function hideFallback(){ var f = document.getElementById('ytFallback'); if(f) f.classList.remove('show'); }
     function reflectHint(){
       var h = document.getElementById('muteHint'), t = document.getElementById('hintTxt'); if(!h) return;
       var muted = true; try{ muted = ytPlayer.isMuted(); }catch(e){}
