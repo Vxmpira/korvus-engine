@@ -3,26 +3,42 @@
 <head>
 <!--
   ============================================================================
-  KORVUS · LIVE MARKET TV   (Editorial "bezel card" build, SHAGA-style)
+  KORVUS · LIVE MARKET TV   (Editorial "bezel card" build)
   ============================================================================
   DESIGN INTENT:
     Awwwards-style product-launch look adapted to a live feed: a floating
     rounded bezel card on near-black, mono ":labels", oversized thin numerals
-    as live market readouts, one crimson accent (in place of the reference's
-    lime). The live feed is the centerpiece where the product would sit.
+    as live market readouts, one crimson accent. The live feed is the
+    centerpiece where the product would sit.
 
-  HONESTY (read before editing):
-    - Screen is Yahoo Finance's free live via YouTube's sanctioned embed; the
-      player shows Yahoo + YouTube branding, so it is self-evidently third-party.
-      Card labels are content-descriptive, never a claim Korvus produces it.
-    - Bloomberg's free feed blocks framing -> LAUNCH tab only. Never proxy/unframe.
-    - Big readouts: ET clock + session from /api/quotes meta (authoritative,
-      same as the terminal); index strip uses /api/quotes proxy PERCENT only,
-      never the proxy dollar price as a future, never fabricated (shows "--").
-    - Footer matches the site-wide footer; disclaimer carries third-party /
-      non-affiliation language.
-    - HERO TEXTURE: /static/tv-hero.png is used only as a faint blurred ambient
-      backdrop. Degrades to plain near-black if absent.
+  RESPONSIVE:
+    Fluid to any window / aspect ratio. The card hugs its content, the screen
+    is sized by viewport HEIGHT (min of 68vh-tall or full column width) so it
+    grows on big / ultrawide displays and shrinks on small ones automatically,
+    with clamp() typography and spacing throughout.
+
+  LIVE DATA (index strip):
+    Mirrors the terminal Futures Board exactly. Reads /api/me for tier +
+    native-futures entitlement, then /api/quotes. When a licensed CME feed is
+    live it shows the REAL contract %; otherwise the ETF-proxy % (percent only,
+    never a proxy dollar price as a future). Freshness wording matches the
+    board: LIVE / REAL-TIME (Pro, RTH), DELAYED 15 MIN (free, RTH),
+    GLOBEX / LAST CLOSE (overnight), CLOSED. Server decides Pro/free; this only
+    mirrors it. Free / logged-out stays delayed, never fabricated.
+
+  PLAYER CONTROLS:
+    YouTube's native control bar lingers after hover-off and its fade timing
+    is inside the cross-origin iframe (not ours to change). So we load with
+    controls=0 and drive our OWN overlay controls via the IFrame Player API:
+    play / pause, sound, fullscreen. They fade in on hover and disappear the
+    instant the mouse leaves. If the API ever fails to load, a timeout restores
+    YouTube's native controls so the player is never left uncontrollable.
+
+  HONESTY:
+    Feed is Yahoo Finance's free live via YouTube's sanctioned embed; player +
+    footer carry the third-party / non-affiliation truth. Bloomberg's free feed
+    blocks framing, so it is a LAUNCH tab only. HERO TEXTURE: /static/tv-hero.png
+    is a faint blurred backdrop, degrades to plain near-black if absent.
   ============================================================================
 -->
   <meta charset="utf-8">
@@ -57,17 +73,19 @@
     opacity:.22; filter:blur(2px) saturate(.85);}
   .bgtex::after{content:""; position:absolute; inset:0;
     background:
-      radial-gradient(120% 80% at 50% -10%, rgba(255,31,68,.08), transparent 55%),
+      radial-gradient(120% 80% at 50% -10%, rgba(255,31,68,.10), transparent 55%),
       repeating-linear-gradient(115deg, rgba(255,255,255,.015) 0 2px, transparent 2px 7px),
-      radial-gradient(120% 100% at 50% 50%, transparent 40%, rgba(0,0,0,.7) 100%);}
+      radial-gradient(120% 100% at 50% 50%, transparent 38%, rgba(0,0,0,.72) 100%);}
 
-  .stage{flex:1; width:100%; max-width:1300px; margin:0 auto; padding:24px 34px 26px; position:relative; z-index:1;
-    display:flex; flex-direction:column; justify-content:center; gap:16px; min-height:calc(100vh - 64px);}
+  .stage{flex:1; width:min(95vw,1760px); margin:0 auto; position:relative; z-index:1;
+    padding:clamp(16px,2vh,26px) clamp(16px,2vw,34px) clamp(18px,2vh,28px);
+    display:flex; flex-direction:column; justify-content:center; gap:clamp(12px,1.6vh,18px);
+    min-height:calc(100vh - 64px);}
 
   /* ---------- top strip ---------- */
   .topbar{display:flex; align-items:center; justify-content:space-between; gap:18px; padding:2px 8px;}
-  .tnav{display:flex; align-items:center; gap:20px;}
-  .crown svg{display:block; filter:drop-shadow(0 0 8px var(--crimson-glow));}
+  .tnav{display:flex; align-items:center; gap:clamp(14px,1.6vw,22px);}
+  .crown svg{display:block; filter:drop-shadow(0 0 9px var(--crimson-glow));}
   .navlink{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; text-decoration:none;
     color:var(--ink-faint); transition:color .2s;}
   .navlink:hover{color:var(--ink-dim);}
@@ -76,26 +94,26 @@
   .tclock{font-family:var(--mono); font-size:11px; letter-spacing:.1em; color:var(--ink-dim);}
   .tlabel{font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-faint);}
 
-  .dotpulse{position:relative; width:7px; height:7px; border-radius:50%; background:var(--crimson-bright); box-shadow:0 0 8px var(--crimson-glow); flex:none;}
+  .dotpulse{position:relative; width:7px; height:7px; border-radius:50%; background:var(--crimson-bright); box-shadow:0 0 9px var(--crimson-glow); flex:none;}
   .dotpulse::after{content:""; position:absolute; inset:-4px; border-radius:50%; border:1.5px solid var(--crimson); opacity:.6; animation:tvpulse 2s ease-out infinite;}
   @keyframes tvpulse{0%{transform:scale(.5); opacity:.75;}100%{transform:scale(1.8); opacity:0;}}
 
   /* ---------- the bezel card ---------- */
-  .card{position:relative; width:100%; border-radius:26px; overflow:hidden;
+  .card{position:relative; width:100%; border-radius:clamp(18px,1.4vw,26px); overflow:hidden;
     background:linear-gradient(180deg, rgba(17,17,20,.92), rgba(7,7,9,.94));
     border:1px solid rgba(255,255,255,.10);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.07), inset 0 0 0 1px rgba(255,255,255,.02),
       0 60px 130px -56px rgba(0,0,0,.96), 0 0 130px -46px var(--crimson-glow);
-    padding:20px 26px 24px; animation:rise .7s ease both;}
+    padding:clamp(16px,1.6vw,22px) clamp(18px,1.8vw,26px) clamp(18px,1.8vw,24px); animation:rise .7s ease both;}
   @keyframes rise{from{opacity:0; transform:translateY(16px);}to{opacity:1; transform:none;}}
 
-  .cardbar{display:flex; align-items:center; gap:16px; padding-bottom:18px; border-bottom:1px solid var(--line-soft);}
+  .cardbar{display:flex; align-items:center; gap:16px; padding-bottom:clamp(12px,1.4vw,18px); border-bottom:1px solid var(--line-soft);}
   .subnav{display:flex; align-items:center; gap:18px; flex:1; min-width:0;}
   .tab{display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:10.5px; letter-spacing:.14em;
     text-transform:uppercase; text-decoration:none; color:var(--ink-faint); white-space:nowrap;}
   .tab.active{color:var(--ink);}
   .tab:not(.active):hover{color:var(--ink-dim);}
-  .wordmark{font-family:var(--disp); font-weight:600; font-size:15px; letter-spacing:.42em; padding-left:.42em;
+  .wordmark{font-family:var(--disp); font-weight:600; font-size:clamp(13px,1vw,15px); letter-spacing:.42em; padding-left:.42em;
     text-transform:uppercase; color:var(--ink); white-space:nowrap; text-shadow:0 0 18px rgba(255,31,68,.35);}
   .cardcta{flex:1; display:flex; align-items:center; justify-content:flex-end; gap:14px; min-width:0;}
   .onair{display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:10.5px; font-weight:600;
@@ -105,39 +123,56 @@
     color:var(--ink-dim); white-space:nowrap; transition:color .2s;}
   .popout:hover{color:var(--ink);}
 
-  .cardbody{position:relative; display:grid; grid-template-columns:300px minmax(0,1fr); gap:30px; padding-top:24px;}
+  .cardbody{position:relative; display:grid; grid-template-columns:clamp(200px,17vw,310px) minmax(0,1fr);
+    gap:clamp(22px,2.4vw,40px); padding-top:clamp(18px,2vw,26px);}
 
   /* left: big thin readouts */
-  .stats{position:relative; display:flex; flex-direction:column; gap:26px; min-height:0;}
+  .stats{position:relative; display:flex; flex-direction:column; gap:clamp(18px,2.2vw,28px); min-height:0;}
   .slabel{display:block; font-family:var(--mono); font-size:9.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:8px;}
-  .sval{font-family:var(--disp); font-weight:500; font-size:clamp(42px,5vw,64px); line-height:.9; letter-spacing:-.02em;
+  .sval{font-family:var(--disp); font-weight:500; font-size:clamp(38px,4.4vw,62px); line-height:.9; letter-spacing:-.02em;
     color:var(--ink); font-variant-numeric:tabular-nums; display:block;}
-  #bigClock{font-family:var(--mono); font-weight:500; font-size:clamp(40px,4.6vw,58px); letter-spacing:-.01em;
+  #bigClock{font-family:var(--mono); font-weight:500; font-size:clamp(38px,4vw,66px); letter-spacing:-.01em;
     text-shadow:0 0 22px rgba(255,31,68,.16);}
-  .sval-sm{font-size:clamp(28px,3.4vw,42px); display:inline-flex; align-items:center; gap:12px;}
+  .sval-sm{font-size:clamp(26px,3vw,42px); display:inline-flex; align-items:center; gap:12px;}
   .sdot{width:10px; height:10px; border-radius:50%; background:var(--ink-faint); flex:none;}
   .sdot.open{background:var(--bull); box-shadow:0 0 10px rgba(60,229,148,.6);}
   .sdot.globex{background:var(--amber); box-shadow:0 0 10px rgba(255,157,46,.5);}
   .sdot.closed{background:var(--ink-faint);}
   .ghost{position:absolute; left:-4px; bottom:-26px; font-family:var(--disp); font-weight:600;
-    font-size:clamp(86px,12vw,150px); line-height:.8; letter-spacing:-.03em; color:var(--ink);
+    font-size:clamp(80px,11vw,150px); line-height:.8; letter-spacing:-.03em; color:var(--ink);
     opacity:.045; pointer-events:none; user-select:none;}
 
-  /* right: the live feed centerpiece */
+  /* right: the live feed centerpiece, sized by viewport height so it scales to any screen */
   .stagevid{min-width:0; position:relative;}
   .stagevid::before{content:""; position:absolute; left:-4%; top:-7%; width:88%; height:74%; z-index:0; pointer-events:none;
     background:radial-gradient(58% 58% at 50% 42%, rgba(255,31,68,.20), transparent 72%); filter:blur(26px);}
-  .screen{position:relative; z-index:1; width:100%; aspect-ratio:16/9; border-radius:14px; overflow:hidden; background:#000;
+  .screen{position:relative; z-index:1; width:min(100%, calc(68vh * 16 / 9)); margin-inline:auto;
+    aspect-ratio:16/9; border-radius:14px; overflow:hidden; background:#000;
     border:1px solid rgba(255,255,255,.08); box-shadow:inset 0 0 0 1px rgba(255,255,255,.03), 0 30px 60px -34px rgba(0,0,0,.9), 0 0 90px -28px var(--crimson-glow);}
   .screen iframe{position:absolute; inset:0; width:100%; height:100%; border:0;}
-  .idxstrip{position:relative; z-index:1; display:flex; align-items:center; flex-wrap:wrap; gap:18px; margin-top:16px;
+
+  /* our own player controls (YouTube native controls are off) */
+  .ytctrl{position:absolute; left:0; right:0; bottom:0; z-index:3; display:flex; align-items:center; justify-content:space-between;
+    gap:12px; padding:12px 13px; background:linear-gradient(to top, rgba(0,0,0,.6), transparent);
+    opacity:0; pointer-events:none; transition:opacity 0s;}
+  .screen:hover .ytctrl, .screen:focus-within .ytctrl{opacity:1; pointer-events:auto; transition:opacity .14s ease;}
+  .ytgrp{display:inline-flex; gap:8px;}
+  .ytbtn{display:inline-flex; align-items:center; gap:6px; padding:7px 12px; border-radius:999px; cursor:pointer;
+    border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.42); color:var(--ink-dim); text-decoration:none;
+    font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; transition:border-color .16s, color .16s, background .16s;}
+  .ytbtn:hover{border-color:var(--crimson); color:#fff; background:rgba(255,31,68,.16);}
+  .ytbig{position:absolute; inset:0; z-index:3; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.25);}
+  .ytbig button{width:64px; height:64px; border-radius:50%; cursor:pointer; display:grid; place-items:center;
+    border:1.5px solid var(--crimson); background:rgba(0,0,0,.5); color:#fff; box-shadow:0 0 30px -6px var(--crimson-glow);}
+
+  .idxstrip{position:relative; z-index:1; display:flex; align-items:center; flex-wrap:wrap; gap:clamp(12px,1.4vw,20px); margin-top:clamp(12px,1.4vw,18px);
     font-family:var(--mono); font-size:12px; letter-spacing:.04em;}
   .ix{display:inline-flex; align-items:baseline; gap:7px;}
   .ix b{color:var(--ink-dim); font-weight:600;}
   .ix .pct{font-variant-numeric:tabular-nums; color:var(--ink-faint);}
   .ix .pct.up{color:var(--bull);} .ix .pct.down{color:var(--bear);} .ix .pct.flat{color:var(--ink-faint);}
   .idxstrip .ixmeta{margin-left:auto; font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint);}
-  .bodyline{position:relative; z-index:1; display:flex; gap:14px; margin-top:18px; max-width:54ch; color:var(--ink-dim); font-size:13px; line-height:1.55;}
+  .bodyline{position:relative; z-index:1; display:flex; gap:14px; margin-top:clamp(14px,1.6vw,18px); max-width:56ch; color:var(--ink-dim); font-size:13px; line-height:1.55;}
   .bodyline .rule{width:1px; background:var(--crimson); opacity:.55; flex:none;}
 
   /* ---------- bottom strip ---------- */
@@ -172,11 +207,12 @@
     .card{animation:none;} .dotpulse::after{animation:none;} .eq i{animation:none; height:60%;}
   }
   @media (max-width:900px){
-    .stage{padding:20px 18px 22px; min-height:calc(100vh - 60px);}
-    .cardbody{grid-template-columns:1fr; gap:22px;}
-    .stats{flex-direction:row; flex-wrap:wrap; gap:22px 34px;}
+    .stage{padding:18px 16px 20px; min-height:calc(100vh - 60px);}
+    .cardbody{grid-template-columns:1fr; gap:20px;}
+    .stats{flex-direction:row; flex-wrap:wrap; gap:20px 34px;}
     .ghost{display:none;}
-    .wordmark{display:none;}      /* keep the card bar tidy on small screens */
+    .wordmark{display:none;}
+    .screen{width:100%;}
   }
   @media (max-width:560px){
     .topbar{flex-wrap:wrap; gap:10px;}
@@ -242,21 +278,39 @@
         </div>
 
         <div class="stagevid">
-          <!-- Yahoo Finance free live via YouTube's sanctioned embed; auto-serves current live. -->
-          <div class="screen">
-            <iframe
-              src="https://www.youtube.com/embed/live_stream?channel=UCEAZeUIeJs0IjQiqTCdVSIg&rel=0"
+          <!-- Yahoo Finance free live via YouTube's sanctioned embed; controls=0 so our own overlay controls drive it. -->
+          <div class="screen" id="screen">
+            <iframe id="ytframe"
+              src="https://www.youtube.com/embed/live_stream?channel=UCEAZeUIeJs0IjQiqTCdVSIg&rel=0&controls=0&autoplay=1&mute=1&playsinline=1&enablejsapi=1"
               title="Live market news stream, via YouTube"
-              allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
               allowfullscreen
               referrerpolicy="strict-origin-when-cross-origin"></iframe>
+
+            <div class="ytbig" id="ytBig">
+              <button type="button" id="ytBigBtn" aria-label="Play">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+              </button>
+            </div>
+
+            <div class="ytctrl" id="ytctrl">
+              <span class="ytgrp">
+                <button type="button" class="ytbtn" id="btnPlay" aria-label="Play or pause"><span id="ppLabel">Pause</span></button>
+                <button type="button" class="ytbtn" id="btnMute" aria-label="Sound on or off"><span id="muteLabel">Muted</span></button>
+              </span>
+              <span class="ytgrp">
+                <button type="button" class="ytbtn" id="btnFull" aria-label="Fullscreen">Full</button>
+                <a class="ytbtn" href="https://www.youtube.com/@YahooFinance/live" target="_blank" rel="noopener noreferrer">Open &#9656;</a>
+              </span>
+            </div>
           </div>
+
           <div class="idxstrip">
-            <span class="ix"><b>NQ</b><i class="pct flat" id="idx-QQQ">--</i></span>
-            <span class="ix"><b>ES</b><i class="pct flat" id="idx-SPY">--</i></span>
-            <span class="ix"><b>YM</b><i class="pct flat" id="idx-DIA">--</i></span>
-            <span class="ix"><b>RTY</b><i class="pct flat" id="idx-IWM">--</i></span>
-            <span class="ixmeta" id="idxBadge">via cash proxies</span>
+            <span class="ix"><b>NQ</b><i class="pct flat" id="idx-NQ">--</i></span>
+            <span class="ix"><b>ES</b><i class="pct flat" id="idx-ES">--</i></span>
+            <span class="ix"><b>YM</b><i class="pct flat" id="idx-YM">--</i></span>
+            <span class="ix"><b>RTY</b><i class="pct flat" id="idx-RTY">--</i></span>
+            <span class="ixmeta" id="idxBadge">mirrors the board</span>
           </div>
           <div class="bodyline"><span class="rule"></span><span>Live business news, around the clock, so you read the tone of the tape before the open. Broadcasts are produced and owned by third parties.</span></div>
         </div>
@@ -289,7 +343,8 @@
   </footer>
 
   <script>
-    var fHM  = new Intl.DateTimeFormat('en-US', {timeZone:'America/New_York', hour12:false, hour:'2-digit', minute:'2-digit'});
+    /* ---------- ET clock ---------- */
+    var fHM = new Intl.DateTimeFormat('en-US', {timeZone:'America/New_York', hour12:false, hour:'2-digit', minute:'2-digit'});
     function clockTick(){
       var hm; try{ hm = fHM.format(new Date()); }catch(e){ hm = '--:--'; }
       var a = document.getElementById('bigClock'); if(a) a.textContent = hm;
@@ -297,6 +352,7 @@
     }
     clockTick(); setInterval(clockTick, 1000);
 
+    /* ---------- session (factual US market hours, fallback when meta is absent) ---------- */
     function clientSession(){
       var parts = new Intl.DateTimeFormat('en-US', {timeZone:'America/New_York', weekday:'short', hour:'2-digit', minute:'2-digit', hour12:false}).formatToParts(new Date());
       var o = {}; parts.forEach(function(p){ o[p.type] = p.value; });
@@ -315,34 +371,105 @@
       else if(fs === 'closed'){ st.textContent = 'Closed'; if(dot) dot.className = 'sdot closed'; }
       else { st.textContent = '--'; if(dot) dot.className = 'sdot'; }
     }
-    function applyBadge(meta){
-      var b = document.getElementById('idxBadge'); if(!b) return;
-      var fs = meta && meta.futures_session, open = meta ? meta.market_open : null, delayed = meta ? !!meta.delayed : true;
-      if(fs === 'closed') b.textContent = 'closed';
-      else if(fs === 'globex') b.textContent = 'globex \u00b7 last close';
-      else if(open === false) b.textContent = 'last close';
-      else if(delayed) b.textContent = 'delayed 15 min';
-      else b.textContent = 'live';
+
+    /* ---------- index strip: a faithful mirror of the terminal Futures Board ----------
+       Same /api/quotes source, same real-vs-proxy preference, same freshness wording.
+       USER_TIER + NATIVE_FUTURES come from /api/me, exactly like the terminal. */
+    var USER_TIER = 'free', NATIVE_FUTURES = false;
+    var FUT = [
+      {lab:'NQ',  root:'MNQ', proxy:'QQQ', el:'idx-NQ'},
+      {lab:'ES',  root:'MES', proxy:'SPY', el:'idx-ES'},
+      {lab:'YM',  root:'MYM', proxy:'DIA', el:'idx-YM'},
+      {lab:'RTY', root:'M2K', proxy:'IWM', el:'idx-RTY'}
+    ];
+
+    async function loadMe(){
+      try{
+        var r = await fetch('/api/me', {cache:'no-store'});
+        if(r.ok){ var me = await r.json(); USER_TIER = me.tier || 'free'; NATIVE_FUTURES = !!me.native_futures; }
+      }catch(e){ /* logged-out or offline: stays free + delayed, which is correct */ }
     }
-    var IDX = ['QQQ','SPY','DIA','IWM'];
-    function setPct(p, v){
-      var el = document.getElementById('idx-' + p); if(!el) return;
+
+    function setPct(id, v){
+      var el = document.getElementById(id); if(!el) return;
       if(typeof v === 'number'){ el.textContent = (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
         el.className = 'pct ' + (v > 0 ? 'up' : (v < 0 ? 'down' : 'flat')); }
       else { el.textContent = '--'; el.className = 'pct flat'; }
     }
+
+    // mirrors the board's setFeedBadge wording
+    function setBadge(fs, anyReal){
+      var b = document.getElementById('idxBadge'); if(!b) return; var t;
+      var native = NATIVE_FUTURES || anyReal;
+      if(fs === 'closed') t = 'closed';
+      else if(fs === 'globex') t = native ? 'globex \u00b7 real-time' : 'globex \u00b7 last close';
+      else t = (USER_TIER === 'pro') ? 'live \u00b7 real-time' : 'delayed 15 min';
+      b.textContent = t;
+    }
+
     async function refreshMarket(){
+      var fsClient = clientSession();
       try{
-        var res = await fetch('/api/quotes?symbols=' + IDX.join(','), {cache:'no-store'});
+        var syms = ['QQQ','SPY','DIA','IWM'];
+        if(NATIVE_FUTURES) syms = syms.concat(['MNQ','MES','MYM','M2K']);
+        var res = await fetch('/api/quotes?symbols=' + syms.join(','), {cache:'no-store'});
         if(!res.ok) throw new Error('no quotes');
         var data = await res.json(), q = data.quotes || {}, meta = data.meta || {};
-        IDX.forEach(function(p){ var d = q[p]; setPct(p, (d && typeof d.chg_pct === 'number') ? d.chg_pct : null); });
-        applyBadge(meta); applySession(meta.futures_session || clientSession());
+        var fs = meta.futures_session || fsClient, anyReal = false;
+        FUT.forEach(function(f){
+          var real = NATIVE_FUTURES ? q[f.root] : null, prox = q[f.proxy], v = null;
+          if(real && typeof real.price === 'number' && real.price > 0 && typeof real.chg_pct === 'number'){ v = real.chg_pct; anyReal = true; }
+          else if(prox && typeof prox.chg_pct === 'number'){ v = prox.chg_pct; }
+          setPct(f.el, v);
+        });
+        applySession(fs); setBadge(fs, anyReal);
       }catch(e){
-        IDX.forEach(function(p){ setPct(p, null); }); applyBadge(null); applySession(clientSession());
+        FUT.forEach(function(f){ setPct(f.el, null); });
+        applySession(fsClient); setBadge(fsClient, false);
       }
     }
-    refreshMarket(); setInterval(refreshMarket, 45000);
+    loadMe().then(refreshMarket); setInterval(refreshMarket, 45000);
+
+    /* ---------- player: our own controls over YouTube's IFrame API ---------- */
+    var ytPlayer = null, ytReady = false;
+    window.onYouTubeIframeAPIReady = function(){
+      try{ ytPlayer = new YT.Player('ytframe', {events:{onReady:ytOnReady, onStateChange:ytOnState}}); }catch(e){}
+    };
+    function ytOnReady(){ ytReady = true; reflectMute(); reflectPlay(ytState()); }
+    function ytOnState(e){ reflectPlay(e.data); }
+    function ytState(){ try{ return ytPlayer.getPlayerState(); }catch(e){ return -1; } }
+    function reflectPlay(state){
+      var playing = (state === 1 || state === 3); // playing or buffering
+      var big = document.getElementById('ytBig'); if(big) big.style.display = playing ? 'none' : 'flex';
+      var pp = document.getElementById('ppLabel'); if(pp) pp.textContent = playing ? 'Pause' : 'Play';
+    }
+    function reflectMute(){
+      var m = document.getElementById('muteLabel'); if(!m || !ytPlayer || !ytPlayer.isMuted) return;
+      try{ m.textContent = ytPlayer.isMuted() ? 'Muted' : 'Sound'; }catch(e){}
+    }
+    function ytTogglePlay(){ if(!ytReady || !ytPlayer) return; var s = ytState();
+      if(s === 1 || s === 3) ytPlayer.pauseVideo(); else ytPlayer.playVideo(); }
+    function ytToggleMute(){ if(!ytReady || !ytPlayer) return;
+      try{ if(ytPlayer.isMuted()){ ytPlayer.unMute(); ytPlayer.setVolume(65); } else { ytPlayer.mute(); } }catch(e){}
+      reflectMute(); }
+    function ytFull(){ var s = document.getElementById('screen'); if(!s) return;
+      if(s.requestFullscreen) s.requestFullscreen(); else if(s.webkitRequestFullscreen) s.webkitRequestFullscreen(); }
+
+    var bp = document.getElementById('btnPlay'); if(bp) bp.addEventListener('click', ytTogglePlay);
+    var bm = document.getElementById('btnMute'); if(bm) bm.addEventListener('click', ytToggleMute);
+    var bf = document.getElementById('btnFull'); if(bf) bf.addEventListener('click', ytFull);
+    var bb = document.getElementById('ytBigBtn'); if(bb) bb.addEventListener('click', function(){ if(ytReady && ytPlayer) ytPlayer.playVideo(); });
+
+    // safety net: if the IFrame API never loads, restore YouTube's native controls so the player is usable
+    setTimeout(function(){
+      if(ytReady) return;
+      var f = document.getElementById('ytframe');
+      if(f && f.src.indexOf('controls=0') !== -1) f.src = f.src.replace('controls=0', 'controls=1');
+      var ov = document.getElementById('ytctrl'); if(ov) ov.style.display = 'none';
+      var big = document.getElementById('ytBig'); if(big) big.style.display = 'none';
+    }, 6000);
+
+    (function(){ var t = document.createElement('script'); t.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(t); })();
   </script>
 </body>
 </html>
