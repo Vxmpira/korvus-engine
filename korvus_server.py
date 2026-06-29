@@ -205,6 +205,13 @@ def forex():
     return send_from_directory(HERE, "korvus_forex_calendar.html")
 
 
+@app.route("/tv")
+@login_required
+def tv():
+    # Live Market TV, a sibling of the terminal (gated to members)
+    return send_from_directory(HERE, "korvus_tv.html")
+
+
 # ----------------------------------------------------------------------------
 # AUTH ROUTES
 # ----------------------------------------------------------------------------
