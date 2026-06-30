@@ -160,17 +160,22 @@
     font-size:clamp(80px,11vw,150px); line-height:.8; letter-spacing:-.03em; color:var(--ink);
     opacity:.045; pointer-events:none; user-select:none;}
 
-  /* sidebar intraday charts: the live feed plotted over the session, honest prev-close baseline */
-  .ich{gap:clamp(14px,1.7vw,20px);}
-  .ich .pct{font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--ink-faint);}
+  /* sidebar intraday charts: real feed over the session, honest prev-close baseline + price */
+  .ich{gap:clamp(13px,1.6vw,18px);}
+  .ich .pct{font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--ink-faint); font-size:11.5px;}
   .ich .pct.up{color:var(--bull);} .ich .pct.down{color:var(--bear);} .ich .pct.flat{color:var(--ink-faint);}
-  .ichmain{display:flex; flex-direction:column; gap:9px;}
-  .ichhdr{display:flex; align-items:baseline; justify-content:space-between; gap:10px;}
-  .ichhdr .slabel{margin-bottom:0;}
-  .ichhdr .pct{font-size:12.5px; letter-spacing:.01em;}
-  .ichbox{position:relative; width:100%; height:clamp(96px,13vh,154px); border:1px solid var(--line-soft);
+  .ichblock{display:flex; flex-direction:column; gap:7px;}
+  .ichhdr{display:flex; align-items:baseline; justify-content:space-between; gap:8px;}
+  .ixlab{font-family:var(--mono); font-size:12.5px; font-weight:600; letter-spacing:.08em; color:var(--ink);}
+  .ichblock.big .ixlab{font-size:13.5px;}
+  .ixquote{display:inline-flex; align-items:baseline; gap:7px; min-width:0;}
+  .ixsrc{font-family:var(--mono); font-size:8px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint); opacity:.85;}
+  .ixsrc:empty{display:none;}
+  .ixpx{font-family:var(--mono); font-size:12px; font-variant-numeric:tabular-nums; color:var(--ink-dim);}
+  .ichbox{position:relative; width:100%; height:clamp(82px,11vh,128px); border:1px solid var(--line-soft);
     border-radius:11px; overflow:hidden;
     background:radial-gradient(120% 92% at 50% 112%, rgba(255,31,68,.07), rgba(0,0,0,0) 70%);}
+  .ichbox.sm{height:clamp(46px,6vh,64px); border-radius:9px;}
   .ichsvg{display:block; width:100%; height:100%; filter:drop-shadow(0 0 5px rgba(255,31,68,.30));}
   .ichnote{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     font-family:var(--mono); font-size:9.5px; letter-spacing:.16em; text-transform:uppercase;
@@ -178,11 +183,6 @@
   .ichbase{display:flex; align-items:center; justify-content:space-between; font-family:var(--mono);
     font-size:8.5px; letter-spacing:.15em; text-transform:uppercase; color:var(--ink-faint);}
   .ichbase span:last-child{color:var(--crimson-bright); opacity:.9;}
-  .ichrows{display:flex; flex-direction:column; gap:11px;}
-  .ichrow{display:flex; align-items:center; gap:11px;}
-  .ichrow b{font-family:var(--mono); font-size:10px; font-weight:600; letter-spacing:.08em; color:var(--ink-dim); width:32px; flex:none;}
-  .ichrow .ichsvg.sm{height:18px; flex:1 1 auto; min-width:0; filter:drop-shadow(0 0 3px rgba(255,31,68,.22));}
-  .ichrow .pct{font-size:10.5px; width:56px; text-align:right; flex:none;}
 
   /* right: the live feed centerpiece, sized by viewport height so it scales to any screen */
   .stagevid{min-width:0; position:relative;}
@@ -208,6 +208,7 @@
     border:1px solid rgba(255,255,255,.16); border-radius:8px; background:rgba(0,0,0,.42); color:#fff; cursor:pointer;
     transition:border-color .18s, background .18s, box-shadow .18s;}
   .yctl:hover{border-color:var(--crimson); background:rgba(255,31,68,.18); box-shadow:0 0 14px -5px var(--crimson-glow);}
+  .yctl.on{border-color:var(--crimson); color:var(--crimson-bright); background:rgba(255,31,68,.16);}
   .yctl svg{width:16px; height:16px; display:block;}
   .ybarspacer{flex:1;}
   .yvol{-webkit-appearance:none; appearance:none; width:130px; max-width:44%; height:4px; border-radius:999px; cursor:pointer; outline:none;
@@ -227,13 +228,6 @@
     font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;}
   .ytfallback .ybtn:hover{background:rgba(255,31,68,.22);}
 
-  .idxstrip{position:relative; z-index:1; display:flex; align-items:center; flex-wrap:wrap; gap:clamp(12px,1.4vw,20px); margin-top:clamp(12px,1.4vw,18px);
-    font-family:var(--mono); font-size:12px; letter-spacing:.04em;}
-  .ix{display:inline-flex; align-items:baseline; gap:7px;}
-  .ix b{color:var(--ink-dim); font-weight:600;}
-  .ix .pct{font-variant-numeric:tabular-nums; color:var(--ink-faint);}
-  .ix .pct.up{color:var(--bull);} .ix .pct.down{color:var(--bear);} .ix .pct.flat{color:var(--ink-faint);}
-  .idxstrip .ixmeta{margin-left:auto; font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint);}
   .bodyline{position:relative; z-index:1; display:flex; gap:14px; margin-top:clamp(14px,1.6vw,18px); max-width:56ch; color:var(--ink-dim); font-size:13px; line-height:1.55;}
   .bodyline .rule{width:1px; background:var(--crimson); opacity:.55; flex:none;}
 
@@ -289,7 +283,6 @@
     .subnav{gap:10px;} .cardcta{flex:1; justify-content:flex-start;}
     #bigClock{font-size:clamp(33px,12vw,46px);}
     .sval-sm{font-size:clamp(22px,7vw,30px);}
-    .idxstrip{gap:10px 14px;} .idxstrip .ixmeta{margin-left:0; width:100%;}
     .bodyline{font-size:12.5px; gap:11px;}
     .botbar{justify-content:center; gap:12px;}
     .botcenter{order:-1; width:100%; justify-content:center;}
@@ -341,7 +334,7 @@
           <span class="tab active"><span class="dotpulse"></span>:Live Markets</span>
           <a class="tab neon" href="https://www.bloomberg.com/live/us-btv" target="_blank" rel="noopener noreferrer">:Bloomberg &#9656;</a>
         </div>
-        <div class="wordmark">THE TAPE</div>
+        <div class="wordmark">CROWSNEST</div>
         <div class="cardcta">
           <span class="onair"><span class="dotpulse"></span>On Air</span>
         </div>
@@ -358,15 +351,22 @@
             <span class="sval sval-sm"><span class="sdot" id="sessDot"></span><span id="sessState">--</span></span>
           </div>
           <div class="substats ich">
-            <div class="ichmain">
-              <div class="ichhdr"><span class="slabel">:NQ &middot; Intraday</span><i class="pct flat" id="ic-NQ-pct">--</i></div>
+            <div class="ichblock big">
+              <div class="ichhdr"><span class="ixlab">NQ</span><span class="ixquote"><span class="ixsrc" id="src-NQ"></span><span class="ixpx" id="px-NQ">--</span><i class="pct flat" id="ic-NQ-pct">--</i></span></div>
               <div class="ichbox"><svg class="ichsvg" id="ic-NQ-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><span class="ichnote" id="ic-NQ-note">building live feed</span></div>
               <div class="ichbase"><span>:prev close</span><span id="ic-NQ-state">--</span></div>
             </div>
-            <div class="ichrows">
-              <div class="ichrow"><b>ES</b><svg class="ichsvg sm" id="ic-ES-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><i class="pct flat" id="ic-ES-pct">--</i></div>
-              <div class="ichrow"><b>YM</b><svg class="ichsvg sm" id="ic-YM-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><i class="pct flat" id="ic-YM-pct">--</i></div>
-              <div class="ichrow"><b>RTY</b><svg class="ichsvg sm" id="ic-RTY-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><i class="pct flat" id="ic-RTY-pct">--</i></div>
+            <div class="ichblock">
+              <div class="ichhdr"><span class="ixlab">ES</span><span class="ixquote"><span class="ixsrc" id="src-ES"></span><span class="ixpx" id="px-ES">--</span><i class="pct flat" id="ic-ES-pct">--</i></span></div>
+              <div class="ichbox sm"><svg class="ichsvg" id="ic-ES-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg></div>
+            </div>
+            <div class="ichblock">
+              <div class="ichhdr"><span class="ixlab">YM</span><span class="ixquote"><span class="ixsrc" id="src-YM"></span><span class="ixpx" id="px-YM">--</span><i class="pct flat" id="ic-YM-pct">--</i></span></div>
+              <div class="ichbox sm"><svg class="ichsvg" id="ic-YM-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg></div>
+            </div>
+            <div class="ichblock">
+              <div class="ichhdr"><span class="ixlab">RTY</span><span class="ixquote"><span class="ixsrc" id="src-RTY"></span><span class="ixpx" id="px-RTY">--</span><i class="pct flat" id="ic-RTY-pct">--</i></span></div>
+              <div class="ichbox sm"><svg class="ichsvg" id="ic-RTY-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg></div>
             </div>
           </div>
           <div class="ghost">24/7</div>
@@ -387,6 +387,7 @@
               <button type="button" class="yctl" id="muteBtn" aria-label="Mute or unmute"></button>
               <input type="range" class="yvol" id="volSlider" min="0" max="100" value="0" step="1" aria-label="Volume">
               <span class="ybarspacer"></span>
+              <button type="button" class="yctl" id="ccBtn" aria-label="Captions on or off"></button>
               <button type="button" class="yctl" id="fsBtn" aria-label="Fullscreen"></button>
             </div>
             <div class="ytfallback" id="ytFallback">
@@ -395,13 +396,6 @@
             </div>
           </div>
 
-          <div class="idxstrip">
-            <span class="ix"><b>NQ</b><i class="pct flat" id="idx-NQ">--</i></span>
-            <span class="ix"><b>ES</b><i class="pct flat" id="idx-ES">--</i></span>
-            <span class="ix"><b>YM</b><i class="pct flat" id="idx-YM">--</i></span>
-            <span class="ix"><b>RTY</b><i class="pct flat" id="idx-RTY">--</i></span>
-            <span class="ixmeta" id="idxBadge">mirrors the board</span>
-          </div>
           <div class="bodyline"><span class="rule"></span><span>Live business news, around the clock, so you read the tone of the tape before the open. Broadcasts are produced and owned by third parties.</span></div>
         </div>
       </div>
@@ -512,14 +506,27 @@
       else { el.textContent = '--'; el.className = 'pct flat'; }
     }
 
-    // mirrors the board's setFeedBadge wording
-    function setBadge(fs, anyReal){
-      var b = document.getElementById('idxBadge'); if(!b) return; var t;
+    // freshness label, relocated into the sidebar now that the strip is gone
+    function setFeed(fs, anyReal){
+      var el = document.getElementById('ic-NQ-state'); if(!el) return; var t;
       var native = NATIVE_FUTURES || anyReal;
-      if(fs === 'closed') t = 'closed';
-      else if(fs === 'globex') t = native ? 'globex \u00b7 real-time' : 'globex \u00b7 last close';
+      if(fs === 'closed') t = 'cash closed';
+      else if(fs === 'globex') t = native ? 'globex \u00b7 real-time' : 'globex \u00b7 cash closed';
       else t = (USER_TIER === 'pro') ? 'live \u00b7 real-time' : 'delayed 15 min';
-      b.textContent = t;
+      el.textContent = t;
+    }
+    function fmtPx(p){
+      return p >= 1000 ? p.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : p.toFixed(2);
+    }
+    // price + source attribution. Honest by design: the real CME contract shows its
+    // actual price tagged CME; a proxy shows the ETF's own price tagged with its
+    // ticker, never an ETF dollar figure presented as the futures price.
+    function setQuote(lab, price, pct, isReal, proxy){
+      var pxEl = document.getElementById('px-' + lab), srcEl = document.getElementById('src-' + lab);
+      var has = (typeof price === 'number' && price > 0);
+      if(pxEl) pxEl.textContent = has ? fmtPx(price) : '--';
+      if(srcEl) srcEl.textContent = has ? (isReal ? 'CME' : proxy) : '';
+      setPct('ic-' + lab + '-pct', pct);
     }
 
     /* ---------- intraday sparklines: REAL feed plotted over the session ----------
@@ -580,13 +587,12 @@
       drawSpark('ic-ES-svg', SER.ES, false);
       drawSpark('ic-YM-svg', SER.YM, false);
       drawSpark('ic-RTY-svg', SER.RTY, false);
-      var note = document.getElementById('ic-NQ-note'), st = document.getElementById('ic-NQ-state');
+      var note = document.getElementById('ic-NQ-note');
       var have = SER.NQ && SER.NQ.length >= 2;
       if(note){
         if(have){ note.style.display = 'none'; }
         else { note.style.display = ''; note.textContent = (fs === 'rth' ? 'building live feed' : 'at last close'); }
       }
-      if(st){ st.textContent = (fs === 'rth') ? 'live \u00b7 this session' : (fs === 'globex' ? 'globex \u00b7 cash closed' : 'at last close'); }
     }
 
     async function refreshMarket(){
@@ -599,17 +605,20 @@
         var data = await res.json(), q = data.quotes || {}, meta = data.meta || {};
         var fs = meta.futures_session || fsClient, anyReal = false;
         FUT.forEach(function(f){
-          var real = NATIVE_FUTURES ? q[f.root] : null, prox = q[f.proxy], v = null;
-          if(real && typeof real.price === 'number' && real.price > 0 && typeof real.chg_pct === 'number'){ v = real.chg_pct; anyReal = true; }
-          else if(prox && typeof prox.chg_pct === 'number'){ v = prox.chg_pct; }
-          setPct(f.el, v);
-          setPct('ic-' + f.lab + '-pct', v);
+          var real = NATIVE_FUTURES ? q[f.root] : null, prox = q[f.proxy];
+          var price = null, v = null, isReal = false;
+          if(real && typeof real.price === 'number' && real.price > 0 && typeof real.chg_pct === 'number'){
+            price = real.price; v = real.chg_pct; isReal = true; anyReal = true;
+          } else if(prox && typeof prox.chg_pct === 'number'){
+            price = (typeof prox.price === 'number' ? prox.price : null); v = prox.chg_pct;
+          }
+          setQuote(f.lab, price, v, isReal, f.proxy);
           spkPush(f.lab, v);
         });
-        applySession(fs); setBadge(fs, anyReal); renderSparks(fs);
+        applySession(fs); setFeed(fs, anyReal); renderSparks(fs);
       }catch(e){
-        FUT.forEach(function(f){ setPct(f.el, null); });
-        applySession(fsClient); setBadge(fsClient, false); renderSparks(fsClient);
+        FUT.forEach(function(f){ setQuote(f.lab, null, null, false, f.proxy); });
+        applySession(fsClient); setFeed(fsClient, false); renderSparks(fsClient);
       }
     }
     /* real intraday backfill: pull today's 5-min path (price vs prev close) from
@@ -635,7 +644,7 @@
     }
     spkLoad(); renderSparks(clientSession());
     fetchIntraday(); setInterval(fetchIntraday, 300000);
-    loadMe().then(refreshMarket); setInterval(refreshMarket, 45000);
+    loadMe().then(refreshMarket); setInterval(refreshMarket, 20000);
 
     /* ---------- player: clean feed via a hover shield + click-to-sound ----------
        YouTube's title / share / branding overlays live inside its iframe and pop on
@@ -665,7 +674,9 @@
     var muteBtn = document.getElementById('muteBtn'),
         volEl   = document.getElementById('volSlider'),
         fsBtn   = document.getElementById('fsBtn'),
+        ccBtn   = document.getElementById('ccBtn'),
         screenEl= document.getElementById('screen');
+    var ICO_CC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M10 10.2a2.2 2.2 0 1 0 0 3.6"/><path d="M16.5 10.2a2.2 2.2 0 1 0 0 3.6"/></svg>';
     var lastVol = 70;
     function volFill(v){ if(volEl) volEl.style.setProperty('--vp', Math.max(0, Math.min(100, v)) + '%'); }
     function syncMuteUI(){
@@ -707,6 +718,30 @@
     if(fsBtn) fsBtn.addEventListener('click', toggleFS);
     document.addEventListener('fullscreenchange', syncFSUI);
     document.addEventListener('webkitfullscreenchange', syncFSUI);
+    /* captions on/off through the IFrame API caption module. Best-effort: it toggles
+       YouTube's own CC track when the live stream carries one (auto-captions count);
+       captions burned into the broadcast picture are part of the video and cannot be
+       switched off from here, by definition. */
+    var ccOn = false;
+    function applyCC(){
+      if(!ytReady || !ytPlayer) return;
+      try{
+        if(ccOn){
+          try{ ytPlayer.loadModule('captions'); }catch(e){}
+          try{ ytPlayer.loadModule('cc'); }catch(e){}
+          try{ ytPlayer.setOption('captions', 'track', {languageCode:'en'}); }catch(e){}
+          try{ ytPlayer.setOption('cc', 'track', {languageCode:'en'}); }catch(e){}
+        } else {
+          try{ ytPlayer.setOption('captions', 'track', {}); }catch(e){}
+          try{ ytPlayer.setOption('cc', 'track', {}); }catch(e){}
+          try{ ytPlayer.unloadModule('captions'); }catch(e){}
+          try{ ytPlayer.unloadModule('cc'); }catch(e){}
+        }
+      }catch(e){}
+    }
+    if(ccBtn) ccBtn.addEventListener('click', function(){
+      ccOn = !ccOn; ccBtn.classList.toggle('on', ccOn); applyCC();
+    });
     // touch-friendly: tap the screen to reveal the control bar briefly
     var shieldEl = document.getElementById('ytShield');
     if(shieldEl) shieldEl.addEventListener('click', function(){
@@ -717,6 +752,7 @@
     // initial icons + muted state (autoplay starts muted by browser rule)
     if(muteBtn) muteBtn.innerHTML = ICO_MUTE;
     if(fsBtn) fsBtn.innerHTML = ICO_FS;
+    if(ccBtn) ccBtn.innerHTML = ICO_CC;
     volFill(0);
 
     // safety net: if the IFrame API never loads, drop the shield and restore YouTube's native controls
