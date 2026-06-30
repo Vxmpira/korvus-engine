@@ -108,7 +108,7 @@
   .sec-intro{color:var(--ink-dim);max-width:560px;font-size:17px;}
 
   /* features grid */
-  .features{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-top:54px;backdrop-filter:blur(8px);}
+  .features{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-top:54px;backdrop-filter:blur(8px);}
   .feature{background:rgba(14,17,22,.45);padding:34px 28px;transition:background .25s;}
   .feature:hover{background:rgba(18,22,28,.6);}
   .feature .fnum{font-family:var(--mono);font-size:12px;color:var(--gold-deep);letter-spacing:.1em;margin-bottom:18px;}
@@ -452,6 +452,7 @@
   .js .hero-badges.in span:nth-child(3){transition-delay:.14s;}
   .js .hero-badges.in span:nth-child(4){transition-delay:.21s;}
   .js .hero-badges.in span:nth-child(5){transition-delay:.28s;}
+  .js .hero-badges.in span:nth-child(6){transition-delay:.35s;}
   .sec-label{position:relative;}
   .sec-label::after{content:"";position:absolute;left:0;bottom:-8px;height:2px;width:0;background:var(--crimson);transition:width .7s cubic-bezier(.22,.61,.36,1) .15s;}
   .js .sec-label.in::after{width:42px;}
@@ -519,7 +520,7 @@
 
   <header class="hero">
     <div class="container">
-      <div class="eyebrow">Always-on market intelligence · News · Impact · SMT</div>
+      <div class="eyebrow">Always-on market intelligence · News · Impact · SMT · Live TV</div>
       <h1>Your edge while<br>the world <em>sleeps</em>.</h1>
       <p>The headline that moves tomorrow's open is breaking <em>right now</em>, while most
          traders are asleep. Korvus reads the wires around the clock and puts the <em>why</em>
@@ -533,6 +534,7 @@
         <span><i></i> Impact scoring</span>
         <span><i></i> SMT divergence</span>
         <span><i></i> Plain-English why</span>
+        <span><i></i> Live market TV</span>
         <span><i></i> $3.99/mo</span>
       </div>
     </div>
@@ -561,6 +563,7 @@
               <span class="kx-pill live"><i></i>1 trader live</span>
               <span class="kx-pill disc">ECLIPSE-X</span>
               <span class="kx-pill">FOREX NEWS</span>
+              <span class="kx-pill live"><i></i>LIVE TV</span>
               <span class="kx-pill warn">SESSION CLOSED</span>
             </div>
             <div class="kx-clock"><b>11:54:35 AM</b><span>NEW YORK / ET</span></div>
@@ -720,6 +723,15 @@
              funds board you make your own. No twelve tabs. No second-guessing at 6 a.m.
              Just the <em>why</em>, sitting in front of you when it counts.</p>
         </div>
+        <div class="feature">
+          <div class="fnum">04 / SEE IT LIVE</div>
+          <h3>The room stays on while you sleep</h3>
+          <p>Live market television runs right inside Korvus, around the clock, with a global
+             session clock, Asia, London, and New York, and live index charts beside it. When a
+             headline you scored starts moving the tape, you can watch the desk react and hear
+             the tone before the bell, without ever leaving the terminal. The broadcasts are
+             produced and owned by third parties; Korvus just gives them a seat at your desk.</p>
+        </div>
       </div>
     </div>
   </section>
@@ -756,6 +768,7 @@
           <ul class="flist">
             <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>A free account, no credit card.</b> Setup takes about a minute.</span></li>
             <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>The full 24/7 scored news feed,</b> free on the Observer tier.</span></li>
+            <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Live market TV and a global session clock,</b> free to watch; broadcasts owned by third parties.</span></li>
             <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Your watchlist and settings, saved to you</b> and synced across devices.</span></li>
             <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Email only when it matters.</b> No spam, unsubscribe in one click.</span></li>
             <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Your data stays yours.</b> Leave or delete your account anytime.</span></li>
@@ -782,6 +795,7 @@
             <li><span class="ck">✓</span> Full 24/7 scored news &amp; impact feed</li>
             <li><span class="ck">✓</span> SMT divergence read, NQ/ES/YM (market hours)</li>
             <li><span class="ck">✓</span> Macro Confluence &amp; Session Map context</li>
+            <li><span class="ck">✓</span> Live market TV &amp; global session clock</li>
             <li><span class="ck">✓</span> Default funds watchlist board</li>
             <li><span class="ck">✓</span> Quotes on a 15-minute delay</li>
             <li><span class="ck">✓</span> Eclipse-X community access</li>
