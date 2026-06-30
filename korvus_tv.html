@@ -147,10 +147,11 @@
   #bigClock{font-family:var(--mono); font-weight:500; font-size:clamp(38px,4vw,66px); letter-spacing:-.01em;
     text-shadow:0 0 22px rgba(255,31,68,.16);}
   .merid{font-size:.30em; font-weight:600; letter-spacing:.12em; color:var(--ink-dim); margin-left:.4em; vertical-align:.62em;}
-  .sval-sm{font-size:clamp(26px,3vw,42px); display:inline-flex; align-items:center; gap:12px;}
+  .sval-sm{font-size:clamp(26px,3vw,42px); display:inline-flex; align-items:center; gap:12px; white-space:nowrap;}
   .sdot{width:10px; height:10px; border-radius:50%; background:var(--ink-faint); flex:none;}
-  .sdot.open{background:var(--bull); box-shadow:0 0 10px rgba(60,229,148,.6);}
-  .sdot.globex{background:var(--amber); box-shadow:0 0 10px rgba(255,157,46,.5);}
+  .sdot.newyork{background:var(--bull); box-shadow:0 0 10px rgba(60,229,148,.6);}
+  .sdot.london{background:var(--ink); box-shadow:0 0 10px rgba(246,248,255,.55);}
+  .sdot.asia{background:var(--amber); box-shadow:0 0 10px rgba(255,157,46,.5);}
   .sdot.closed{background:var(--ink-faint);}
   .substats{display:flex; flex-direction:column; gap:14px; margin-top:2px;}
   .sub{display:flex; flex-direction:column; gap:5px;}
@@ -473,13 +474,29 @@
       if(t >= 9 * 60 + 30 && t < 16 * 60) return 'rth';
       return 'globex';
     }
-    function applySession(fs){
+    /* the big SESSION readout rotates the dominant global session by ET time:
+       Asia, then London, then New York, then back to Asia overnight. New York takes
+       priority while it overlaps London. The week runs Sunday evening to Friday
+       evening ET; outside that it reads Closed. Display only: the cash-vs-overnight
+       logic that gates the live percentage still uses clientSession(). */
+    function marketSession(){
+      var parts = new Intl.DateTimeFormat('en-US', {timeZone:'America/New_York', weekday:'short', hour:'2-digit', minute:'2-digit', hour12:false}).formatToParts(new Date());
+      var o = {}; parts.forEach(function(p){ o[p.type] = p.value; });
+      var dow = o.weekday, t = (+o.hour) * 60 + (+o.minute);
+      if(dow === 'Sat') return 'closed';
+      if(dow === 'Sun' && t < 18 * 60) return 'closed';
+      if(dow === 'Fri' && t >= 17 * 60) return 'closed';
+      if(t >= 8 * 60 && t < 17 * 60) return 'newyork';   // 08:00-17:00 ET
+      if(t >= 3 * 60 && t < 8 * 60)  return 'london';     // 03:00-08:00 ET
+      return 'asia';                                       // 17:00-03:00 ET, wraps midnight
+    }
+    function applySession(){
       var st = document.getElementById('sessState'), dot = document.getElementById('sessDot');
-      if(!st) return;
-      if(fs === 'rth'){ st.textContent = 'Open'; if(dot) dot.className = 'sdot open'; }
-      else if(fs === 'globex'){ st.textContent = 'Globex'; if(dot) dot.className = 'sdot globex'; }
-      else if(fs === 'closed'){ st.textContent = 'Closed'; if(dot) dot.className = 'sdot closed'; }
-      else { st.textContent = '--'; if(dot) dot.className = 'sdot'; }
+      if(!st) return; var s = marketSession();
+      if(s === 'newyork'){ st.textContent = 'New York'; if(dot) dot.className = 'sdot newyork'; }
+      else if(s === 'london'){ st.textContent = 'London'; if(dot) dot.className = 'sdot london'; }
+      else if(s === 'asia'){ st.textContent = 'Asia'; if(dot) dot.className = 'sdot asia'; }
+      else { st.textContent = 'Closed'; if(dot) dot.className = 'sdot closed'; }
     }
 
     /* ---------- index strip: a faithful mirror of the terminal Futures Board ----------
@@ -512,7 +529,7 @@
       var el = document.getElementById('ic-NQ-state'); if(!el) return; var t;
       var native = NATIVE_FUTURES || anyReal;
       if(fs === 'closed') t = 'cash closed';
-      else if(fs === 'globex') t = native ? 'globex \u00b7 real-time' : 'globex \u00b7 cash closed';
+      else if(fs === 'globex') t = native ? 'real-time' : 'cash closed';
       else t = (USER_TIER === 'pro') ? 'live \u00b7 real-time' : 'delayed 15 min';
       el.textContent = t;
     }
@@ -652,7 +669,7 @@
         if(changed) renderSparks(clientSession());
       }catch(e){ /* fall back to live accumulation */ }
     }
-    spkLoad(); renderSparks(clientSession());
+    spkLoad(); renderSparks(clientSession()); applySession(); setInterval(applySession, 30000);
     fetchIntraday(); setInterval(fetchIntraday, 300000);
     loadMe().then(refreshMarket); setInterval(refreshMarket, 20000);
 
