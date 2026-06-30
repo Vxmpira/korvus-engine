@@ -271,22 +271,42 @@
     .card{animation:none;} .dotpulse::after{animation:none;} .eq i{animation:none; height:60%;}
   }
   @media (max-width:900px){
-    .stage{padding:18px 16px 20px; min-height:calc(100vh - 60px);}
+    .stage{padding:16px 14px 22px; min-height:auto; justify-content:flex-start;}
     .cardbody{grid-template-columns:1fr; gap:20px;}
-    .stats{flex-direction:row; flex-wrap:wrap; gap:20px 34px;}
+    .stats{flex-direction:row; flex-wrap:wrap; gap:18px 30px; align-items:flex-start;}
     .ich{flex-basis:100%;}
     .ghost{display:none;}
     .wordmark{display:none;}
     .screen{width:100%;}
   }
   @media (max-width:560px){
-    .topbar{flex-wrap:wrap; gap:10px;}
-    .tnav{gap:14px;} .navlink{font-size:10px;}
-    .cardbar{flex-wrap:wrap; gap:10px 14px;}
-    .cardcta{justify-content:flex-start;}
-    .idxstrip{gap:12px;} .idxstrip .ixmeta{margin-left:0; width:100%;}
-    .botbar{justify-content:center;}
+    .topbar{flex-wrap:wrap; gap:10px 12px; padding:2px 2px;}
+    .tnav{gap:9px; flex-wrap:wrap;}
+    .navlink{font-size:10px; letter-spacing:.1em; padding:6px 10px; border-radius:8px;}
+    .tright{gap:10px;} .tlabel{display:none;}
+    .card{border-radius:16px; padding:14px 13px 16px;}
+    .cardbar{flex-wrap:wrap; gap:10px 12px;}
+    .subnav{gap:10px;} .cardcta{flex:1; justify-content:flex-start;}
+    #bigClock{font-size:clamp(33px,12vw,46px);}
+    .sval-sm{font-size:clamp(22px,7vw,30px);}
+    .idxstrip{gap:10px 14px;} .idxstrip .ixmeta{margin-left:0; width:100%;}
+    .bodyline{font-size:12.5px; gap:11px;}
+    .botbar{justify-content:center; gap:12px;}
     .botcenter{order:-1; width:100%; justify-content:center;}
+    .deckbtn{font-size:10px; padding:8px 13px;}
+    footer{padding:10px 14px 14px;}
+    .frow{flex-wrap:wrap; gap:8px 14px;}
+    .legal{gap:6px 10px;}
+    .legal .disc{min-width:0; font-size:9px;}
+  }
+  @media (max-width:400px){
+    .tnav{gap:7px;}
+    .navlink{font-size:9.5px; padding:5px 8px; letter-spacing:.08em;}
+    .crown svg{width:15px; height:15px;}
+    #bigClock{font-size:clamp(30px,11vw,40px);}
+    .sval-sm{font-size:21px;}
+    .tab{font-size:10px;} .tab.neon{padding:5px 9px;}
+    .deckbtn{font-size:9.5px; padding:7px 11px; letter-spacing:.1em;}
   }
 </style>
 </head>
@@ -566,7 +586,7 @@
         if(have){ note.style.display = 'none'; }
         else { note.style.display = ''; note.textContent = (fs === 'rth' ? 'building live feed' : 'at last close'); }
       }
-      if(st){ st.textContent = (fs === 'rth') ? 'live \u00b7 this session' : (fs === 'globex' ? 'globex \u00b7 proxies flat' : 'at last close'); }
+      if(st){ st.textContent = (fs === 'rth') ? 'live \u00b7 this session' : (fs === 'globex' ? 'globex \u00b7 cash closed' : 'at last close'); }
     }
 
     async function refreshMarket(){

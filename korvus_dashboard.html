@@ -728,8 +728,11 @@
     /* the spacer no longer pushes things around on mobile */
     .spacer{display:none;}
     /* second row: a tidy, flush line of the key chips */
-    .discord,.sess,.clock,.logoutbtn,.members{order:2;}
+    .discord,.sess,.clock,.logoutbtn,.members,.forexnav,.tvnav{order:2;}
     .discord{display:inline-flex;}          /* ALWAYS visible, community link is crucial */
+    .tvnav{display:inline-flex;}            /* Live TV reachable on phones (un-hide the shed) */
+    .forexnav,.tvnav{padding:5px 10px;font-size:10px;letter-spacing:.08em;}
+    .forexnav svg,.tvnav svg{width:13px;height:13px;}
     .members{display:flex;}                 /* bring the live count back on phones too */
     .sess,.clock{font-size:10px;}
     .clock small{font-size:8px;}
@@ -1301,7 +1304,7 @@ function tick(){
   const fs = _futuresStateET();
   if(hol){
     sessEl.innerHTML = 'SESSION <b style="color:var(--bear)">CLOSED</b>';
-    sessEl.title = hol + ' — US markets closed';
+    sessEl.title = hol + ', US markets closed';
   } else if(fs === 'closed'){
     sessEl.innerHTML = 'SESSION <b style="color:var(--bear)">CLOSED</b>';
     sessEl.title = '';
@@ -1862,7 +1865,7 @@ function renderSessionLevels(q){
     ? `<div class="lvl"><span class="lk">Range</span><div class="rangebar" title="where price sits in today's range"><i style="left:${pos}%"></i></div></div>`
     : '');
 
-  // 1) Real MNQ contract (licensed feed) — actual price + session O/H/L.
+  // 1) Real MNQ contract (licensed feed) - actual price + session O/H/L.
   const real = q && q.MNQ;
   if(real && typeof real.price==='number' && real.price>0){
     const price = real.price;
