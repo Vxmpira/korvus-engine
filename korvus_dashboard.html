@@ -638,16 +638,15 @@
     .summary{font-size:13.5px;}
   }
 
-  /* very large / ultrawide: cap the working area and center it so headlines
-     don't stretch into unreadable full-width lines, but keep it generous */
+  /* very large / ultrawide: fill the window like the TV page instead of
+     boxing the app at a fixed 2100px. Header, ribbon, news and footer stay
+     fluid and aligned with the full-width context bands. A light cap on the
+     summary copy keeps body text from stretching edge to edge. */
   @media (min-width: 1900px){
-    main{grid-template-columns:1fr 480px;gap:24px;
-         max-width:2100px;margin:0 auto;width:100%;}
-    .ribbon{max-width:2100px;margin:0 auto;width:100%;}
-    header{max-width:2100px;margin:0 auto;width:100%;}
-    footer{max-width:2100px;margin:0 auto;width:100%;}
+    main{grid-template-columns:1fr 480px;gap:24px;}
     .fut{padding:13px 26px;}
     .headline{font-size:17px;}
+    .summary{max-width:160ch;}
   }
 
   /* ============================================================
