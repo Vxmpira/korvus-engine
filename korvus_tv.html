@@ -522,12 +522,18 @@
     // price + source attribution. Honest by design: the real CME contract shows its
     // actual price tagged CME; a proxy shows the ETF's own price tagged with its
     // ticker, never an ETF dollar figure presented as the futures price.
-    function setQuote(lab, price, pct, isReal, proxy){
-      var pxEl = document.getElementById('px-' + lab), srcEl = document.getElementById('src-' + lab);
+    function setQuote(lab, price, pct, isReal, proxy, live){
+      var pxEl = document.getElementById('px-' + lab), srcEl = document.getElementById('src-' + lab),
+          pctEl = document.getElementById('ic-' + lab + '-pct');
       var has = (typeof price === 'number' && price > 0);
       if(pxEl) pxEl.textContent = has ? fmtPx(price) : '--';
       if(srcEl) srcEl.textContent = has ? (isReal ? 'CME' : proxy) : '';
-      setPct('ic-' + lab + '-pct', pct);
+      // A proxy whose cash market is closed can only echo a frozen close, which will
+      // not track the real contract overnight. Rather than show a stale percentage we
+      // say "closed" until live data resumes: cash open, or a real futures feed that
+      // trades the overnight session.
+      if(live){ setPct('ic-' + lab + '-pct', pct); }
+      else if(pctEl){ pctEl.textContent = 'closed'; pctEl.className = 'pct flat'; }
     }
 
     /* ---------- intraday sparklines: REAL feed plotted over the session ----------
@@ -613,12 +619,15 @@
           } else if(prox && typeof prox.chg_pct === 'number'){
             price = (typeof prox.price === 'number' ? prox.price : null); v = prox.chg_pct;
           }
-          setQuote(f.lab, price, v, isReal, f.proxy);
-          spkPush(f.lab, v);
+          // live only when a real contract is feeding (futures trade overnight) or
+          // the proxy's own cash session is open; otherwise the % reads "closed".
+          var live = isReal || fs === 'rth';
+          setQuote(f.lab, price, v, isReal, f.proxy, live);
+          spkPush(f.lab, live ? v : null);
         });
         applySession(fs); setFeed(fs, anyReal); renderSparks(fs);
       }catch(e){
-        FUT.forEach(function(f){ setQuote(f.lab, null, null, false, f.proxy); });
+        FUT.forEach(function(f){ setQuote(f.lab, null, null, false, f.proxy, fsClient === 'rth'); });
         applySession(fsClient); setFeed(fsClient, false); renderSparks(fsClient);
       }
     }
