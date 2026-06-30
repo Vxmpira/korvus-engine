@@ -474,21 +474,23 @@
       if(t >= 9 * 60 + 30 && t < 16 * 60) return 'rth';
       return 'globex';
     }
-    /* the big SESSION readout rotates the dominant global session by ET time:
-       Asia, then London, then New York, then back to Asia overnight. New York takes
-       priority while it overlaps London. The week runs Sunday evening to Friday
-       evening ET; outside that it reads Closed. Display only: the cash-vs-overnight
-       logic that gates the live percentage still uses clientSession(). */
+    /* the big SESSION readout uses the exact same windows as the terminal's Session
+       Map: London 12am-8am, New York 8am-5pm, Asia 6pm-12am ET, with the 5-6pm ET
+       maintenance hour and weekends (Fri 5pm -> Sun 6pm ET) reading Closed. Display
+       only: the cash-vs-overnight logic that gates the live percentage still uses
+       clientSession(). */
     function marketSession(){
       var parts = new Intl.DateTimeFormat('en-US', {timeZone:'America/New_York', weekday:'short', hour:'2-digit', minute:'2-digit', hour12:false}).formatToParts(new Date());
       var o = {}; parts.forEach(function(p){ o[p.type] = p.value; });
-      var dow = o.weekday, t = (+o.hour) * 60 + (+o.minute);
+      var dow = o.weekday, h = +o.hour; if(h === 24) h = 0;
+      var t = h + (+o.minute) / 60;                       // decimal hours ET, same basis as the Session Map
       if(dow === 'Sat') return 'closed';
-      if(dow === 'Sun' && t < 18 * 60) return 'closed';
-      if(dow === 'Fri' && t >= 17 * 60) return 'closed';
-      if(t >= 8 * 60 && t < 17 * 60) return 'newyork';   // 08:00-17:00 ET
-      if(t >= 3 * 60 && t < 8 * 60)  return 'london';     // 03:00-08:00 ET
-      return 'asia';                                       // 17:00-03:00 ET, wraps midnight
+      if(dow === 'Fri' && t >= 17) return 'closed';
+      if(dow === 'Sun' && t < 18) return 'closed';
+      if(t >= 17 && t < 18) return 'closed';              // daily 5-6 PM ET maintenance break
+      if(t >= 18) return 'asia';                          // 18:00-24:00 ET
+      if(t >= 8)  return 'newyork';                       // 08:00-17:00 ET
+      return 'london';                                    // 00:00-08:00 ET
     }
     function applySession(){
       var st = document.getElementById('sessState'), dot = document.getElementById('sessDot');
