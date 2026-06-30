@@ -536,6 +536,32 @@ def api_quotes():
     return jsonify({"quotes": data, "meta": meta})
 
 
+@app.route("/api/intraday")
+def api_intraday():
+    """
+    Real intraday % series (price vs prev close) for the Live TV sidebar charts.
+    Pulls 5-minute bars from Alpha Vantage, server-cached and shared across all
+    viewers. Tier-enforced the same way as /api/quotes: pro -> realtime
+    entitlement, free / logged-out -> delayed. Returns an empty series per symbol
+    on any miss so the client keeps its live-accumulated line.
+    """
+    try:
+        from korvus_quotes import get_intraday
+    except Exception as e:
+        return jsonify({"error": f"intraday module not available: {e}", "_meta": {}})
+    symbols = (request.args.get("symbols") or "").split(",")
+    symbols = [s.strip().upper() for s in symbols if s.strip()]
+    if not symbols:
+        return jsonify({"_meta": {}})
+
+    is_pro = current_user.is_authenticated and current_user.tier == "pro"
+    data = get_intraday(symbols, force_delayed=not is_pro)
+    meta = data.pop("_meta", {}) or {}
+    meta["tier"] = "pro" if is_pro else "free"
+    data["_meta"] = meta
+    return jsonify(data)
+
+
 # Index proxies for the SMT panel: NQ->QQQ, ES->SPY, YM->DIA
 _SMT_LEGS = [("NQ", "QQQ"), ("ES", "SPY"), ("YM", "DIA")]
 

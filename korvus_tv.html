@@ -87,10 +87,14 @@
   .topbar{display:flex; align-items:center; justify-content:space-between; gap:18px; padding:2px 8px;}
   .tnav{display:flex; align-items:center; gap:clamp(14px,1.6vw,22px);}
   .crown svg{display:block; filter:drop-shadow(0 0 9px var(--crimson-glow));}
-  .navlink{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; text-decoration:none;
-    color:var(--ink-faint); transition:color .2s;}
-  .navlink:hover{color:var(--ink-dim);}
-  .navlink.active{color:var(--crimson-bright);}
+  .navlink{font-family:var(--mono); font-size:11px; letter-spacing:.13em; text-transform:uppercase; text-decoration:none;
+    color:var(--ink-dim); white-space:nowrap; padding:7px 13px; border:1px solid var(--line); border-radius:9px;
+    background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0));
+    transition:color .18s, border-color .18s, background .18s, box-shadow .18s;}
+  .navlink:hover{color:var(--ink); border-color:rgba(255,255,255,.24); box-shadow:0 8px 20px -14px rgba(0,0,0,.9);}
+  .navlink.active{color:#fff; border-color:rgba(255,31,68,.85);
+    background:linear-gradient(180deg, rgba(255,31,68,.17), rgba(255,31,68,.04));
+    box-shadow:0 0 16px -3px var(--crimson-glow), inset 0 0 14px -8px var(--crimson-bright);}
   .tright{display:flex; align-items:center; gap:18px;}
   .tclock{font-family:var(--mono); font-size:11px; letter-spacing:.1em; color:var(--ink-dim);}
   .tlabel{font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-faint);}
@@ -114,11 +118,14 @@
     text-transform:uppercase; text-decoration:none; color:var(--ink-faint); white-space:nowrap;}
   .tab.active{color:var(--ink);}
   .tab:not(.active):hover{color:var(--ink-dim);}
-  /* Bloomberg: neon, underlined so it clearly reads as an external link */
-  .tab.neon{color:var(--crimson-bright); text-decoration:underline; text-underline-offset:3px; text-decoration-thickness:1px;
-    text-decoration-color:rgba(255,31,68,.6); text-shadow:0 0 6px rgba(255,31,68,.5), 0 0 14px rgba(255,31,68,.28); transition:color .18s, text-shadow .18s;}
-  .tab.neon:hover{color:#fff; text-decoration-color:var(--crimson-bright);
-    text-shadow:0 0 9px rgba(255,58,88,.85), 0 0 20px rgba(255,31,68,.55), 0 0 32px rgba(255,31,68,.32);}
+  /* Bloomberg: neon outlined button, launches the external broadcast */
+  .tab.neon{padding:6px 12px; border:1px solid rgba(255,31,68,.55); border-radius:9px;
+    color:var(--crimson-bright); text-decoration:none; letter-spacing:.13em;
+    background:linear-gradient(180deg, rgba(255,31,68,.12), rgba(255,31,68,.02));
+    text-shadow:0 0 8px rgba(255,31,68,.45); transition:color .18s, border-color .18s, background .18s, box-shadow .18s;}
+  .tab.neon:hover{color:#fff; border-color:var(--crimson-bright);
+    background:linear-gradient(180deg, rgba(255,31,68,.2), rgba(255,31,68,.05));
+    text-shadow:0 0 9px rgba(255,58,88,.85); box-shadow:0 0 18px -3px var(--crimson-glow);}
   .wordmark{font-family:var(--disp); font-weight:600; font-size:clamp(13px,1vw,15px); letter-spacing:.42em; padding-left:.42em;
     text-transform:uppercase; color:var(--ink); white-space:nowrap; text-shadow:0 0 18px rgba(255,31,68,.35);}
   .cardcta{flex:1; display:flex; align-items:center; justify-content:flex-end; gap:14px; min-width:0;}
@@ -139,6 +146,7 @@
     color:var(--ink); font-variant-numeric:tabular-nums; display:block;}
   #bigClock{font-family:var(--mono); font-weight:500; font-size:clamp(38px,4vw,66px); letter-spacing:-.01em;
     text-shadow:0 0 22px rgba(255,31,68,.16);}
+  .merid{font-size:.30em; font-weight:600; letter-spacing:.12em; color:var(--ink-dim); margin-left:.4em; vertical-align:.62em;}
   .sval-sm{font-size:clamp(26px,3vw,42px); display:inline-flex; align-items:center; gap:12px;}
   .sdot{width:10px; height:10px; border-radius:50%; background:var(--ink-faint); flex:none;}
   .sdot.open{background:var(--bull); box-shadow:0 0 10px rgba(60,229,148,.6);}
@@ -152,6 +160,30 @@
     font-size:clamp(80px,11vw,150px); line-height:.8; letter-spacing:-.03em; color:var(--ink);
     opacity:.045; pointer-events:none; user-select:none;}
 
+  /* sidebar intraday charts: the live feed plotted over the session, honest prev-close baseline */
+  .ich{gap:clamp(14px,1.7vw,20px);}
+  .ich .pct{font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--ink-faint);}
+  .ich .pct.up{color:var(--bull);} .ich .pct.down{color:var(--bear);} .ich .pct.flat{color:var(--ink-faint);}
+  .ichmain{display:flex; flex-direction:column; gap:9px;}
+  .ichhdr{display:flex; align-items:baseline; justify-content:space-between; gap:10px;}
+  .ichhdr .slabel{margin-bottom:0;}
+  .ichhdr .pct{font-size:12.5px; letter-spacing:.01em;}
+  .ichbox{position:relative; width:100%; height:clamp(96px,13vh,154px); border:1px solid var(--line-soft);
+    border-radius:11px; overflow:hidden;
+    background:radial-gradient(120% 92% at 50% 112%, rgba(255,31,68,.07), rgba(0,0,0,0) 70%);}
+  .ichsvg{display:block; width:100%; height:100%; filter:drop-shadow(0 0 5px rgba(255,31,68,.30));}
+  .ichnote{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-family:var(--mono); font-size:9.5px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--ink-faint); pointer-events:none;}
+  .ichbase{display:flex; align-items:center; justify-content:space-between; font-family:var(--mono);
+    font-size:8.5px; letter-spacing:.15em; text-transform:uppercase; color:var(--ink-faint);}
+  .ichbase span:last-child{color:var(--crimson-bright); opacity:.9;}
+  .ichrows{display:flex; flex-direction:column; gap:11px;}
+  .ichrow{display:flex; align-items:center; gap:11px;}
+  .ichrow b{font-family:var(--mono); font-size:10px; font-weight:600; letter-spacing:.08em; color:var(--ink-dim); width:32px; flex:none;}
+  .ichrow .ichsvg.sm{height:18px; flex:1 1 auto; min-width:0; filter:drop-shadow(0 0 3px rgba(255,31,68,.22));}
+  .ichrow .pct{font-size:10.5px; width:56px; text-align:right; flex:none;}
+
   /* right: the live feed centerpiece, sized by viewport height so it scales to any screen */
   .stagevid{min-width:0; position:relative;}
   .stagevid::before{content:""; position:absolute; left:-4%; top:-7%; width:88%; height:74%; z-index:0; pointer-events:none;
@@ -160,18 +192,31 @@
     aspect-ratio:16/9; border-radius:14px; overflow:hidden; background:#000;
     border:1px solid rgba(255,255,255,.08); box-shadow:inset 0 0 0 1px rgba(255,255,255,.03), 0 30px 60px -34px rgba(0,0,0,.9), 0 0 90px -28px var(--crimson-glow);}
   .screen iframe{position:absolute; inset:0; width:100%; height:100%; border:0;}
+  #screen:fullscreen{width:100vw; height:100vh; max-width:none; aspect-ratio:auto; border-radius:0; border:0; margin:0;}
+  #screen:-webkit-full-screen{width:100vw; height:100vh; max-width:none; aspect-ratio:auto; border-radius:0; border:0; margin:0;}
 
   /* transparent hover shield: intercepts the mouse so YouTube's own title / share /
      branding chrome never pops during playback (it is inside the iframe; we cannot
      retime it). Clicking toggles sound. We never crop or hide YouTube branding. */
-  .ytshield{position:absolute; inset:0; z-index:3; cursor:pointer; background:transparent;}
-  .mutehint{position:absolute; left:14px; bottom:14px; z-index:4; display:inline-flex; align-items:center; gap:7px;
-    padding:7px 12px; border-radius:999px; pointer-events:none;
-    border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.5); color:#fff;
-    font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase;
-    opacity:0; transition:opacity .3s ease;}
-  .mutehint.show{opacity:1;}
-  .mutehint .sdotc{width:6px; height:6px; border-radius:50%; background:var(--crimson-bright);}
+  .ytshield{position:absolute; inset:0; z-index:3; cursor:default; background:transparent;}
+  /* embed controls: volume slider + fullscreen, fade in on hover, sit above the shield */
+  .ytbar{position:absolute; left:0; right:0; bottom:0; z-index:4; display:flex; align-items:center; gap:12px;
+    padding:14px 16px 13px; opacity:0; transform:translateY(8px); transition:opacity .25s ease, transform .25s ease;
+    background:linear-gradient(0deg, rgba(0,0,0,.66), rgba(0,0,0,0));}
+  .screen:hover .ytbar, .ytbar:focus-within, .ytbar.show{opacity:1; transform:none;}
+  .yctl{display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; flex:none; padding:0;
+    border:1px solid rgba(255,255,255,.16); border-radius:8px; background:rgba(0,0,0,.42); color:#fff; cursor:pointer;
+    transition:border-color .18s, background .18s, box-shadow .18s;}
+  .yctl:hover{border-color:var(--crimson); background:rgba(255,31,68,.18); box-shadow:0 0 14px -5px var(--crimson-glow);}
+  .yctl svg{width:16px; height:16px; display:block;}
+  .ybarspacer{flex:1;}
+  .yvol{-webkit-appearance:none; appearance:none; width:130px; max-width:44%; height:4px; border-radius:999px; cursor:pointer; outline:none;
+    background:linear-gradient(90deg, var(--crimson-bright) 0%, var(--crimson) var(--vp,0%), rgba(255,255,255,.20) var(--vp,0%));}
+  .yvol::-webkit-slider-thumb{-webkit-appearance:none; appearance:none; width:13px; height:13px; border-radius:50%;
+    background:#fff; border:2px solid var(--crimson-bright); box-shadow:0 0 8px -1px var(--crimson-glow); cursor:pointer;}
+  .yvol::-moz-range-thumb{width:12px; height:12px; border-radius:50%; background:#fff; border:2px solid var(--crimson-bright); cursor:pointer;}
+  .yvol::-moz-range-track{height:4px; border-radius:999px; background:rgba(255,255,255,.20);}
+  .yvol::-moz-range-progress{height:4px; border-radius:999px; background:var(--crimson-bright);}
   /* shown only if the embed errors (between segments, region/VPN block) instead of YouTube's bare gray screen */
   .ytfallback{position:absolute; inset:0; z-index:5; display:none; flex-direction:column; align-items:center; justify-content:center;
     gap:14px; text-align:center; padding:24px; background:rgba(6,6,8,.94);}
@@ -229,6 +274,7 @@
     .stage{padding:18px 16px 20px; min-height:calc(100vh - 60px);}
     .cardbody{grid-template-columns:1fr; gap:20px;}
     .stats{flex-direction:row; flex-wrap:wrap; gap:20px 34px;}
+    .ich{flex-basis:100%;}
     .ghost{display:none;}
     .wordmark{display:none;}
     .screen{width:100%;}
@@ -275,7 +321,7 @@
           <span class="tab active"><span class="dotpulse"></span>:Live Markets</span>
           <a class="tab neon" href="https://www.bloomberg.com/live/us-btv" target="_blank" rel="noopener noreferrer">:Bloomberg &#9656;</a>
         </div>
-        <div class="wordmark">KORVUS</div>
+        <div class="wordmark">THE TAPE</div>
         <div class="cardcta">
           <span class="onair"><span class="dotpulse"></span>On Air</span>
         </div>
@@ -291,15 +337,23 @@
             <span class="slabel">:Session</span>
             <span class="sval sval-sm"><span class="sdot" id="sessDot"></span><span id="sessState">--</span></span>
           </div>
-          <div class="substats">
-            <div class="sub"><span class="slabel" id="ctLabel">:To Cash Close</span><span class="subval" id="ctVal">--</span></div>
-            <div class="sub"><span class="slabel">:London</span><span class="subval" id="lonClock">--:--</span></div>
+          <div class="substats ich">
+            <div class="ichmain">
+              <div class="ichhdr"><span class="slabel">:NQ &middot; Intraday</span><i class="pct flat" id="ic-NQ-pct">--</i></div>
+              <div class="ichbox"><svg class="ichsvg" id="ic-NQ-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><span class="ichnote" id="ic-NQ-note">building live feed</span></div>
+              <div class="ichbase"><span>:prev close</span><span id="ic-NQ-state">--</span></div>
+            </div>
+            <div class="ichrows">
+              <div class="ichrow"><b>ES</b><svg class="ichsvg sm" id="ic-ES-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><i class="pct flat" id="ic-ES-pct">--</i></div>
+              <div class="ichrow"><b>YM</b><svg class="ichsvg sm" id="ic-YM-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><i class="pct flat" id="ic-YM-pct">--</i></div>
+              <div class="ichrow"><b>RTY</b><svg class="ichsvg sm" id="ic-RTY-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><i class="pct flat" id="ic-RTY-pct">--</i></div>
+            </div>
           </div>
           <div class="ghost">24/7</div>
         </div>
 
         <div class="stagevid">
-          <!-- Yahoo Finance free live via YouTube's sanctioned embed. controls=0 plus a transparent hover-shield keeps YouTube's own title / share / branding chrome from popping during playback; clicking the screen toggles sound. -->
+          <!-- Yahoo Finance free live via YouTube's sanctioned embed. controls=0 plus a transparent hover-shield keeps YouTube's own title / share / branding chrome from popping during playback; our own bar provides volume and fullscreen. -->
           <div class="screen" id="screen">
             <iframe id="ytframe"
               src="https://www.youtube-nocookie.com/embed/live_stream?channel=UCEAZeUIeJs0IjQiqTCdVSIg&rel=0&controls=0&autoplay=1&mute=1&playsinline=1&enablejsapi=1"
@@ -308,8 +362,13 @@
               allowfullscreen
               referrerpolicy="strict-origin-when-cross-origin"></iframe>
 
-            <div class="ytshield" id="ytShield" title="Click for sound" aria-label="Click to toggle sound"></div>
-            <div class="mutehint" id="muteHint"><span class="sdotc"></span><span id="hintTxt">Click for sound</span></div>
+            <div class="ytshield" id="ytShield" aria-hidden="true"></div>
+            <div class="ytbar" id="ytBar">
+              <button type="button" class="yctl" id="muteBtn" aria-label="Mute or unmute"></button>
+              <input type="range" class="yvol" id="volSlider" min="0" max="100" value="0" step="1" aria-label="Volume">
+              <span class="ybarspacer"></span>
+              <button type="button" class="yctl" id="fsBtn" aria-label="Fullscreen"></button>
+            </div>
             <div class="ytfallback" id="ytFallback">
               <p>The live feed is not loading right now. It can drop out between segments, or be blocked by a VPN or region restriction. Give it a moment, then retry.</p>
               <button type="button" class="ybtn" id="retryBtn">Retry &#8635;</button>
@@ -355,7 +414,7 @@
 
   <script>
     /* ---------- ET clock ---------- */
-    var fHM = new Intl.DateTimeFormat('en-US', {timeZone:'America/New_York', hour12:false, hour:'2-digit', minute:'2-digit'});
+    var fHM = new Intl.DateTimeFormat('en-US', {timeZone:'America/New_York', hour12:true, hour:'numeric', minute:'2-digit'});
     var fLON = new Intl.DateTimeFormat('en-GB', {timeZone:'Europe/London', hour12:false, hour:'2-digit', minute:'2-digit'});
     var fETp = new Intl.DateTimeFormat('en-US', {timeZone:'America/New_York', weekday:'short', hour:'2-digit', minute:'2-digit', hour12:false});
     function etNow(){
@@ -375,15 +434,16 @@
         return {label:':To Cash Open', text:fmtDur(best === null ? 0 : best)};
       }catch(e){ return {label:':To Cash Open', text:'--'}; }
     }
+    function clockParts(){
+      try{
+        var o = {}; fHM.formatToParts(new Date()).forEach(function(p){ o[p.type] = p.value; });
+        return {hm:(o.hour || '--') + ':' + (o.minute || '--'), ap:(o.dayPeriod || '').toUpperCase()};
+      }catch(e){ return {hm:'--:--', ap:''}; }
+    }
     function clockTick(){
-      var hm; try{ hm = fHM.format(new Date()); }catch(e){ hm = '--:--'; }
-      var a = document.getElementById('bigClock'); if(a) a.textContent = hm;
-      var b = document.getElementById('topClock');  if(b) b.textContent = hm + ' ET';
-      var lon; try{ lon = fLON.format(new Date()); }catch(e){ lon = '--:--'; }
-      var L = document.getElementById('lonClock'); if(L) L.textContent = lon;
-      var ev = nextEvent();
-      var cl = document.getElementById('ctLabel'); if(cl) cl.textContent = ev.label;
-      var cv = document.getElementById('ctVal');   if(cv) cv.textContent = ev.text;
+      var c = clockParts();
+      var a = document.getElementById('bigClock'); if(a) a.innerHTML = c.hm + (c.ap ? '<span class="merid">' + c.ap + '</span>' : '');
+      var b = document.getElementById('topClock');  if(b) b.textContent = c.hm + (c.ap ? ' ' + c.ap : '') + ' ET';
     }
     clockTick(); setInterval(clockTick, 1000);
 
@@ -442,6 +502,73 @@
       b.textContent = t;
     }
 
+    /* ---------- intraday sparklines: REAL feed plotted over the session ----------
+       We sample chg_pct (price vs prev close) from the same /api/quotes feed the
+       strip uses, append it over time, and draw it. The dashed zero line IS the
+       real previous close. Today's samples are cached locally so a refresh keeps
+       the line; a new ET date starts a fresh series. No fabricated path: the line
+       only contains ticks we actually observed. */
+    var SER = {NQ:[], ES:[], YM:[], RTY:[]}, SPK_CAP = 240;
+    function etDateKey(){
+      try{ return new Intl.DateTimeFormat('en-CA', {timeZone:'America/New_York', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date()); }
+      catch(e){ return 'na'; }
+    }
+    function spkLoad(){
+      try{
+        var day = etDateKey();
+        ['NQ','ES','YM','RTY'].forEach(function(k){
+          var raw = localStorage.getItem('tvspk:' + k + ':' + day);
+          SER[k] = raw ? (JSON.parse(raw) || []) : [];
+        });
+        for(var i = localStorage.length - 1; i >= 0; i--){
+          var key = localStorage.key(i);
+          if(key && key.indexOf('tvspk:') === 0 && key.indexOf(':' + day) === -1) localStorage.removeItem(key);
+        }
+      }catch(e){}
+    }
+    function spkSave(k){ try{ localStorage.setItem('tvspk:' + k + ':' + etDateKey(), JSON.stringify(SER[k])); }catch(e){} }
+    function spkPush(k, p){
+      if(typeof p !== 'number' || !SER[k]) return;
+      var a = SER[k]; a.push({t:Date.now(), p:p});
+      if(a.length > SPK_CAP) a.splice(0, a.length - SPK_CAP);
+      spkSave(k);
+    }
+    function drawSpark(svgId, arr, big){
+      var svg = document.getElementById(svgId); if(!svg) return;
+      if(!arr || arr.length < 2){ svg.innerHTML = ''; return; }
+      var W = 100, H = 100, ps = arr.map(function(o){ return o.p; });
+      var lo = Math.min.apply(null, ps), hi = Math.max.apply(null, ps);
+      lo = Math.min(lo, 0); hi = Math.max(hi, 0);
+      var pad = (hi - lo) * 0.12 || 0.05; lo -= pad; hi += pad;
+      var rng = (hi - lo) || 1, n = ps.length;
+      function X(i){ return (i / (n - 1)) * W; }
+      function Y(p){ return H - ((p - lo) / rng) * H; }
+      var y0 = Y(0).toFixed(2);
+      var pts = ps.map(function(p, i){ return X(i).toFixed(2) + ',' + Y(p).toFixed(2); });
+      var area = 'M0,' + y0 + ' L' + pts.join(' L') + ' L' + W + ',' + y0 + ' Z';
+      var gid = svgId + '-g', sw = big ? 1.7 : 1.5, op = big ? 0.30 : 0.18;
+      svg.innerHTML =
+        '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0" stop-color="#ff1f44" stop-opacity="' + op + '"/>' +
+        '<stop offset="1" stop-color="#ff1f44" stop-opacity="0"/></linearGradient></defs>' +
+        '<line x1="0" y1="' + y0 + '" x2="' + W + '" y2="' + y0 + '" stroke="#5b6072" stroke-width="1" stroke-dasharray="3 3" opacity=".55" vector-effect="non-scaling-stroke"/>' +
+        '<path d="' + area + '" fill="url(#' + gid + ')" stroke="none"/>' +
+        '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#ff3a58" stroke-width="' + sw + '" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>';
+    }
+    function renderSparks(fs){
+      drawSpark('ic-NQ-svg', SER.NQ, true);
+      drawSpark('ic-ES-svg', SER.ES, false);
+      drawSpark('ic-YM-svg', SER.YM, false);
+      drawSpark('ic-RTY-svg', SER.RTY, false);
+      var note = document.getElementById('ic-NQ-note'), st = document.getElementById('ic-NQ-state');
+      var have = SER.NQ && SER.NQ.length >= 2;
+      if(note){
+        if(have){ note.style.display = 'none'; }
+        else { note.style.display = ''; note.textContent = (fs === 'rth' ? 'building live feed' : 'at last close'); }
+      }
+      if(st){ st.textContent = (fs === 'rth') ? 'live \u00b7 this session' : (fs === 'globex' ? 'globex \u00b7 proxies flat' : 'at last close'); }
+    }
+
     async function refreshMarket(){
       var fsClient = clientSession();
       try{
@@ -456,13 +583,38 @@
           if(real && typeof real.price === 'number' && real.price > 0 && typeof real.chg_pct === 'number'){ v = real.chg_pct; anyReal = true; }
           else if(prox && typeof prox.chg_pct === 'number'){ v = prox.chg_pct; }
           setPct(f.el, v);
+          setPct('ic-' + f.lab + '-pct', v);
+          spkPush(f.lab, v);
         });
-        applySession(fs); setBadge(fs, anyReal);
+        applySession(fs); setBadge(fs, anyReal); renderSparks(fs);
       }catch(e){
         FUT.forEach(function(f){ setPct(f.el, null); });
-        applySession(fsClient); setBadge(fsClient, false);
+        applySession(fsClient); setBadge(fsClient, false); renderSparks(fsClient);
       }
     }
+    /* real intraday backfill: pull today's 5-min path (price vs prev close) from
+       /api/intraday (Alpha Vantage, server-cached, tier-gated). Seeds the chart so
+       it arrives full instead of building from empty; live ticks still append the
+       tip. If the endpoint has nothing (pre-open, weekend, or no premium key), we
+       keep the live-accumulated series and the chart fills through the session. */
+    var IDX_BY_PROXY = {QQQ:'NQ', SPY:'ES', DIA:'YM', IWM:'RTY'};
+    async function fetchIntraday(){
+      try{
+        var res = await fetch('/api/intraday?symbols=QQQ,SPY,DIA,IWM', {cache:'no-store'});
+        if(!res.ok) return;
+        var data = await res.json(), changed = false;
+        Object.keys(IDX_BY_PROXY).forEach(function(px){
+          var lab = IDX_BY_PROXY[px], d = data[px];
+          if(d && d.pct && d.pct.length >= 2){
+            SER[lab] = d.pct.map(function(p){ return {t:0, p:p}; });
+            spkSave(lab); changed = true;
+          }
+        });
+        if(changed) renderSparks(clientSession());
+      }catch(e){ /* fall back to live accumulation */ }
+    }
+    spkLoad(); renderSparks(clientSession());
+    fetchIntraday(); setInterval(fetchIntraday, 300000);
     loadMe().then(refreshMarket); setInterval(refreshMarket, 45000);
 
     /* ---------- player: clean feed via a hover shield + click-to-sound ----------
@@ -476,28 +628,76 @@
       try{ ytPlayer = new YT.Player('ytframe', {events:{onReady:ytOnReady, onStateChange:ytOnState, onError:ytOnError}}); }catch(e){}
     };
     function ytOnReady(){
-      ytReady = true; try{ ytPlayer.playVideo(); }catch(e){} reflectHint();
+      ytReady = true; try{ ytPlayer.playVideo(); }catch(e){} syncMuteUI();
       // watchdog: if it never reaches a playing state, the live is unavailable for this viewer (region/VPN/segment gap)
       setTimeout(function(){ if(!playedOk) showFallback(); }, 9000);
     }
     function ytOnState(e){ if(e.data === 1){ playedOk = true; hideFallback(); } } // 1 = playing
     function ytOnError(){ showFallback(); }
     function showFallback(){ var f = document.getElementById('ytFallback'); if(f) f.classList.add('show');
-      var h = document.getElementById('muteHint'); if(h) h.classList.remove('show'); }
+      var bar = document.getElementById('ytBar'); if(bar) bar.classList.remove('show'); }
     function hideFallback(){ var f = document.getElementById('ytFallback'); if(f) f.classList.remove('show'); }
-    function reflectHint(){
-      var h = document.getElementById('muteHint'), t = document.getElementById('hintTxt'); if(!h) return;
-      var muted = true; try{ muted = ytPlayer.isMuted(); }catch(e){}
-      if(muted){ if(t) t.textContent = 'Click for sound'; h.classList.add('show');
-        clearTimeout(window._hintT); window._hintT = setTimeout(function(){ h.classList.remove('show'); }, 5000); }
-      else { h.classList.remove('show'); }
+    /* embed controls: volume slider + mute toggle + fullscreen (replaces click-to-sound) */
+    var ICO_VOL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.8 5.7a9 9 0 0 1 0 12.6"/></svg>';
+    var ICO_MUTE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>';
+    var ICO_FS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/></svg>';
+    var ICO_FSX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M16 21v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>';
+    var muteBtn = document.getElementById('muteBtn'),
+        volEl   = document.getElementById('volSlider'),
+        fsBtn   = document.getElementById('fsBtn'),
+        screenEl= document.getElementById('screen');
+    var lastVol = 70;
+    function volFill(v){ if(volEl) volEl.style.setProperty('--vp', Math.max(0, Math.min(100, v)) + '%'); }
+    function syncMuteUI(){
+      var muted = true, v = 0;
+      try{ muted = ytPlayer.isMuted(); v = ytPlayer.getVolume(); }catch(e){}
+      if(muted) v = 0;
+      if(volEl) volEl.value = v;
+      if(muteBtn) muteBtn.innerHTML = (v <= 0) ? ICO_MUTE : ICO_VOL;
+      volFill(v);
     }
-    var shield = document.getElementById('ytShield');
-    if(shield) shield.addEventListener('click', function(){
-      if(!ytReady || !ytPlayer) return;
-      try{ if(ytPlayer.isMuted()){ ytPlayer.unMute(); ytPlayer.setVolume(70); } else { ytPlayer.mute(); } }catch(e){}
-      reflectHint();
+    function applyVol(v){
+      v = Math.max(0, Math.min(100, Math.round(v)));
+      if(v > 0) lastVol = v;
+      if(ytReady && ytPlayer){
+        try{
+          if(v <= 0){ ytPlayer.mute(); }
+          else { if(ytPlayer.isMuted()) ytPlayer.unMute(); ytPlayer.setVolume(v); }
+        }catch(e){}
+      }
+      if(volEl) volEl.value = v;
+      if(muteBtn) muteBtn.innerHTML = (v <= 0) ? ICO_MUTE : ICO_VOL;
+      volFill(v);
+    }
+    if(volEl) volEl.addEventListener('input', function(){ applyVol(parseInt(volEl.value, 10) || 0); });
+    if(muteBtn) muteBtn.addEventListener('click', function(){
+      var muted = true; try{ muted = ytPlayer && ytPlayer.isMuted(); }catch(e){}
+      var cur = parseInt(volEl && volEl.value, 10) || 0;
+      if(muted || cur <= 0){ applyVol(cur > 0 ? cur : (lastVol || 70)); }
+      else { applyVol(0); }
     });
+    function fsActive(){ return document.fullscreenElement || document.webkitFullscreenElement; }
+    function toggleFS(){
+      try{
+        if(fsActive()){ (document.exitFullscreen || document.webkitExitFullscreen).call(document); }
+        else if(screenEl){ (screenEl.requestFullscreen || screenEl.webkitRequestFullscreen).call(screenEl); }
+      }catch(e){}
+    }
+    function syncFSUI(){ if(fsBtn) fsBtn.innerHTML = fsActive() ? ICO_FSX : ICO_FS; }
+    if(fsBtn) fsBtn.addEventListener('click', toggleFS);
+    document.addEventListener('fullscreenchange', syncFSUI);
+    document.addEventListener('webkitfullscreenchange', syncFSUI);
+    // touch-friendly: tap the screen to reveal the control bar briefly
+    var shieldEl = document.getElementById('ytShield');
+    if(shieldEl) shieldEl.addEventListener('click', function(){
+      var bar = document.getElementById('ytBar'); if(!bar) return;
+      bar.classList.add('show'); clearTimeout(window._barT);
+      window._barT = setTimeout(function(){ bar.classList.remove('show'); }, 3500);
+    });
+    // initial icons + muted state (autoplay starts muted by browser rule)
+    if(muteBtn) muteBtn.innerHTML = ICO_MUTE;
+    if(fsBtn) fsBtn.innerHTML = ICO_FS;
+    volFill(0);
 
     // safety net: if the IFrame API never loads, drop the shield and restore YouTube's native controls
     setTimeout(function(){
@@ -505,7 +705,7 @@
       var f = document.getElementById('ytframe');
       if(f && f.src.indexOf('controls=0') !== -1) f.src = f.src.replace('controls=0', 'controls=1');
       var s = document.getElementById('ytShield'); if(s) s.style.display = 'none';
-      var h = document.getElementById('muteHint'); if(h) h.classList.remove('show');
+      var bar = document.getElementById('ytBar'); if(bar) bar.style.display = 'none';
     }, 6000);
 
     var retryB = document.getElementById('retryBtn');

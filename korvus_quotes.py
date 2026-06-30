@@ -556,3 +556,102 @@ if __name__ == "__main__":
             print(f"  {s:5} {res[s]['price']:>10.2f}  {res[s]['chg_pct']:+.2f}%")
         else:
             print(f"  {s:5} (no data — check key / provider)")
+
+
+# ---------------------------------------------------------------------------
+# Intraday series for the Live TV sidebar charts.
+# Real 5-minute bars from Alpha Vantage (TIME_SERIES_INTRADAY, regular hours),
+# expressed as percent change vs the prior session's close so the dashed zero
+# line on the chart IS the real previous close. Server-cached and shared across
+# all viewers so we never hammer the AV rate limit: each symbol is refetched at
+# most once per _INTRADAY_TTL. A free AV key (25 req/day) will not sustain this;
+# a premium key is required. On any miss we return an empty series for that
+# symbol and the client keeps its live-accumulated line.
+# ---------------------------------------------------------------------------
+_INTRADAY_CACHE = {}          # sym -> {"at": datetime, "data": {...}}
+_INTRADAY_TTL   = 300         # seconds
+
+
+def _safe_float(v):
+    try:
+        return float(str(v).replace(",", "").strip())
+    except Exception:
+        return 0.0
+
+
+def get_intraday(symbols, force_delayed=False):
+    out = {}
+    if not ALPHAVANTAGE_KEY:
+        out["_meta"] = {"provider": "none", "ok": False, "note": "no ALPHAVANTAGE_KEY set"}
+        return out
+
+    now = dt.datetime.now(dt.timezone.utc)
+    entitlement = "delayed" if force_delayed else "realtime"
+
+    try:
+        from zoneinfo import ZoneInfo
+        et_today = dt.datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
+    except Exception:
+        et_today = None
+
+    for sym in symbols:
+        sym = (sym or "").strip().upper()
+        if not sym:
+            continue
+        cached = _INTRADAY_CACHE.get(sym)
+        if cached and (now - cached["at"]).total_seconds() < _INTRADAY_TTL:
+            out[sym] = cached["data"]
+            continue
+        try:
+            url = ("https://www.alphavantage.co/query"
+                   "?function=TIME_SERIES_INTRADAY"
+                   f"&symbol={sym}&interval=5min&outputsize=full&extended_hours=false"
+                   f"&entitlement={entitlement}&apikey={ALPHAVANTAGE_KEY}")
+            r = requests.get(url, timeout=20)
+            j = r.json()
+            series = j.get("Time Series (5min)")
+            if not series:
+                msg = j.get("Information") or j.get("Note") or j.get("Error Message")
+                if msg:
+                    print(f"  [intraday] Alpha Vantage {sym}: {msg}")
+                continue   # leave any prior cache in place; symbol simply absent
+
+            by_date = {}
+            for k, v in sorted(series.items()):          # oldest -> newest
+                by_date.setdefault(k.split(" ")[0], []).append((k, v))
+            dates = sorted(by_date.keys())
+            today = dates[-1]
+
+            # prev close = last regular-session close of the prior trading day
+            prev_close = None
+            if len(dates) >= 2:
+                prev_close = _safe_float(by_date[dates[-2]][-1][1].get("4. close"))
+            if not prev_close:
+                prev_close = _safe_float(by_date[today][0][1].get("1. open"))
+
+            # if the latest bars are not for the current ET session (pre-open /
+            # weekend / holiday), do not plot a stale prior day as "today"
+            if et_today and today != et_today:
+                data = {"pct": [], "prev_close": round(prev_close, 4) if prev_close else None,
+                        "delayed": (entitlement == "delayed"), "stale": True, "asof": now.isoformat()}
+                _INTRADAY_CACHE[sym] = {"at": now, "data": data}
+                out[sym] = data
+                continue
+
+            pts = []
+            for k, v in by_date[today]:
+                c = _safe_float(v.get("4. close"))
+                if c <= 0 or not prev_close:
+                    continue
+                pts.append(round((c - prev_close) / prev_close * 100.0, 3))
+
+            data = {"pct": pts, "prev_close": round(prev_close, 4) if prev_close else None,
+                    "delayed": (entitlement == "delayed"), "stale": False, "asof": now.isoformat()}
+            _INTRADAY_CACHE[sym] = {"at": now, "data": data}
+            out[sym] = data
+        except Exception as e:
+            print(f"  [intraday] Alpha Vantage {sym} error: {e}")
+            continue
+
+    out["_meta"] = {"provider": "alphavantage", "ok": True, "entitlement": entitlement}
+    return out
