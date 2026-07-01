@@ -190,10 +190,28 @@
   .dayhdr.today .dname{color:var(--crimson);}
   .dayhdr .todaytag{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:#fff;
     background:var(--crimson);padding:2px 7px;border-radius:999px;box-shadow:0 0 12px -3px var(--crimson-glow);}
+  .dayhdr .dcount{margin-left:auto;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);}
+
+  /* legend / key + source line above the table */
+  .callegend{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:0 24px 12px;
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);}
+  .callegend .lk{display:inline-flex;align-items:center;gap:6px;}
+  .callegend .lk .d{width:8px;height:8px;border-radius:50%;flex:none;}
+  .callegend .lk .d.hi{background:var(--hi);box-shadow:0 0 8px var(--hi);}
+  .callegend .lk .d.med{background:var(--med);box-shadow:0 0 7px var(--med-glow);}
+  .callegend .lk .d.lo{background:var(--lo);}
+  .callegend .lk b.beat{color:var(--bull);} .callegend .lk b.miss{color:var(--bear);}
+  .callegend .lksep{width:1px;height:12px;background:var(--line);}
+  .callegend .src{color:var(--ink-dim);}
+  .callegend .src b{color:var(--gold);font-weight:600;}
 
   .erow{display:grid;grid-template-columns:84px 64px 92px 1fr 96px 96px 96px;gap:10px;align-items:center;
     padding:11px 18px;border-top:1px solid var(--line-soft);transition:background .14s;font-size:13px;}
   .erow:hover{background:rgba(255,255,255,.025);}
+  .erow.imp-high{box-shadow:inset 3px 0 0 var(--hi);}
+  .erow.imp-medium{box-shadow:inset 3px 0 0 var(--med);}
+  .erow.imp-low{box-shadow:inset 3px 0 0 var(--line);}
+  .erow.imp-holiday{box-shadow:inset 3px 0 0 var(--ink-faint);}
   .erow.next{background:linear-gradient(90deg,rgba(255,157,46,.10),transparent 55%);box-shadow:inset 3px 0 0 var(--med);}
   .erow.passed{opacity:.5;}
   .etime{font-family:var(--mono);font-size:12px;color:var(--ink-dim);letter-spacing:.02em;}
@@ -321,6 +339,17 @@
     </div>
   </div>
 
+  <div class="callegend">
+    <span class="lk"><span class="d hi"></span>High</span>
+    <span class="lk"><span class="d med"></span>Medium</span>
+    <span class="lk"><span class="d lo"></span>Low</span>
+    <span class="lksep"></span>
+    <span class="lk"><b class="beat">&#9650;</b> actual beat forecast</span>
+    <span class="lk"><b class="miss">&#9660;</b> actual missed</span>
+    <span style="flex:1"></span>
+    <span class="lk src">Source: <b>Forex Factory</b></span>
+  </div>
+
   <main>
     <div class="cal">
       <div class="colhead">
@@ -334,7 +363,7 @@
   <footer>
     <div class="frow">
       <span class="pill" id="srcPill">◆ ECONOMIC CALENDAR</span>
-      <span id="srcNote">Government data releases, fetched and cached by the Korvus server.</span>
+      <span id="srcNote">Economic calendar from Forex Factory, fetched and cached by the Korvus server.</span>
       <span style="flex:1"></span>
       <span class="rt">● THIS WEEK</span>
       <span id="lastUpd">last update,</span>
@@ -416,11 +445,18 @@ function etParts(iso){
 
 function impClass(imp){ return (imp||'Low').toLowerCase(); }
 
-function actualClass(actual, forecast){
+// For most releases a higher actual than forecast is currency-positive, so it
+// reads green; for a short list of "lower is better" labels (unemployment rate,
+// jobless claims) the sense inverts, which is how Forex Factory colours them.
+// When we cannot parse both numbers we stay neutral rather than guess a colour.
+const INVERSE_ACTUAL = /(unemployment rate|unemployment claims|jobless claims|initial claims|continuing claims|claimant count)/i;
+function actualClass(title, actual, forecast){
   const a = parseFloat(String(actual).replace(/[^0-9.\-]/g,''));
   const f = parseFloat(String(forecast).replace(/[^0-9.\-]/g,''));
-  if(isNaN(a)||isNaN(f)) return 'flat';
-  if(a>f) return 'beat'; if(a<f) return 'miss'; return 'flat';
+  if(isNaN(a)||isNaN(f)||a===f) return 'flat';
+  const higherIsBetter = !INVERSE_ACTUAL.test(title||'');
+  const better = higherIsBetter ? (a>f) : (a<f);
+  return better ? 'beat' : 'miss';
 }
 
 function render(){
@@ -453,6 +489,7 @@ function render(){
       <div class="dayhdr ${isToday?'today':''}">
         <span class="dname">${p0.dname}</span><span class="ddate">${p0.ddate}</span>
         ${isToday?'<span class="todaytag">Today</span>':''}
+        <span class="dcount">${list.length} event${list.length!==1?'s':''}</span>
       </div>`;
     list.forEach(e=>{
       const p = e._p;
@@ -460,8 +497,8 @@ function render(){
       const isNext = nextEv && nextEv._p.ts===p.ts && nextEv.title===e.title && nextEv.country===e.country;
       const ic = impClass(e.impact);
       const timeCell = p.isAllDay ? '<span class="allday">All&nbsp;Day</span>' : p.time;
-      const aCls = actualClass(e.actual, e.forecast);
-      html += `<div class="erow ${isNext?'next':''} ${passed?'passed':''}">
+      const aCls = actualClass(e.title, e.actual, e.forecast);
+      html += `<div class="erow imp-${ic} ${isNext?'next':''} ${passed?'passed':''}">
         <span class="etime">${timeCell}</span>
         <span class="eccy">${e.country||'-'}</span>
         <span class="eimp ${ic}"><span class="d"></span>${e.impact||'Low'}</span>
@@ -548,7 +585,7 @@ async function loadLive(){
       render();
       setBadge(true);
       document.getElementById('lastUpd').textContent = 'last update ' + new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true}).format(new Date()) + ' ET';
-      document.getElementById('srcNote').textContent = 'Government data releases, fetched and cached by the Korvus server.';
+      document.getElementById('srcNote').textContent = 'Economic calendar from Forex Factory, fetched and cached by the Korvus server.';
       return;
     }
     throw new Error('empty');

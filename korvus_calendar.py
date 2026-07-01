@@ -8,7 +8,7 @@
  endpoint and renders the week's government data releases.
 
  WHY THIS LIVES ON THE SERVER (not the browser):
-   The free Forex Factory weekly JSON is CORS-blocked AND rate-limited — polled
+   The free Forex Factory weekly JSON is CORS-blocked AND rate-limited - polled
    from a browser it returns a "Request Denied" page, not data. So it MUST be
    fetched server-side and cached. This module does that, normalizes the shape,
    and caches it (~1 hour for Forex Factory, ~5 min for FMP) so the feed is
@@ -24,7 +24,7 @@
                      currencies (noisy). Needs a paid FMP key (FMP_KEY).
    "forexfactory" -> Forex Factory free weekly JSON. No API key, but no
                      "actual" field (forecast/previous only). Clean but no
-                     actuals; the page shows "—" in the Actual column.
+                     actuals; the page shows "-" in the Actual column.
    "auto"         -> use "merge" if FMP_KEY is set, else Forex Factory. (default)
 
  ENTRY POINT:
@@ -33,7 +33,7 @@
        "impact": "High"|"Medium"|"Low"|"Holiday",
        "date": <ISO 8601 string>,
        "forecast": str, "previous": str, "actual": str }
-   Never raises — on any failure it returns the last good cache, or [].
+   Never raises - on any failure it returns the last good cache, or [].
 
  Quick manual test on the server:   python korvus_calendar.py
 ==============================================================================
@@ -149,7 +149,7 @@ def _norm_impact(val: str) -> str:
 def _forexfactory() -> list:
     r = requests.get(FF_URL, timeout=20, headers={"User-Agent": UA})
     if r.status_code != 200:
-        print(f"  [calendar] Forex Factory returned {r.status_code} — skipping")
+        print(f"  [calendar] Forex Factory returned {r.status_code} - skipping")
         return []
     raw = r.json()
     out = []
@@ -178,7 +178,7 @@ def _fmp_date_iso(s: str) -> str:
     s = (s or "").strip()
     if not s:
         return ""
-    if "T" in s:                       # already ISO-ish (has offset/Z) — leave it
+    if "T" in s:                       # already ISO-ish (has offset/Z) - leave it
         return s
     if " " in s:                       # "YYYY-MM-DD HH:MM:SS" in UTC
         return s.replace(" ", "T", 1) + "+00:00"
@@ -190,7 +190,7 @@ def _fmp_date_iso(s: str) -> str:
 # ----------------------------------------------------------------------------
 def _fmp() -> list:
     if not FMP_KEY:
-        print("  [calendar] no FMP_KEY set — cannot use FMP")
+        print("  [calendar] no FMP_KEY set - cannot use FMP")
         return []
     today = dt.date.today()
     frm = today - dt.timedelta(days=today.weekday())     # Monday of this week
@@ -203,15 +203,15 @@ def _fmp() -> list:
         try:
             r = requests.get(url, params=params, timeout=20, headers={"User-Agent": UA})
         except Exception as e:
-            print(f"  [calendar] FMP {tag} request error: {e} — trying next")
+            print(f"  [calendar] FMP {tag} request error: {e} - trying next")
             continue
         if r.status_code != 200:
-            print(f"  [calendar] FMP {tag} returned {r.status_code} — trying next")
+            print(f"  [calendar] FMP {tag} returned {r.status_code} - trying next")
             continue
         try:
             j = r.json()
         except Exception:
-            print(f"  [calendar] FMP {tag} returned non-JSON — trying next")
+            print(f"  [calendar] FMP {tag} returned non-JSON - trying next")
             continue
         if isinstance(j, dict) and (j.get("Error Message") or j.get("error")):
             print(f"  [calendar] FMP {tag} error: {str(j.get('Error Message') or j.get('error'))[:140]}")
@@ -322,7 +322,7 @@ def _tradingeconomics() -> list:
 
 
 # ----------------------------------------------------------------------------
-# Provider: MERGE — Forex Factory curation (the events that matter, correct ET
+# Provider: MERGE - Forex Factory curation (the events that matter, correct ET
 # times, majors only) enriched with FMP's ACTUAL values. FF is the whitelist;
 # FMP supplies the released number where the event titles correspond. This is
 # what keeps the page clean: only FF's curated set shows, but now with actuals.
@@ -361,7 +361,7 @@ def _norm_title(t: str) -> str:
 # Vendor prefixes and flash/prelim qualifiers that ONE feed prints and the other
 # omits, so the same release ends up with names that share too few tokens to
 # match. Forex Factory says "Flash Manufacturing PMI"; FMP says "S&P Global
-# Manufacturing PMI" — after normalization those share only {manufacturing, pmi}
+# Manufacturing PMI" - after normalization those share only {manufacturing, pmi}
 # (2 of 6 tokens, 33% overlap) and the actual never attaches. Stripping these
 # noise tokens collapses both to "manufacturing pmi" so they correspond.
 # Deliberately CONSERVATIVE: distinguishing words (ism, services, manufacturing,
@@ -574,7 +574,13 @@ def get_calendar(force_refresh: bool = False) -> list:
 
     provider = CALENDAR_PROVIDER
     if provider == "auto":
-        provider = "merge" if (FMP_KEY or TE_KEY) else "forexfactory"
+        # Default to pure Forex Factory so the page matches forexfactory.com
+        # field-for-field (title, time, impact, forecast, previous, actual all
+        # come straight from FF's own feed). "merge"/"fmp" stay available via
+        # CALENDAR_PROVIDER for faster actuals, but they can surface a value FF
+        # has not posted yet (different revision, unit, or rounding), which is
+        # exactly what reads as a mismatch on the page.
+        provider = "forexfactory"
 
     data, ttl = [], TTL_FF
     try:
@@ -588,7 +594,7 @@ def get_calendar(force_refresh: bool = False) -> list:
             data = _fmp()
             ttl = TTL_FMP
             if not data:                       # FMP empty/failed -> fall back to free feed
-                print("  [calendar] FMP empty — falling back to Forex Factory")
+                print("  [calendar] FMP empty - falling back to Forex Factory")
                 data = _forexfactory()
                 ttl = TTL_FF
         else:
@@ -603,7 +609,7 @@ def get_calendar(force_refresh: bool = False) -> list:
         _save_disk_cache()                  # survive restarts with last-good data
         return data
 
-    # fetch failed — serve whatever we had before rather than nothing
+    # fetch failed - serve whatever we had before rather than nothing
     return _cache["data"]
 
 
@@ -629,13 +635,13 @@ if __name__ == "__main__":
         print(f"\nTrading Economics USD rows: {len(te_usd)}")
         for e in sorted(te_usd, key=lambda x: x.get("date", "")):
             print(f"  {e.get('date','')[:16]:18} {e.get('impact',''):7} "
-                  f"act={str(e.get('actual') or '—'):>8}  {e.get('title','')[:44]}")
+                  f"act={str(e.get('actual') or '-'):>8}  {e.get('title','')[:44]}")
         pmi = [e for e in te_usd if "pmi" in (e.get("title") or "").lower()]
         print(f"\nUSD PMI rows from TE: {len(pmi)}  (this is the FMP gap we're filling)")
         for e in pmi:
             tag = "HAS ACTUAL" if e.get("actual") else "no actual yet"
-            print(f"  [{tag}] {e.get('title','')}: act={e.get('actual') or '—'} "
-                  f"fcst={e.get('forecast') or '—'} prev={e.get('previous') or '—'}")
+            print(f"  [{tag}] {e.get('title','')}: act={e.get('actual') or '-'} "
+                  f"fcst={e.get('forecast') or '-'} prev={e.get('previous') or '-'}")
         if pmi and any(e.get("actual") for e in pmi):
             print("\n=> Your TE plan returns USD PMI WITH actuals. Worth keeping.")
         elif pmi:
@@ -643,7 +649,7 @@ if __name__ == "__main__":
                   "hasn't released this week; re-check just after a PMI prints).")
         else:
             print("\n=> Your TE plan returned NO USD PMI rows. This tier does not "
-                  "cover it — cancel the trial before it charges.")
+                  "cover it - cancel the trial before it charges.")
         sys.exit(0)
 
     # `python korvus_calendar.py usd` -> show the USD side of the merge so a
@@ -656,7 +662,7 @@ if __name__ == "__main__":
         ff_usd  = [e for e in ff  if (e.get("country") or "").upper() == "USD"]
         print(f"\nFMP USD rows: {len(fmp_usd)}  (title -> canon -> actual)")
         for e in sorted(fmp_usd, key=lambda x: x.get("date", "")):
-            print(f"  {e.get('date','')[:16]:18} act={str(e.get('actual') or '—'):>8}  "
+            print(f"  {e.get('date','')[:16]:18} act={str(e.get('actual') or '-'):>8}  "
                   f"{e.get('title','')[:38]:40} -> {_canon(e.get('title'))}")
         idx = {}
         for e in fmp_usd:
@@ -669,7 +675,7 @@ if __name__ == "__main__":
             print(f"  {mark} {e.get('date','')[:16]:18} {e.get('title','')[:38]:40} -> {ck}")
         miss = [e for e in ff_usd if _canon(e.get("title")) not in idx]
         if miss:
-            print(f"\nUnmatched FF USD events ({len(miss)}) — no FMP row shares their canon:")
+            print(f"\nUnmatched FF USD events ({len(miss)}) - no FMP row shares their canon:")
             for e in miss:
                 print(f"  {e.get('title','')}  -> {_canon(e.get('title'))}")
         sys.exit(0)
@@ -678,5 +684,5 @@ if __name__ == "__main__":
     events = get_calendar(force_refresh=True)
     print(f"Got {len(events)} events. First few:")
     for e in events[:12]:
-        act = e.get("actual") or "—"
+        act = e.get("actual") or "-"
         print(f"  {e['date'][:16]:18} {e['country']:4} {e['impact']:7} act={act:>8}  {e['title'][:42]}")
