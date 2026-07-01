@@ -541,11 +541,14 @@
   .discord:hover{background:rgba(88,101,242,.2);border-color:rgba(140,140,255,.7);box-shadow:0 0 22px -3px rgba(120,120,240,.85);color:#e6e8ff;}
 
   /* Forex / Gov News nav link, crimson sibling to the Eclipse-X pill */
+  /* Forex News nav, amber so it stands clearly apart from the crimson Live TV chip. */
   .forexnav{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;font-weight:600;
-    letter-spacing:.08em;text-transform:uppercase;text-decoration:none;color:#ff465e;cursor:pointer;
-    border:1px solid rgba(232,35,63,.38);border-radius:999px;padding:6px 12px;background:rgba(232,35,63,.06);
-    box-shadow:0 0 16px -6px var(--crimson-glow);transition:background .2s,box-shadow .2s,border-color .2s,color .2s;}
-  .forexnav:hover{background:rgba(232,35,63,.14);border-color:#e8233f;color:#fff;box-shadow:0 0 22px -3px var(--crimson-glow);}
+    letter-spacing:.08em;text-transform:uppercase;text-decoration:none;color:#ffb057;cursor:pointer;
+    border:1px solid rgba(255,157,46,.42);border-radius:999px;padding:6px 12px;background:rgba(255,157,46,.08);
+    box-shadow:0 0 16px -6px rgba(255,157,46,.55);transition:background .2s,box-shadow .2s,border-color .2s,color .2s;}
+  .forexnav:hover{background:rgba(255,157,46,.16);border-color:#ff9d2e;color:#fff;box-shadow:0 0 22px -3px rgba(255,157,46,.6);}
+  html[data-theme="light"] .forexnav{color:#b56a08;border-color:rgba(201,118,10,.5);background:rgba(201,118,10,.08);box-shadow:none;}
+  html[data-theme="light"] .forexnav:hover{color:#8a4f06;background:rgba(201,118,10,.15);border-color:#c9760a;}
   .forexnav svg{width:14px;height:14px;}
   .discord svg{opacity:.9;}
 
