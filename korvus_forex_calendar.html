@@ -12,7 +12,7 @@
     Renders THIS-WEEK sample events instantly (computed relative to today, so
     the table is never empty and even works opened as a bare file). Then it
     silently upgrades to LIVE by fetching /api/ff-calendar (see korvus_calendar.py).
-    The Forex Factory free feed is CORS-blocked + rate-limited, so it is fetched
+    The upstream calendar feed is CORS-blocked + rate-limited, so it is fetched
     SERVER-SIDE and cached, never from the browser.
 
   THEME:
@@ -212,7 +212,9 @@
   .erow.imp-medium{box-shadow:inset 3px 0 0 var(--med);}
   .erow.imp-low{box-shadow:inset 3px 0 0 var(--line);}
   .erow.imp-holiday{box-shadow:inset 3px 0 0 var(--ink-faint);}
-  .erow.next{background:linear-gradient(90deg,rgba(255,157,46,.10),transparent 55%);box-shadow:inset 3px 0 0 var(--med);}
+  /* next-up highlight is a neutral row wash only; it must NOT repaint the left
+     accent bar, so the bar always reflects impact (red HIGH / amber MED / etc). */
+  .erow.next{background:linear-gradient(90deg,rgba(246,248,255,.06),transparent 55%);}
   .erow.passed{opacity:.5;}
   .etime{font-family:var(--mono);font-size:12px;color:var(--ink-dim);letter-spacing:.02em;}
   .etime .allday{color:var(--ink-faint);font-size:10px;letter-spacing:.1em;text-transform:uppercase;}
@@ -346,8 +348,6 @@
     <span class="lksep"></span>
     <span class="lk"><b class="beat">&#9650;</b> actual beat forecast</span>
     <span class="lk"><b class="miss">&#9660;</b> actual missed</span>
-    <span style="flex:1"></span>
-    <span class="lk src">Source: <b>Forex Factory</b></span>
   </div>
 
   <main>
@@ -363,7 +363,7 @@
   <footer>
     <div class="frow">
       <span class="pill" id="srcPill">◆ ECONOMIC CALENDAR</span>
-      <span id="srcNote">Economic calendar from Forex Factory, fetched and cached by the Korvus server.</span>
+      <span id="srcNote">Economic data releases, fetched and cached by the Korvus server.</span>
       <span style="flex:1"></span>
       <span class="rt">● THIS WEEK</span>
       <span id="lastUpd">last update,</span>
@@ -447,7 +447,7 @@ function impClass(imp){ return (imp||'Low').toLowerCase(); }
 
 // For most releases a higher actual than forecast is currency-positive, so it
 // reads green; for a short list of "lower is better" labels (unemployment rate,
-// jobless claims) the sense inverts, which is how Forex Factory colours them.
+// jobless claims) the sense inverts, matching standard economic-calendar colouring.
 // When we cannot parse both numbers we stay neutral rather than guess a colour.
 const INVERSE_ACTUAL = /(unemployment rate|unemployment claims|jobless claims|initial claims|continuing claims|claimant count)/i;
 function actualClass(title, actual, forecast){
@@ -457,6 +457,30 @@ function actualClass(title, actual, forecast){
   const higherIsBetter = !INVERSE_ACTUAL.test(title||'');
   const better = higherIsBetter ? (a>f) : (a<f);
   return better ? 'beat' : 'miss';
+}
+
+// Clean, consistent number precision per row. The feed sometimes sends an actual
+// with more decimals than its forecast/previous (7.594M next to 7.28M / 7.62M) or
+// with none where the siblings have one (73 next to 77.7 / 82.1). We format every
+// numeric value in a row to the precision of its forecast/previous so the three
+// columns always line up. Sign and suffix (K/M/B/T/%) are preserved; anything that
+// is not a plain number (blank, ranges, text like "Tentative") is left untouched.
+function _numParts(v){
+  const m = String(v==null?'':v).trim().match(/^([+\-]?)(\d+(?:\.\d+)?)([KMBT%]?)$/i);
+  return m ? {sign:m[1], numStr:m[2], suffix:m[3]} : null;
+}
+function _decimals(v){
+  const p=_numParts(v); if(!p) return -1;
+  const i=p.numStr.indexOf('.'); return i<0 ? 0 : (p.numStr.length-i-1);
+}
+function _fmtNum(v, dp){
+  const p=_numParts(v); if(!p) return (v==null?'':String(v));
+  return p.sign + parseFloat(p.numStr).toFixed(dp) + p.suffix;
+}
+function rowDecimals(e){
+  let dp = Math.max(_decimals(e.forecast), _decimals(e.previous));
+  if(dp<0) dp = _decimals(e.actual);   // no numeric forecast/previous to anchor to
+  return dp<0 ? 0 : dp;
 }
 
 function render(){
@@ -498,14 +522,18 @@ function render(){
       const ic = impClass(e.impact);
       const timeCell = p.isAllDay ? '<span class="allday">All&nbsp;Day</span>' : p.time;
       const aCls = actualClass(e.title, e.actual, e.forecast);
+      const dp = rowDecimals(e);
+      const actD = e.actual   ? _fmtNum(e.actual,   dp) : '';
+      const fcD  = e.forecast ? _fmtNum(e.forecast, dp) : '';
+      const pvD  = e.previous ? _fmtNum(e.previous, dp) : '';
       html += `<div class="erow imp-${ic} ${isNext?'next':''} ${passed?'passed':''}">
         <span class="etime">${timeCell}</span>
         <span class="eccy">${e.country||'-'}</span>
         <span class="eimp ${ic}"><span class="d"></span>${e.impact||'Low'}</span>
         <span class="etitle">${e.title||''}</span>
-        <span class="enum eactual ${aCls}"><span class="lbl">Act</span>${e.actual||'-'}</span>
-        <span class="enum eforecast"><span class="lbl">Fcst</span>${e.forecast||'-'}</span>
-        <span class="enum eprevious"><span class="lbl">Prev</span>${e.previous||'-'}</span>
+        <span class="enum eactual ${aCls}"><span class="lbl">Act</span>${actD||'-'}</span>
+        <span class="enum eforecast"><span class="lbl">Fcst</span>${fcD||'-'}</span>
+        <span class="enum eprevious"><span class="lbl">Prev</span>${pvD||'-'}</span>
       </div>`;
     });
     html += `</div>`;
@@ -585,7 +613,7 @@ async function loadLive(){
       render();
       setBadge(true);
       document.getElementById('lastUpd').textContent = 'last update ' + new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true}).format(new Date()) + ' ET';
-      document.getElementById('srcNote').textContent = 'Economic calendar from Forex Factory, fetched and cached by the Korvus server.';
+      document.getElementById('srcNote').textContent = 'Economic data releases, fetched and cached by the Korvus server.';
       return;
     }
     throw new Error('empty');
