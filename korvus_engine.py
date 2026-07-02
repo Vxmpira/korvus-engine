@@ -660,7 +660,12 @@ def run_once():
     total = conn.execute("SELECT COUNT(*) AS c FROM items").fetchone()["c"]
     print(f"  [db] korvus.db now holds {total} item(s)")
     conn.close()
-
+ 
+try:
+           from korvus_forex_discord import post_new_actuals
+           post_new_actuals()
+       except Exception as e:
+           print(f"  [forex-discord] pass error: {e}")
 
 def main():
     ap = argparse.ArgumentParser(description="Korvus engine (Phase 1)")
