@@ -36,6 +36,7 @@
 ==============================================================================
 """
 import os
+import re
 import json
 import argparse
 import datetime as dt
@@ -142,16 +143,38 @@ def _et_time(e):
     return d.strftime("%I:%M %p ET").lstrip("0")
 
 
-def _beat(actual, forecast):
-    """Return (embed_color, one_line_note) comparing actual to forecast."""
+# Releases where a LOWER actual than forecast is the good outcome (fewer people
+# out of work). Matches the same list on the /forex calendar page so the color
+# agrees in both places.
+_INVERSE = re.compile(
+    r"(unemployment rate|unemployment claims|jobless claims|initial claims|"
+    r"continuing claims|claimant count)", re.I)
+
+
+def _slug_title(t):
+    return re.sub(r"^-+|-+$", "", re.sub(r"[^a-z0-9]+", "-", (t or "").lower()))
+
+
+def event_url_id(e):
+    """Stable id for deep-linking a release on /forex. MUST stay identical to
+    eventId() in korvus_forex_calendar.html."""
+    return f"{(e.get('date') or '')[:10]}-{(e.get('country') or '').lower()}-{_slug_title(e.get('title'))}"
+
+
+def _beat(title, actual, forecast):
+    """Return (embed_color, one_line_note). Beat vs miss is directional: for most
+    releases a higher actual is bullish, but for the inverse list (jobless claims,
+    unemployment rate) a lower actual is the beat."""
     a, f = _num(actual), _num(forecast)
     if a is None or f is None:
         return PINK, ""
-    if a > f:
-        return GREEN, "\U0001F4C8 Above forecast"
-    if a < f:
-        return RED, "\U0001F4C9 Below forecast"
-    return PINK, "\u2796 In line with forecast"
+    if a == f:
+        return PINK, "\u2796 In line with forecast"
+    higher_is_better = not _INVERSE.search(title or "")
+    better = (a > f) if higher_is_better else (a < f)
+    if better:
+        return GREEN, "\u25B2 Beat forecast"
+    return RED, "\u25BC Missed forecast"
 
 
 def _qualifies(e):
@@ -170,7 +193,7 @@ def _build_embed(e):
         or (e.get("actual") or "")
     forecast = (e.get("forecast") or "").strip() or "n/a"
     previous = (e.get("previous") or "").strip() or "n/a"
-    color, beat = _beat(e.get("actual"), e.get("forecast"))
+    color, beat = _beat(e.get("title"), e.get("actual"), e.get("forecast"))
     dot  = IMPACT_DOT.get(e.get("impact"), "\u26AA")
     ccy  = (e.get("country") or "").upper()
     when = _et_time(e)
@@ -188,7 +211,8 @@ def _build_embed(e):
     ]
     if beat:
         lines += ["", beat]
-    lines += ["", f"[View the full calendar \u203A]({CALENDAR_URL})"]
+    link = f"{CALENDAR_URL}?event={event_url_id(e)}"
+    lines += ["", f"[Open this release on Korvus \u203A]({link})"]
 
     embed = {
         "author": {"name": AUTHOR},
@@ -343,7 +367,7 @@ def post_new_actuals(dry_run=False):
         # Actuals post quietly. The single daily @Market Trader ping rides on the
         # 1 AM agenda (post_daily_agenda), so the channel is not pinged all day.
         if dry_run:
-            _c, note = _beat(e.get("actual"), e.get("forecast"))
+            _c, note = _beat(e.get("title"), e.get("actual"), e.get("forecast"))
             print(f"  [forex-discord][dry] {e.get('title')}  "
                   f"actual={e.get('actual')} forecast={e.get('forecast')}  "
                   f"{note or 'neutral'}")
