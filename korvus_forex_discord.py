@@ -90,6 +90,7 @@ def _load_state():
         s = {}
     s.setdefault("posted", [])
     s.setdefault("last_ping_date", "")
+    s.setdefault("last_agenda_date", "")
     s.setdefault("initialized", False)
     return s
 
@@ -223,6 +224,85 @@ def _send(embed, ping):
 
 
 # ----------------------------------------------------------------------------
+# 1 AM agenda: today's scheduled USD High/Medium releases, one heads-up ping.
+# Same get_calendar() and same USD + High/Medium filter as the actuals poster,
+# so the morning list and the live actuals are guaranteed to be the same events.
+def _qualifies_agenda(e):
+    return (
+        (e.get("country") or "").upper() in WANTED_CCY
+        and e.get("impact") in WANTED_IMPACT
+        and _is_today(e)
+    )
+
+
+def _build_agenda_embed(events):
+    events = sorted(events, key=lambda x: x.get("date") or "")
+    lines = ["Scheduled economic releases for today's session.", ""]
+    if events:
+        for e in events:
+            dot = IMPACT_DOT.get(e.get("impact"), "\u26AA")
+            ccy = (e.get("country") or "").upper()
+            when = _et_time(e) or "TBD"
+            fc = (e.get("forecast") or "").strip() or "n/a"
+            pv = (e.get("previous") or "").strip() or "n/a"
+            lines.append(f"{dot} **{e.get('title')}**  `{ccy}`")
+            lines.append(f"{when}  \u00B7  Forecast {fc}  \u00B7  Previous {pv}")
+            lines.append("")
+        lines.append("`\U0001F534 High   \U0001F7E0 Medium`")
+    else:
+        lines.append("No major USD releases scheduled today.")
+    lines += ["", f"[View the live calendar \u203A]({CALENDAR_URL})"]
+
+    now = _et_now()
+    today_label = f"{now.strftime('%B')} {now.day}, {now.year}"
+    embed = {
+        "author": {"name": "ECLIPSE-X \u00B7 FOREX INTELLIGENCE"},
+        "title": f"\U0001F4C8 Economic Calendar \u00B7 {today_label}",
+        "description": "\n".join(lines),
+        "color": PINK,
+        "footer": {"text": "BlackCrownVxJ LLC \u00B7 Live Market Intelligence"},
+        "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+    }
+    if LOGO_URL:
+        embed["author"]["icon_url"] = LOGO_URL
+        embed["thumbnail"] = {"url": LOGO_URL}
+    return embed
+
+
+def post_daily_agenda(force=False, dry_run=False):
+    """Post today's release schedule once, in the early-morning ET window. This
+    is the one message a day that pings @Market Trader. force=True ignores the
+    time and once-a-day guards (for --agenda testing)."""
+    if not WEBHOOK and not dry_run:
+        return
+    state = _load_state()
+    today = _et_today_str()
+    if not force:
+        if not (1 <= _et_now().hour < 5):        # only fire after 1 AM ET
+            return
+        if state.get("last_agenda_date") == today:   # and only once that day
+            return
+
+    try:
+        events = get_calendar()
+    except Exception as e:
+        print(f"  [forex-agenda] calendar error: {e}")
+        return
+    todays = [e for e in events if _qualifies_agenda(e)]
+
+    if dry_run:
+        print(f"  [forex-agenda][dry] would post agenda with {len(todays)} event(s)")
+        for e in sorted(todays, key=lambda x: x.get("date") or ""):
+            print(f"      {_et_time(e) or 'TBD':>9}  {e.get('impact'):6} {e.get('title')}")
+        return
+
+    if _send(_build_agenda_embed(todays), ping=True):
+        state["last_agenda_date"] = today
+        _save_state(state)
+        print(f"  [forex-agenda] posted today's agenda ({len(todays)} event(s))")
+
+
+# ----------------------------------------------------------------------------
 # main entry, called by the engine every pass
 def post_new_actuals(dry_run=False):
     if not WEBHOOK and not dry_run:
@@ -258,20 +338,18 @@ def post_new_actuals(dry_run=False):
         return
 
     to_post.sort(key=lambda e: e.get("date") or "")   # oldest release first
-    today  = _et_today_str()
     posted = 0
     for e in to_post:
-        ping = (state["last_ping_date"] != today)      # only the day's first post pings
+        # Actuals post quietly. The single daily @Market Trader ping rides on the
+        # 1 AM agenda (post_daily_agenda), so the channel is not pinged all day.
         if dry_run:
             _c, note = _beat(e.get("actual"), e.get("forecast"))
             print(f"  [forex-discord][dry] {e.get('title')}  "
                   f"actual={e.get('actual')} forecast={e.get('forecast')}  "
-                  f"{note or 'neutral'}  ping={ping}")
+                  f"{note or 'neutral'}")
             continue
-        if _send(_build_embed(e), ping):
+        if _send(_build_embed(e), ping=False):
             seen.add(_event_key(e))
-            if ping:
-                state["last_ping_date"] = today
             posted += 1
 
     if not dry_run:
@@ -320,13 +398,19 @@ def _seed_only():
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="Korvus forex -> Discord poster")
-    ap.add_argument("--dry-run", action="store_true", help="show what would post, send nothing")
+    ap.add_argument("--dry-run", action="store_true", help="show what actuals would post, send nothing")
     ap.add_argument("--test", action="store_true", help="send one test embed to the webhook")
     ap.add_argument("--seed", action="store_true", help="mark today's releases seen, post nothing")
+    ap.add_argument("--agenda", action="store_true", help="post today's 1 AM agenda now (ignores the time guard)")
+    ap.add_argument("--agenda-dry", action="store_true", help="show today's agenda, send nothing")
     args = ap.parse_args()
     if args.test:
         _test_webhook()
     elif args.seed:
         _seed_only()
+    elif args.agenda:
+        post_daily_agenda(force=True)
+    elif args.agenda_dry:
+        post_daily_agenda(force=True, dry_run=True)
     else:
         post_new_actuals(dry_run=args.dry_run)
