@@ -662,8 +662,9 @@ def run_once():
     conn.close()
  
 try:
-           from korvus_forex_discord import post_new_actuals
-           post_new_actuals()
+           from korvus_forex_discord import post_daily_agenda, post_new_actuals
+           post_daily_agenda()     # today's schedule, once, ~1 AM ET, one ping
+           post_new_actuals()      # each actual as it prints, quietly
        except Exception as e:
            print(f"  [forex-discord] pass error: {e}")
 
