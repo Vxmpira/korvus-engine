@@ -420,6 +420,31 @@ def _seed_only():
     print(f"  [forex-discord] seeded {len(fresh)} released event(s), posted nothing")
 
 
+def replay_today(dry_run=False):
+    """Post today's already-released USD High/Medium actuals to Discord right now,
+    ignoring the seen-list. For testing the feed on demand. It does NOT change the
+    dedup state, so the live loop is unaffected (those events are already seen)."""
+    if not WEBHOOK and not dry_run:
+        print("  [forex-discord] no FOREX_DISCORD_WEBHOOK set")
+        return
+    try:
+        events = get_calendar()
+    except Exception as e:
+        print(f"  [forex-discord] calendar error: {e}")
+        return
+    todays = sorted((e for e in events if _qualifies(e)), key=lambda e: e.get("date") or "")
+    if not todays:
+        print("  [forex-discord] no released actuals for today yet")
+        return
+    if dry_run:
+        for e in todays:
+            _c, note = _beat(e.get("title"), e.get("actual"), e.get("forecast"))
+            print(f"  [forex-discord][dry] {e.get('title')}  actual={e.get('actual')}  {note or 'neutral'}")
+        return
+    n = sum(1 for e in todays if _send(_build_embed(e), ping=False))
+    print(f"  [forex-discord] replayed {n} of today's actual(s)")
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="Korvus forex -> Discord poster")
     ap.add_argument("--dry-run", action="store_true", help="show what actuals would post, send nothing")
@@ -427,6 +452,7 @@ if __name__ == "__main__":
     ap.add_argument("--seed", action="store_true", help="mark today's releases seen, post nothing")
     ap.add_argument("--agenda", action="store_true", help="post today's 1 AM agenda now (ignores the time guard)")
     ap.add_argument("--agenda-dry", action="store_true", help="show today's agenda, send nothing")
+    ap.add_argument("--replay-today", action="store_true", help="post today's already-released actuals now (test, does not touch dedup)")
     args = ap.parse_args()
     if args.test:
         _test_webhook()
@@ -436,5 +462,7 @@ if __name__ == "__main__":
         post_daily_agenda(force=True)
     elif args.agenda_dry:
         post_daily_agenda(force=True, dry_run=True)
+    elif args.replay_today:
+        replay_today()
     else:
         post_new_actuals(dry_run=args.dry_run)
