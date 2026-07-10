@@ -43,6 +43,7 @@
 ==============================================================================
 """
 import os
+import json
 import time
 import threading
 import datetime as dt
@@ -79,6 +80,13 @@ DATABENTO_ROOTS = ["MNQ", "MES", "MYM", "M2K", "CL", "GC", "ZN", "6E"]
 # Databento fixed-point price scale (raw ints are price * 1e9) and the sentinel
 # it uses for an undefined price (INT64_MAX). Anything at/above that is "no data".
 _PX_SCALE = 1e-9
+
+# Where the daily-% baseline (prior-session settle) is cached to disk so it
+# survives a restart AND the weekend gap. The live replay window cannot reach
+# back to Friday's settle on a Monday, so without this the board falls back to
+# change-from-session-open, a smaller and wrong percentage. Kept next to this
+# module (same directory the app already writes korvus.db to).
+_SETTLE_CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".korvus_settle.json")
 _UNDEF = 9223372036854775807
 
 
@@ -93,7 +101,7 @@ def _root_of(sym: str) -> str:
         resolved    'MNQU6'    -> 'MNQ'   ('6EU6' -> '6E')
     The historical daily-bar query resolves the continuous symbol to the actual
     front contract (e.g. 'MNQU6'), so a plain split('.') left the root
-    unrecognized and every prior-close row was silently dropped — which is what
+    unrecognized and every prior-close row was silently dropped - which is what
     forced the daily % onto the session-open fallback and made the board read a
     wildly wrong change. Match the known root prefix instead so both the live
     continuous symbol and the resolved historical contract map home."""
@@ -189,6 +197,60 @@ class DatabentoMD:
         # stop arriving (holiday early-close, weekend, maintenance, halt) this
         # stops advancing, so the dashboard can flip the board to CLOSED.
         self._last_recv = None
+        # throttle for the on-disk baseline cache (see _persist_state)
+        self._last_persist = 0.0
+        # restore the prior-session settle from disk so the daily % is correct
+        # immediately on boot, including Monday morning after the weekend.
+        self._load_state()
+
+    # ---- persisted daily-% baseline (survives restarts + the weekend) -------
+    def _load_state(self):
+        """Restore the daily-% baseline (prior settle, the in-progress settle,
+        and session labels) from disk so the % is correct the moment the server
+        boots, including Monday after the weekend. Ignored if the cache is older
+        than 4 days; the live feed overrides it as soon as a session rolls."""
+        try:
+            with open(_SETTLE_CACHE, "r") as fh:
+                blob = json.load(fh)
+            if time.time() - float(blob.get("saved", 0)) > 4 * 86400:
+                return
+            def _clean(d):
+                out = {}
+                for k, v in (d or {}).items():
+                    if k in self._roots and isinstance(v, (int, float)) and v > 0:
+                        out[k] = float(v)
+                return out
+            self._settle.update(_clean(blob.get("settle")))
+            self._sess_settle.update(_clean(blob.get("sess_settle")))
+            for k, v in (blob.get("sess") or {}).items():
+                if k in self._roots and isinstance(v, str):
+                    self._sess[k] = v
+            if self._settle:
+                print("  [db] restored prior settle from cache: "
+                      + ", ".join(f"{k}={v:.2f}" for k, v in self._settle.items()))
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            print(f"  [db] settle cache load skipped: {e}")
+
+    def _persist_state(self, force=False):
+        """Snapshot the daily-% baseline state to disk (best-effort, throttled).
+        Called while holding self._lock, so it must NOT re-acquire the lock."""
+        try:
+            now = time.time()
+            if not force and now - self._last_persist < 45:
+                return
+            self._last_persist = now
+            blob = {"saved": now,
+                    "settle": {k: v for k, v in self._settle.items() if v},
+                    "sess_settle": {k: v for k, v in self._sess_settle.items() if v},
+                    "sess": dict(self._sess)}
+            tmp = _SETTLE_CACHE + ".tmp"
+            with open(tmp, "w") as fh:
+                json.dump(blob, fh)
+            os.replace(tmp, _SETTLE_CACHE)
+        except Exception as e:
+            print(f"  [db] settle cache save skipped: {e}")
 
     # ---- prior-session close (for chg_pct) ---------------------------------
     def _fetch_prev_closes(self):
@@ -240,7 +302,7 @@ class DatabentoMD:
             else:
                 cols = list(df.columns)[:8]
                 print(f"  [db] prev-close fetch returned no usable rows "
-                      f"(df rows={len(df)}, cols={cols}) — falling back to session open")
+                      f"(df rows={len(df)}, cols={cols}) - falling back to session open")
         except Exception as e:
             print(f"  [db] prev-close fetch failed (chg vs open instead): {e}")
 
@@ -391,6 +453,7 @@ class DatabentoMD:
                     cand = self._sess_settle.get(root)
                     if old_skey and cand and old_skey < today_key:
                         self._settle[root] = cand
+                        self._persist_state(force=True)
                     self._sess[root] = skey
                     self._sess_settle[root] = None
                     q = {"price": c,
@@ -408,12 +471,14 @@ class DatabentoMD:
                 # remember this session's settle-time close (last bar at/before 4pm ET)
                 if at_or_before_settle:
                     self._sess_settle[root] = c
-                # daily % vs the prior session's settle (live-derived); if we don't
-                # have it yet (e.g. replay didn't reach the prior session), fall
-                # back transparently to change-from-this-session's-open
-                base = self._settle.get(root) or q.get("open")
+                    self._persist_state()
+                # daily % vs the prior session's settle. Prefer the live-derived
+                # settle, then the historical prior close, then (only if neither is
+                # available) fall back transparently to change-from-session-open.
+                pc = self._settle.get(root) or self._prev_close.get(root) or 0.0
+                base = pc or q.get("open")
                 if base:
-                    q["prev_close"] = self._settle.get(root, q.get("prev_close", 0.0))
+                    q["prev_close"] = pc or q.get("prev_close", 0.0)
                     try:
                         q["chg_pct"] = (c - base) / base * 100.0
                     except Exception:
@@ -432,8 +497,10 @@ class DatabentoMD:
                 print("  [db] databento package not installed (pip install databento)")
                 return
             try:
-                self._settle = {}
-                self._sess_settle = {}
+                # NOTE: do NOT wipe self._settle / self._sess_settle here. A
+                # reconnect must preserve the prior-session settle, otherwise the
+                # daily-% baseline is lost and the board falls back to
+                # change-from-session-open until the next settle rolls over.
                 live = db.Live(key=self._key)
                 self._live = live
                 syms = [_cont(r) for r in self._roots]
@@ -542,9 +609,9 @@ if __name__ == "__main__":
     # Manual smoke test (needs: pip install databento + a real key + license):
     #   DATABENTO_API_KEY=... python korvus_databento.py
     # Prints, per root: prior settle (the daily-% baseline), the live price, and
-    # the resulting change — so you can confirm it matches your broker's daily %.
+    # the resulting change - so you can confirm it matches your broker's daily %.
     if not DATABENTO_API_KEY:
-        print("DATABENTO_API_KEY not set — dormant, nothing to test.")
+        print("DATABENTO_API_KEY not set - dormant, nothing to test.")
         raise SystemExit(0)
     roots = ["MNQ", "MES", "MYM", "M2K", "CL", "GC", "ZN", "6E"]
     c = get_client()
