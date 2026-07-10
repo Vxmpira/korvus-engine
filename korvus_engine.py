@@ -6,7 +6,7 @@
  WHAT THIS DOES
    1. Pulls market news from Alpha Vantage (ticker-tagged, with sentiment)
    2. Pulls social chatter from Reddit (finance subreddits)
-   3. (X / Twitter is stubbed — flip it on later when you add a key)
+   3. (X / Twitter is stubbed - flip it on later when you add a key)
    4. Sends each NEW item to Claude (Haiku) for a summary + impact score +
       direction (bull/bear/neutral) + affected instruments + confidence
    5. Saves everything to a local SQLite database (korvus.db)
@@ -40,7 +40,7 @@ from dotenv import load_dotenv
 import anthropic
 
 # ----------------------------------------------------------------------------
-# CONFIG  — loaded from your .env file so secrets never live in the code
+# CONFIG  - loaded from your .env file so secrets never live in the code
 # ----------------------------------------------------------------------------
 load_dotenv()
 
@@ -60,7 +60,7 @@ CLAUDE_MODEL = "claude-haiku-4-5"
 # How often the --loop mode runs (minutes)
 POLL_MINUTES = int(os.getenv("POLL_MINUTES", "5"))
 
-# The instruments Korvus tracks — Claude maps each news item onto THESE.
+# The instruments Korvus tracks - Claude maps each news item onto THESE.
 # Comprehensive cross-market universe so ANY story gets tagged with the right
 # market(s) it affects, not just index futures. Grouped for readability.
 WATCHED_INSTRUMENTS = [
@@ -122,7 +122,7 @@ WATCHED_INSTRUMENTS = [
 ]
 
 # Alpha Vantage news "topics"/tickers to track. Index futures move on big tech,
-# the broad market, and macro — so we pull those tickers' news.
+# the broad market, and macro - so we pull those tickers' news.
 AV_TICKERS = ["QQQ", "SPY", "NVDA", "AAPL", "MSFT", "AMZN", "META", "TSLA"]
 
 # Reddit subreddits to scan for chatter
@@ -132,7 +132,7 @@ DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "korvus.db")
 
 
 # ----------------------------------------------------------------------------
-# DATABASE  — one table, "items". Dead simple and easy to read from the UI.
+# DATABASE  - one table, "items". Dead simple and easy to read from the UI.
 # ----------------------------------------------------------------------------
 def db_connect():
     conn = sqlite3.connect(DB_PATH)
@@ -208,7 +208,7 @@ def insert_raw_item(conn, item: dict):
 
 
 # ----------------------------------------------------------------------------
-# SOURCE 1 — NEWS PROVIDER LAYER  (swappable)
+# SOURCE 1 - NEWS PROVIDER LAYER  (swappable)
 # Set NEWS_PROVIDER in .env to one of: "benzinga", "benzinga_premium", "alphavantage"
 # Same return shape for all three, so the rest of the engine never changes.
 # Upgrading from free Benzinga Basic to premium = change ONE line in .env.
@@ -221,7 +221,7 @@ def fetch_news() -> list[dict]:
         return fetch_benzinga(premium=True)
     if provider == "alphavantage":
         return fetch_alphavantage_news()
-    print(f"  [wire] unknown NEWS_PROVIDER '{NEWS_PROVIDER}' — skipping news")
+    print(f"  [wire] unknown NEWS_PROVIDER '{NEWS_PROVIDER}' - skipping news")
     return []
 
 
@@ -231,7 +231,7 @@ def fetch_news() -> list[dict]:
 # same endpoint with fuller content once you have a paid token.
 def fetch_benzinga(premium: bool = False) -> list[dict]:
     if not BENZINGA_KEY:
-        print("  [wire] no BENZINGA_KEY set — skipping")
+        print("  [wire] no BENZINGA_KEY set - skipping")
         return []
 
     # Benzinga news REST endpoint. tickers= narrows to what you trade.
@@ -248,7 +248,7 @@ def fetch_benzinga(premium: bool = False) -> list[dict]:
     try:
         r = requests.get(url, params=params, headers=headers, timeout=20)
         if r.status_code == 401:
-            print("  [wire] Benzinga 401 — check BENZINGA_KEY / that your plan covers the news API")
+            print("  [wire] Benzinga 401 - check BENZINGA_KEY / that your plan covers the news API")
             return []
         data = r.json()
         # Benzinga returns a list of article objects
@@ -257,7 +257,7 @@ def fetch_benzinga(premium: bool = False) -> list[dict]:
             headline = (art.get("title") or "").strip()
             if not headline:
                 continue
-            # 'teaser' on basic; 'body' (HTML) on premium — strip tags for Claude
+            # 'teaser' on basic; 'body' (HTML) on premium - strip tags for Claude
             body = art.get("teaser") or art.get("body") or ""
             body = re.sub(r"<[^>]+>", " ", body)  # remove any HTML
             out.append({
@@ -279,7 +279,7 @@ def fetch_benzinga(premium: bool = False) -> list[dict]:
 # Docs: https://www.alphavantage.co/documentation/  (NEWS_SENTIMENT)
 def fetch_alphavantage_news() -> list[dict]:
     if not ALPHAVANTAGE_KEY:
-        print("  [wire] no ALPHAVANTAGE_KEY set — skipping")
+        print("  [wire] no ALPHAVANTAGE_KEY set - skipping")
         return []
 
     tickers = ",".join(AV_TICKERS)
@@ -316,7 +316,7 @@ def fetch_alphavantage_news() -> list[dict]:
 
 
 # ----------------------------------------------------------------------------
-# SOURCE 2 — REDDIT  (free API via OAuth client-credentials)
+# SOURCE 2 - REDDIT  (free API via OAuth client-credentials)
 # Create an app at https://www.reddit.com/prefs/apps  (type: 'script')
 # ----------------------------------------------------------------------------
 _reddit_token_cache = {"token": None, "expires": 0}
@@ -349,7 +349,7 @@ def reddit_token() -> Optional[str]:
 def fetch_reddit() -> list[dict]:
     tok = reddit_token()
     if not tok:
-        print("  [reddit] no Reddit credentials set — skipping")
+        print("  [reddit] no Reddit credentials set - skipping")
         return []
 
     headers = {"Authorization": f"bearer {tok}", "User-Agent": REDDIT_USER_AGENT}
@@ -385,7 +385,7 @@ def fetch_reddit() -> list[dict]:
 
 
 # ----------------------------------------------------------------------------
-# SOURCE 3 — X / TWITTER  (stub — turn on later)
+# SOURCE 3 - X / TWITTER  (stub - turn on later)
 # X's API is pay-per-read now; wire it in once you've got a key + budget.
 # Keep the same return shape and the rest of the engine just works.
 # ----------------------------------------------------------------------------
@@ -395,7 +395,7 @@ def fetch_x() -> list[dict]:
 
 
 # ----------------------------------------------------------------------------
-# SOURCE 4 — FREE RSS NEWS  (no API key needed)
+# SOURCE 4 - FREE RSS NEWS  (no API key needed)
 # Supplements Benzinga's free tier, which only serves a static recent window.
 # These public financial feeds publish frequently, so they fill the gaps and
 # keep the timeline advancing. Parsed with the stdlib (no extra dependency).
@@ -426,7 +426,7 @@ def fetch_rss() -> list[dict]:
         try:
             r = requests.get(url, timeout=15, headers={"User-Agent": "korvus-engine/0.2"})
             if r.status_code != 200:
-                print(f"  [rss] {name} returned {r.status_code} — skipping")
+                print(f"  [rss] {name} returned {r.status_code} - skipping")
                 continue
             root = ET.fromstring(r.content)
             # RSS items live at channel/item; handle namespaces loosely
@@ -458,12 +458,12 @@ def fetch_rss() -> list[dict]:
 
 
 # ----------------------------------------------------------------------------
-# THE BRAIN — Claude scores one item: summary + impact + direction + conf
+# THE BRAIN - Claude scores one item: summary + impact + direction + conf
 # ----------------------------------------------------------------------------
 SYSTEM_PROMPT = """You are the analyst engine for Korvus, a market-intelligence \
 terminal for an index-futures day trader (mainly MNQ and MES, ICT/Smart-Money \
 style). For each news or social item you receive, assess its likely short-term \
-impact on US index futures and return STRICT JSON only — no prose, no markdown.
+impact on US index futures and return STRICT JSON only - no prose, no markdown.
 
 Return exactly this shape:
 {
@@ -485,10 +485,10 @@ appear in a trading feed). Mark noise=true for:
   - product/service reviews (credit card reviews, app reviews)
   - celebrity / human-interest / lifestyle with zero market relevance
   - pure how-to / explainer content with no market event
-Everything with ANY genuine market relevance gets noise=false — even if low impact.
+Everything with ANY genuine market relevance gets noise=false - even if low impact.
 When in doubt, noise=false.
 
-IMPACT — use these CONCRETE criteria and be CONSISTENT (the same underlying
+IMPACT - use these CONCRETE criteria and be CONSISTENT (the same underlying
 event must get the same impact regardless of how the headline is worded):
 
   "high" = a genuine MACRO market-mover likely to move index futures NOW:
@@ -510,17 +510,17 @@ event must get the same impact regardless of how the headline is worded):
   "low" = minor / single small-cap / routine filings (Form 144, 6-K, S-1),
     micro-cap news, slow-moving or already-priced-in items.
 
-DIRECTION — neutral is the HONEST default. Only assign "bull" or "bear" when the
+DIRECTION - neutral is the HONEST default. Only assign "bull" or "bear" when the
 story has a CLEAR directional read for the tagged instruments. Do NOT force a
-direction to seem decisive — an informational item with no clear lean is "neut",
+direction to seem decisive - an informational item with no clear lean is "neut",
 and that is correct. BUT: if a story is clearly risk-on or risk-off (e.g. "oil
 jumps on Mideast missiles", "stocks rally on cooler CPI"), do NOT lazily call it
-neutral — give it the real direction it implies.
+neutral - give it the real direction it implies.
 
 OTHER:
 - Social/rumor with no confirmation = usually "low" and lower confidence.
 - Be calibrated and sober. Do NOT give trading advice. Explain mechanisms and what
-  to watch — never "buy"/"sell"/"go long".
+  to watch - never "buy"/"sell"/"go long".
 - summary = the fast headline take. impact_desc = the deeper "why it matters / how
   it transmits / what to watch" analysis. Both grounded in THIS story only.
 - Tag ONLY the instruments this story is a PRIMARY, direct driver for. Be strict:
@@ -531,7 +531,7 @@ OTHER:
   reflex. Macro mapping: crude -> CL; gold -> GC; Treasuries/yields -> ZN or ZB;
   EUR/ECB -> 6E; yen/BOJ -> 6J. Do NOT pad the list with loosely-related names, and do
   NOT stack near-duplicates of the same exposure (pick ONE of NQ/MNQ/QQQ, ONE of
-  ES/MES/SPY) — choose the single best representative. Prefer fewer, high-conviction
+  ES/MES/SPY) - choose the single best representative. Prefer fewer, high-conviction
   tags over a long "maybe" list. [] if nothing is directly moved.
 - Only use instruments from this watched list: {INSTRUMENTS}.
 """
@@ -564,7 +564,7 @@ def score_with_claude(client, item: dict) -> Optional[dict]:
         data["confidence"] = max(0, min(100, int(data.get("confidence", 0))))
         if not isinstance(data.get("instruments"), list):
             data["instruments"] = []
-        # keep it tight & realistic — at most the 3 most-direct (prompt orders them)
+        # keep it tight & realistic - at most the 3 most-direct (prompt orders them)
         data["instruments"] = data["instruments"][:3]
         data["summary"] = (data.get("summary") or "").strip()
         data["impact_desc"] = (data.get("impact_desc") or "").strip()
@@ -619,7 +619,7 @@ def process_unscored(conn, client, limit: int = 40):
             except Exception as e:
                 print(f"    [alerts] notify failed: {e}")
         if result.get("noise"):
-            print(f"    · [noise — hidden]                     {item['headline'][:60]}")
+            print(f"    · [noise - hidden]                     {item['headline'][:60]}")
         else:
             print(f"    ✓ [{result['impact']:>4}|{result['direction']:>4}|{result['confidence']:>3}%] "
                   f"{item['headline'][:64]}")
@@ -632,7 +632,7 @@ def process_unscored(conn, client, limit: int = 40):
 def run_once():
     print(f"\n=== KORVUS pass @ {dt.datetime.now().strftime('%I:%M:%S %p')} ===")
     if not ANTHROPIC_API_KEY:
-        print("  !! ANTHROPIC_API_KEY is missing — add it to .env. Aborting pass.")
+        print("  !! ANTHROPIC_API_KEY is missing - add it to .env. Aborting pass.")
         return
 
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -641,7 +641,7 @@ def run_once():
     # 1) gather from all sources
     pulled = []
     pulled += fetch_news()      # Benzinga Basic / premium / Alpha Vantage (per .env)
-    pulled += fetch_rss()       # free financial RSS feeds (no key) — fills the gaps
+    pulled += fetch_rss()       # free financial RSS feeds (no key) - fills the gaps
     pulled += fetch_reddit()
     pulled += fetch_x()
 
@@ -660,13 +660,16 @@ def run_once():
     total = conn.execute("SELECT COUNT(*) AS c FROM items").fetchone()["c"]
     print(f"  [db] korvus.db now holds {total} item(s)")
     conn.close()
- 
-try:
-           from korvus_forex_discord import post_daily_agenda, post_new_actuals
-           post_daily_agenda()     # today's schedule, once, ~1 AM ET, one ping
-           post_new_actuals()      # each actual as it prints, quietly
-       except Exception as e:
-           print(f"  [forex-discord] pass error: {e}")
+
+    # forex Discord: daily agenda (once ~1 AM ET) + new actuals as they print,
+    # wrapped so a Discord hiccup never breaks the news pass.
+    try:
+        from korvus_forex_discord import post_daily_agenda, post_new_actuals
+        post_daily_agenda()     # today's schedule, once, ~1 AM ET, one ping
+        post_new_actuals()      # each actual as it prints, quietly
+    except Exception as e:
+        print(f"  [forex-discord] pass error: {e}")
+
 
 def main():
     ap = argparse.ArgumentParser(description="Korvus engine (Phase 1)")
@@ -676,7 +679,7 @@ def main():
 
     db_init()
     if args.loop:
-        print(f"Korvus engine in LOOP mode — every {POLL_MINUTES} min. Ctrl+C to stop.")
+        print(f"Korvus engine in LOOP mode - every {POLL_MINUTES} min. Ctrl+C to stop.")
         while True:
             try:
                 run_once()
