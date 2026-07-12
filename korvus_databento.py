@@ -319,7 +319,12 @@ class DatabentoMD:
         with self._lock:
             contracts = {r: c for r, c in self._root_to_contract.items() if c}
         if contracts:
-            self._fetch_prev_closes_for_contracts(contracts)
+            self._fetch_prev_settle_intraday(contracts)
+            with self._lock:
+                missing = {r: c for r, c in contracts.items()
+                           if not (self._settle.get(r) or self._prev_close.get(r))}
+            if missing:
+                self._fetch_prev_closes_for_contracts(missing)
 
     def _fetch_prev_closes_for_contracts(self, contracts):
         """Pull each root's prior-session close for the SPECIFIC front contract
@@ -385,6 +390,85 @@ class DatabentoMD:
                   + ", ".join(f"{contracts.get(r, r)}={v[1]:.2f}" for r, v in best.items()))
         except Exception as e:
             print(f"  [db] front-contract prev-close fetch failed (keeping prior base): {e}")
+
+    def _fetch_prev_settle_intraday(self, contracts):
+        """Reliable prior-session settle for the daily-% baseline, read from
+        intraday ohlcv-1m history. The daily-bar API lags days on this account,
+        which is what strands the % on the session-open fallback (a small, wrong
+        number). For each front contract we take the close of the last 1-min bar
+        at or before 16:00 ET of the most recent COMPLETED session, matching how
+        the live stream captures the settle. Populates self._settle, which takes
+        precedence over prev_close, so the daily % lines up with a futures chart."""
+        if db is None or not self._key:
+            return
+        try:
+            sess_open = _session_open_utc()
+            start = (sess_open - dt.timedelta(days=4)).isoformat()
+            end = sess_open.isoformat()
+            sym_to_root, syms = {}, []
+            for root, contract in contracts.items():
+                c = (contract or "").upper().strip()
+                if c and "." not in c:
+                    sym_to_root[c] = root
+                    syms.append(c)
+            if not syms:
+                return
+            h = db.Historical(self._key)
+            data = h.timeseries.get_range(
+                dataset=DATASET, schema="ohlcv-1m",
+                stype_in="raw_symbol", symbols=syms, start=start, end=end,
+            )
+            df = data.to_df()
+            if df is None or len(df) == 0:
+                return
+            today_key = _session_key(dt.datetime.now(dt.timezone.utc))
+            try:
+                from zoneinfo import ZoneInfo
+                NY = ZoneInfo("America/New_York")
+            except Exception:
+                NY = dt.timezone(dt.timedelta(hours=-4))
+            sym_col = "symbol" if "symbol" in df.columns else None
+            # root -> (session_key, et_minute, close): latest completed session, last bar <= 16:00 ET
+            best = {}
+            for _, row in df.iterrows():
+                sym = str(row[sym_col]).upper() if sym_col else None
+                root = sym_to_root.get(sym)
+                if root is None:
+                    continue
+                close = row.get("close")
+                if close is None:
+                    continue
+                try:
+                    ts_utc = row.name.to_pydatetime().astimezone(dt.timezone.utc)
+                    skey = _session_key(ts_utc)
+                    et = ts_utc.astimezone(NY)
+                except Exception:
+                    continue
+                if skey >= today_key:
+                    continue
+                if (et.hour, et.minute) > (16, 0):
+                    continue
+                mins = et.hour * 60 + et.minute
+                prev = best.get(root)
+                if prev is None or skey > prev[0] or (skey == prev[0] and mins > prev[1]):
+                    best[root] = (skey, mins, float(close))
+            if not best:
+                return
+            with self._lock:
+                for root, (skey, mins, close) in best.items():
+                    self._settle[root] = close
+                    q = self._quotes.get(root)
+                    if q and close:
+                        q["prev_close"] = close
+                        try:
+                            q["chg_pct"] = (q["price"] - close) / close * 100.0
+                        except Exception:
+                            pass
+                self._persist_state(force=True)
+            print("  [db] prior settle (intraday 16:00 ET): "
+                  + ", ".join(f"{contracts.get(r, r)}={v[2]:.2f}" for r, v in best.items()))
+        except Exception as e:
+            print(f"  [db] intraday prior-settle fetch failed (keeping base): {e}")
 
     # ---- stream handling ---------------------------------------------------
     def _handle(self, record):
