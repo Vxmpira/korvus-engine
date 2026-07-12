@@ -284,13 +284,11 @@
   /* ---------- futures ribbon (MORE INSTRUMENTS) ---------- */
   .ribbonwrap{position:relative;}
   /* right-edge fade hints that the ribbon scrolls to more instruments */
-  .ribbonwrap::after{content:"";position:absolute;top:0;right:0;bottom:0;width:48px;
-    pointer-events:none;z-index:2;
-    background:linear-gradient(90deg,rgba(7,9,13,0),rgba(7,9,13,.92));}
+  .ribbonwrap::after{content:none;}
   .ribbon{
-    display:flex;gap:0;overflow-x:auto;border-bottom:1px solid rgba(255,255,255,.07);
+    display:flex;gap:0;overflow:hidden;border-bottom:1px solid rgba(255,255,255,.07);
     background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.01)),rgba(13,9,15,.42);
-    backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);
+    backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.12);
     scrollbar-width:none;animation:fadeDown .7s .05s ease both;
   }
@@ -312,7 +310,7 @@
   .ribbonhead .feednote .fdot{width:6px;height:6px;border-radius:50%;background:var(--med);
     box-shadow:0 0 8px var(--med-glow);flex:none;}
   @media(max-width:900px){ .ribbonhead .feednote{display:none !important;} }
-  .fut{display:flex;align-items:center;gap:12px;padding:11px 20px;border-right:1px solid var(--line-soft);white-space:nowrap;
+  .fut{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 8px;border-right:1px solid var(--line-soft);white-space:nowrap;overflow:hidden;
     transition:background .2s;cursor:default;}
   .fut:hover{background:rgba(255,45,143,.05);}
   .fut .sym{font-family:var(--disp);font-weight:700;font-size:14px;color:var(--ink);letter-spacing:.01em;}
@@ -327,7 +325,7 @@
   /* ---------- ambient context bands (macro confluence + session map) ---------- */
   .ctxband{display:flex;align-items:stretch;gap:0;border-bottom:1px solid rgba(255,255,255,.07);
     background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.008)),rgba(13,9,15,.4);
-    backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);
+    backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.11);
     overflow-x:auto;scrollbar-width:none;animation:fadeDown .7s .05s ease both;}
   .ctxband::-webkit-scrollbar{display:none;}
@@ -392,8 +390,8 @@
       0 0 0 1px rgba(255,45,143,.06),
       0 28px 62px -30px rgba(0,0,0,.82),
       0 0 55px -18px rgba(255,45,143,.13);
-    backdrop-filter:blur(20px) saturate(1.5);
-    -webkit-backdrop-filter:blur(20px) saturate(1.5);
+    backdrop-filter:blur(12px) saturate(1.5);
+    -webkit-backdrop-filter:blur(12px) saturate(1.5);
     display:flex;flex-direction:column;min-height:0;overflow:hidden;
     transition:border-color .3s,box-shadow .3s;
     animation:rise .7s ease both;
@@ -653,7 +651,7 @@
      summary copy keeps body text from stretching edge to edge. */
   @media (min-width: 1900px){
     main{grid-template-columns:1fr 480px;gap:24px;}
-    .fut{padding:13px 26px;}
+    .fut{padding:12px 12px;}
     .headline{font-size:17px;}
     .summary{max-width:160ch;}
   }
@@ -2020,8 +2018,8 @@ setInterval(loadContextBands, 30000);
       var yt=yy(Math.max(cd.o,cd.c)), yb=yy(Math.min(cd.o,cd.c)), h=Math.max(2,yb-yt);
       var yh=yy(cd.h), yl=yy(cd.l);
       var ef=Math.max(0.08,Math.min(1,Math.min(x,W-x)/140*0.9+0.12));
-      ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1.5;
-      ctx.shadowColor=col; ctx.shadowBlur=8;
+      ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1.8;
+      ctx.shadowColor=col; ctx.shadowBlur=3;
       ctx.globalAlpha=t.body*ef;
       ctx.beginPath(); ctx.moveTo(x+CW/2,yh); ctx.lineTo(x+CW/2,yl); ctx.stroke();
       ctx.fillRect(x,yt,CW,h);
