@@ -664,9 +664,9 @@ async function loadLive(){
     }
     throw new Error('empty');
   }catch(e){
-    // keep sample data (already rendered) and label it
+    // keep sample data (already rendered) and label it as a connecting state
     setBadge(false);
-    document.getElementById('srcNote').textContent = 'Sample week, start korvus_server.py for the live calendar feed.';
+    document.getElementById('srcNote').textContent = 'Connecting to the live calendar.';
   }
 }
 

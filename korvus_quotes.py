@@ -19,7 +19,7 @@
  map and prices match a futures chart. It is DORMANT until DATABENTO_API_KEY is
  set AND QUOTES_PROVIDER=databento (see korvus_databento.py).
 
- IMPORTANT — market hours:
+ IMPORTANT - market hours:
    US equities (and the ETF proxies QQQ/SPY/DIA) only trade ~9:30am-4:00pm ET.
    Outside that, this returns the last available close and flags market_open=false
    so the dashboard can show "last close" instead of pretending it's live.
@@ -38,14 +38,30 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-QUOTES_PROVIDER  = os.getenv("QUOTES_PROVIDER", "finnhub").lower().strip()
-ALPHAVANTAGE_KEY = os.getenv("ALPHAVANTAGE_KEY", "")
-FINNHUB_KEY      = os.getenv("FINNHUB_KEY", "")
+def _clean_env(name: str, default: str = "") -> str:
+    """Read an env var the way python-dotenv does, then strip what systemd's
+    EnvironmentFile leaves behind. dotenv parses .env correctly when the module
+    is run by hand, but under systemd the raw line is exported verbatim, so a
+    value like `DATABENTO_API_KEY=db-xxx  # prod` reaches the server with the
+    inline comment still attached and every API call fails silently. This makes
+    the server read the same clean value the standalone smoke test does."""
+    v = (os.getenv(name, default) or "").strip()
+    if len(v) >= 2 and v[0] == v[-1] and v[0] in ("'", '"'):
+        return v[1:-1]                      # quoted: the quotes protect the content
+    for cut in (" #", "\t#"):               # unquoted: drop an inline comment
+        i = v.find(cut)
+        if i != -1:
+            v = v[:i]
+    return v.strip()
+
+QUOTES_PROVIDER  = _clean_env("QUOTES_PROVIDER", "finnhub").lower()
+ALPHAVANTAGE_KEY = _clean_env("ALPHAVANTAGE_KEY")
+FINNHUB_KEY      = _clean_env("FINNHUB_KEY")
 
 # --- Databento (real CME futures; dormant until a licensed key is set) -------
 # Set QUOTES_PROVIDER=databento and DATABENTO_API_KEY=... in .env to activate.
 # With no key this provider returns {} and the board stays on the proxy feed.
-DATABENTO_API_KEY = os.getenv("DATABENTO_API_KEY", "").strip()
+DATABENTO_API_KEY = _clean_env("DATABENTO_API_KEY")
 # Futures roots Databento can serve from GLBX.MDP3 (VX is CBOE -> proxy only).
 DATABENTO_FUT = {"MNQ", "MES", "MYM", "M2K", "CL", "GC", "ZN", "6E"}
 
@@ -55,13 +71,13 @@ DATABENTO_FUT = {"MNQ", "MES", "MYM", "M2K", "CL", "GC", "ZN", "6E"}
 #   -> returns a Bearer accessToken that EXPIRES (~80 min) and must be renewed.
 # Real-time quotes then stream over a WebSocket (md/subscribequote), and require
 # a PAID Tradovate market-data subscription on the account (live data is not free
-# just because the API works — see the gotcha in fetch notes below).
-TRADOVATE_ENV       = os.getenv("TRADOVATE_ENV", "demo").lower().strip()   # 'demo' | 'live'
-TRADOVATE_USERNAME  = os.getenv("TRADOVATE_USERNAME", "")
-TRADOVATE_PASSWORD  = os.getenv("TRADOVATE_PASSWORD", "")
-TRADOVATE_APP_ID    = os.getenv("TRADOVATE_APP_ID", "")     # "appId" from your Tradovate API app
-TRADOVATE_CID       = os.getenv("TRADOVATE_CID", "")        # API "cid"
-TRADOVATE_SECRET    = os.getenv("TRADOVATE_SECRET", "")     # API "sec" (personal secret key)
+# just because the API works, see the gotcha in fetch notes below).
+TRADOVATE_ENV       = _clean_env("TRADOVATE_ENV", "demo").lower()   # 'demo' | 'live'
+TRADOVATE_USERNAME  = _clean_env("TRADOVATE_USERNAME")
+TRADOVATE_PASSWORD  = _clean_env("TRADOVATE_PASSWORD")
+TRADOVATE_APP_ID    = _clean_env("TRADOVATE_APP_ID")     # "appId" from your Tradovate API app
+TRADOVATE_CID       = _clean_env("TRADOVATE_CID")        # API "cid"
+TRADOVATE_SECRET    = _clean_env("TRADOVATE_SECRET")     # API "sec" (personal secret key)
 
 # Per-symbol quote cache so warming a superset keeps every subset request warm.
 # Keyed by tier-kind ("live"/"delayed") -> SYM -> {"data": {...}, "ts": epoch}.
@@ -331,7 +347,7 @@ def native_futures() -> bool:
 # --- Alpha Vantage PREMIUM (true live; bulk endpoint, up to 100 symbols) ----
 def _alphavantage_quotes(symbols: list[str], delayed: bool = False) -> dict:
     if not ALPHAVANTAGE_KEY:
-        print("  [quotes] no ALPHAVANTAGE_KEY — set it in .env")
+        print("  [quotes] no ALPHAVANTAGE_KEY - set it in .env")
         return {}
     out = {}
 
@@ -366,7 +382,7 @@ def _alphavantage_quotes(symbols: list[str], delayed: bool = False) -> dict:
                 continue
             price = _f(row.get("close") or row.get("price") or 0)
             # carry OHLC + prev close so the SMT range read and macro bands work
-            # on the live feed too (parsed defensively — keys may be absent).
+            # on the live feed too (parsed defensively - keys may be absent).
             out[sym] = {
                 "price": price,
                 "chg_pct": _f(row.get("change_percent", 0)),
@@ -383,7 +399,7 @@ def _alphavantage_quotes(symbols: list[str], delayed: bool = False) -> dict:
 # --- Finnhub FREE (delayed ~15-20 min; one call per symbol) ------------------
 def _finnhub_quotes(symbols: list[str]) -> dict:
     if not FINNHUB_KEY:
-        print("  [quotes] no FINNHUB_KEY — set it in .env")
+        print("  [quotes] no FINNHUB_KEY - set it in .env")
         return {}
     out = {}
     for sym in symbols:
@@ -416,10 +432,10 @@ def _finnhub_quotes(symbols: list[str]) -> dict:
 # subscribes to the CME Globex feed and maintains a latest-quote snapshot keyed
 # by ROOT (MNQ, MES, ...). Each call here just reads that snapshot (non-blocking).
 # Returns {} when unconfigured, when the `databento` package isn't installed, or
-# before the first bars arrive — so the dashboard simply keeps its prior numbers.
+# before the first bars arrive - so the dashboard simply keeps its prior numbers.
 def _databento_quotes(symbols: list[str]) -> dict:
     if not DATABENTO_API_KEY:
-        print("  [quotes] no DATABENTO_API_KEY — set it in .env (provider dormant)")
+        print("  [quotes] no DATABENTO_API_KEY - set it in .env (provider dormant)")
         return {}
     try:
         from korvus_databento import get_client
@@ -433,7 +449,7 @@ def _databento_quotes(symbols: list[str]) -> dict:
     client.start(sorted(DATABENTO_FUT))   # idempotent: stream starts once
     quotes = client.get(roots)
     if not quotes:
-        print("  [quotes] Databento: connected/starting — no bars cached yet "
+        print("  [quotes] Databento: connected/starting - no bars cached yet "
               "(first 1-min bar can take up to ~60s; check license if it persists)")
     return quotes
 
@@ -447,7 +463,7 @@ def _databento_quotes(symbols: list[str]) -> dict:
 #   TRADOVATE_CID=...             API "cid"
 #   TRADOVATE_SECRET=...          API "sec" (personal secret key)
 #
-# IMPORTANT — two things beyond credentials:
+# IMPORTANT - two things beyond credentials:
 #   1) LIVE real-time CME data requires a PAID market-data subscription on your
 #      Tradovate account. The API can authenticate and the WebSocket can connect,
 #      yet quotes come back EMPTY if the data subscription isn't active. That is
@@ -478,7 +494,7 @@ def _tradovate_token() -> str:
     configured or on failure (so the dashboard falls back to samples)."""
     import time
     if not (TRADOVATE_USERNAME and TRADOVATE_PASSWORD and TRADOVATE_SECRET):
-        print("  [quotes] Tradovate not configured — set TRADOVATE_* in .env")
+        print("  [quotes] Tradovate not configured - set TRADOVATE_* in .env")
         return ""
     now = time.time()
     if _tv_token["token"] and now < _tv_token["expires"]:
@@ -519,7 +535,7 @@ def _tradovate_quotes(symbols: list[str]) -> dict:
     call here just reads that cache (non-blocking) and returns {root: {...}}.
 
     Returns {} when unconfigured, when websocket-client isn't installed, or
-    before the first ticks arrive — in all cases the dashboard keeps its
+    before the first ticks arrive - in all cases the dashboard keeps its
     previous numbers, so nothing breaks.
 
     Caveats (see korvus_tradovate.py header): needs a PAID Tradovate market-data
@@ -541,7 +557,7 @@ def _tradovate_quotes(symbols: list[str]) -> dict:
     client.start(roots)          # idempotent: only starts the socket once
     quotes = client.get(roots)   # latest cached values (may be empty until ticks arrive)
     if not quotes:
-        print("  [quotes] Tradovate: connected/starting — no ticks cached yet "
+        print("  [quotes] Tradovate: connected/starting - no ticks cached yet "
               "(check data subscription if this persists during RTH)")
     return quotes
 
@@ -555,7 +571,7 @@ if __name__ == "__main__":
         if s in res:
             print(f"  {s:5} {res[s]['price']:>10.2f}  {res[s]['chg_pct']:+.2f}%")
         else:
-            print(f"  {s:5} (no data — check key / provider)")
+            print(f"  {s:5} (no data - check key / provider)")
 
 
 # ---------------------------------------------------------------------------
