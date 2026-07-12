@@ -208,7 +208,7 @@
 
   /* ---------- atmosphere ---------- */
   .aurora{position:fixed;inset:-20%;z-index:-2;filter:blur(22px);opacity:.3;}
-  .chartscape{position:fixed;inset:0;z-index:-3;width:100%;height:100%;overflow:hidden;pointer-events:none;opacity:1;}
+  .chartscape{position:fixed;inset:0;z-index:-3;width:100%;height:100%;overflow:hidden;pointer-events:none;opacity:1;will-change:transform;backface-visibility:hidden;}
   html[data-theme="light"] .chartscape{opacity:.88;}
   .aurora span{position:absolute;border-radius:50%;mix-blend-mode:screen;}
   .a1{width:55vw;height:55vw;left:-8vw;top:-18vw;
@@ -1988,14 +1988,14 @@ setInterval(loadContextBands, 30000);
   if(!cv||!cv.getContext) return;
   var ctx=cv.getContext('2d');
   var dpr=Math.min(window.devicePixelRatio||1,2);
-  var CW=16, GAP=5, SLOT=CW+GAP, SPEED=0.28;
-  var W=0,H=0, candles=[], offset=0, trend=0.5, tvel=0;
+  var CW=16, GAP=5, SLOT=CW+GAP, SPEED=0.35, BUF=SLOT*3;
+  var W=0,H=0,CWID=0, candles=[], shift=0, trend=0.5, tvel=0;
   var reduce=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function theme(){
     var light=document.documentElement.getAttribute('data-theme')==='light';
     return light
-      ? {bull:'#0e0b16', bear:'#c9146a', body:0.88, refl:0.17, bg:'244,246,250'}
-      : {bull:'#f4f6ff', bear:'#ff2d8f', body:0.95, refl:0.16, bg:'8,6,11'};
+      ? {bull:'#0e0b16', bear:'#c9146a', body:0.88}
+      : {bull:'#f4f6ff', bear:'#ff2d8f', body:0.95};
   }
   function nextC(prev){
     tvel+=(Math.random()-0.5)*0.02; tvel*=0.9; trend+=tvel;
@@ -2005,29 +2005,41 @@ setInterval(loadContextBands, 30000);
     c=Math.max(0.06,Math.min(0.95,c));
     return {o:o,c:c,h:Math.max(o,c)+Math.random()*0.06,l:Math.min(o,c)-Math.random()*0.06};
   }
-  function fill(){ var need=Math.ceil(W/SLOT)+5; while(candles.length<need) candles.push(nextC(candles[candles.length-1])); }
-  function resize(){ W=cv.clientWidth||window.innerWidth; H=cv.clientHeight||window.innerHeight; cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); fill(); }
-  function draw(){
-    var t=theme(); ctx.clearRect(0,0,W,H);
+  function fill(){ var need=Math.ceil(CWID/SLOT)+3; while(candles.length<need) candles.push(nextC(candles[candles.length-1])); }
+  // draw every candle once, crisp, at whole-pixel positions (re-run only when the strip shifts one slot)
+  function render(){
+    var t=theme(); ctx.clearRect(0,0,CWID,H);
     var surface=Math.round(H*0.80), top=H*0.20, bot=surface;
     function yy(l){ return Math.round(bot-(bot-top)*Math.max(0,Math.min(1.05,l))); }
     for(var i=0;i<candles.length;i++){
-      var x=Math.round(i*SLOT-offset); if(x<-CW||x>W+CW) continue;
+      var x=i*SLOT; if(x>CWID+CW) break;
       var cd=candles[i], up=cd.c>=cd.o, col=up?t.bull:t.bear;
       var yt=yy(Math.max(cd.o,cd.c)), yb=yy(Math.min(cd.o,cd.c)), h=Math.max(2,yb-yt);
       var yh=yy(cd.h), yl=yy(cd.l), cx=x+CW/2;
-      var ef=Math.max(0.08,Math.min(1,Math.min(x,W-x)/140*0.9+0.12));
-      ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=2;
-      ctx.globalAlpha=t.body*ef;
+      ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=2; ctx.globalAlpha=t.body;
       ctx.beginPath(); ctx.moveTo(cx,yh); ctx.lineTo(cx,yl); ctx.stroke();
       ctx.fillRect(x,yt,CW,h);
     }
     ctx.globalAlpha=1;
   }
-  function tick(){ offset+=SPEED; if(offset>=SLOT){ offset-=SLOT; candles.shift(); candles.push(nextC(candles[candles.length-1])); } draw(); requestAnimationFrame(tick); }
+  function place(){ cv.style.transform='translate3d('+(-(BUF+shift))+'px,0,0)'; }
+  function resize(){
+    W=window.innerWidth; H=window.innerHeight; CWID=W+BUF*2;
+    cv.width=CWID*dpr; cv.height=H*dpr;
+    cv.style.width=CWID+'px'; cv.style.height=H+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    fill(); render(); place();
+  }
+  // glide the whole crisp strip with a GPU transform: smooth, sub-pixel, never re-rasterized
+  function tick(){
+    shift+=SPEED;
+    if(shift>=SLOT){ shift-=SLOT; candles.shift(); candles.push(nextC(candles[candles.length-1])); render(); }
+    place();
+    requestAnimationFrame(tick);
+  }
   window.addEventListener('resize',resize);
   resize();
-  if(reduce){ draw(); } else { requestAnimationFrame(tick); }
+  if(!reduce){ requestAnimationFrame(tick); }
 })();
 </script>
 </body>
