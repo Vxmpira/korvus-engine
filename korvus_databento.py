@@ -319,12 +319,16 @@ class DatabentoMD:
         with self._lock:
             contracts = {r: c for r, c in self._root_to_contract.items() if c}
         if contracts:
-            self._fetch_prev_settle_intraday(contracts)
+            self._fetch_settlement_stats(contracts)          # authoritative official settle
+            with self._lock:
+                missing = {r: c for r, c in contracts.items() if not self._settle.get(r)}
+            if missing:
+                self._fetch_prev_settle_intraday(missing)     # 1m-bar close at 16:00 ET
             with self._lock:
                 missing = {r: c for r, c in contracts.items()
                            if not (self._settle.get(r) or self._prev_close.get(r))}
             if missing:
-                self._fetch_prev_closes_for_contracts(missing)
+                self._fetch_prev_closes_for_contracts(missing)  # lagging daily, last resort
 
     def _fetch_prev_closes_for_contracts(self, contracts):
         """Pull each root's prior-session close for the SPECIFIC front contract
@@ -391,6 +395,108 @@ class DatabentoMD:
         except Exception as e:
             print(f"  [db] front-contract prev-close fetch failed (keeping prior base): {e}")
 
+    def _apply_settle(self, root, price):
+        """Set root's daily-% baseline, rejecting a value wildly off the live price
+        (a scaling or wrong-contract artifact) so a bad settle never throws the
+        percentage off. Returns True if applied. Assumes self._lock is held."""
+        try:
+            price = float(price)
+        except Exception:
+            return False
+        if price != price or price <= 0:
+            return False
+        q = self._quotes.get(root)
+        if q and q.get("price"):
+            try:
+                if abs(price - q["price"]) / q["price"] > 0.30:
+                    print(f"  [db] {root}: rejected settle {price:.2f} "
+                          f"(>30% off live {q['price']:.2f})")
+                    return False
+            except Exception:
+                pass
+        self._settle[root] = price
+        if q and price:
+            q["prev_close"] = price
+            try:
+                q["chg_pct"] = (q["price"] - price) / price * 100.0
+            except Exception:
+                pass
+        return True
+
+    def _fetch_settlement_stats(self, contracts):
+        """Authoritative prior-session settlement from Databento's statistics feed
+        (stat_type SETTLEMENT_PRICE). This is the exact number a chart or broker
+        measures the daily % from, so it is the most accurate baseline available.
+        Best-effort: on any issue the caller falls through to the 1m-bar settle."""
+        if db is None or not self._key:
+            return
+        try:
+            now = dt.datetime.now(dt.timezone.utc)
+            start = (now - dt.timedelta(days=6)).date().isoformat()
+            sym_to_root, syms = {}, []
+            for root, contract in contracts.items():
+                c = (contract or "").upper().strip()
+                if c and "." not in c:
+                    sym_to_root[c] = root
+                    syms.append(c)
+            if not syms:
+                return
+            h = db.Historical(self._key)
+            data = h.timeseries.get_range(
+                dataset=DATASET, schema="statistics",
+                stype_in="raw_symbol", symbols=syms, start=start,
+            )
+            df = data.to_df()
+            if df is None or len(df) == 0:
+                return
+            sym_col = "symbol" if "symbol" in df.columns else None
+            SETTLE = 3   # StatType.SETTLEMENT_PRICE
+            best = {}    # root -> (ts, price): most recent settlement
+            for _, row in df.iterrows():
+                try:
+                    if int(row.get("stat_type")) != SETTLE:
+                        continue
+                except Exception:
+                    continue
+                ua = row.get("update_action")
+                if ua is not None:
+                    try:
+                        if int(ua) != 1:            # 1 = Added; skip deletes
+                            continue
+                    except Exception:
+                        pass
+                sym = str(row[sym_col]).upper() if sym_col else None
+                root = sym_to_root.get(sym)
+                if root is None:
+                    continue
+                try:
+                    price = float(row.get("price"))
+                except Exception:
+                    continue
+                if price != price or price <= 0:
+                    continue
+                try:
+                    ts = row.name.to_pydatetime()
+                except Exception:
+                    ts = None
+                prev = best.get(root)
+                if prev is None or (ts is not None and (prev[0] is None or ts > prev[0])):
+                    best[root] = (ts, price)
+            if not best:
+                return
+            applied = {}
+            with self._lock:
+                for root, (ts, price) in best.items():
+                    if self._apply_settle(root, price):
+                        applied[root] = price
+                if applied:
+                    self._persist_state(force=True)
+            if applied:
+                print("  [db] official settlement (statistics): "
+                      + ", ".join(f"{contracts.get(r, r)}={v:.2f}" for r, v in applied.items()))
+        except Exception as e:
+            print(f"  [db] settlement-stats fetch failed (using bar settle): {e}")
+
     def _fetch_prev_settle_intraday(self, contracts):
         """Reliable prior-session settle for the daily-% baseline, read from
         intraday ohlcv-1m history. The daily-bar API lags days on this account,
@@ -453,19 +559,16 @@ class DatabentoMD:
                     best[root] = (skey, mins, float(close))
             if not best:
                 return
+            applied = {}
             with self._lock:
                 for root, (skey, mins, close) in best.items():
-                    self._settle[root] = close
-                    q = self._quotes.get(root)
-                    if q and close:
-                        q["prev_close"] = close
-                        try:
-                            q["chg_pct"] = (q["price"] - close) / close * 100.0
-                        except Exception:
-                            pass
-                self._persist_state(force=True)
-            print("  [db] prior settle (intraday 16:00 ET): "
-                  + ", ".join(f"{contracts.get(r, r)}={v[2]:.2f}" for r, v in best.items()))
+                    if self._apply_settle(root, close):
+                        applied[root] = close
+                if applied:
+                    self._persist_state(force=True)
+            if applied:
+                print("  [db] prior settle (intraday 16:00 ET): "
+                      + ", ".join(f"{contracts.get(r, r)}={v:.2f}" for r, v in applied.items()))
         except Exception as e:
             print(f"  [db] intraday prior-settle fetch failed (keeping base): {e}")
 
