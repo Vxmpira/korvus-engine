@@ -143,6 +143,30 @@ def _session_key(ts_utc: dt.datetime) -> str:
     return d.isoformat()
 
 
+def _last_completed_session_key(now_utc: dt.datetime) -> str:
+    """Session key of the most recent COMPLETED trading day (skips weekends).
+    A holiday can make this one day too new; in that case a valid cached settle
+    is refetched rather than a stale one being trusted, which is the safe side."""
+    d = dt.date.fromisoformat(_session_key(now_utc)) - dt.timedelta(days=1)
+    while d.weekday() >= 5:
+        d -= dt.timedelta(days=1)
+    return d.isoformat()
+
+
+def _hist_end_kwargs(h):
+    """Clamp historical queries to the dataset's available end. Querying past
+    the available range errors on some accounts, which silently strands the
+    daily-% baseline on a stale tier."""
+    try:
+        rng = h.metadata.get_dataset_range(DATASET)
+        end = rng.get("end") if isinstance(rng, dict) else getattr(rng, "end", None)
+        if end:
+            return {"end": str(end)}
+    except Exception as e:
+        print(f"  [db] dataset-range lookup failed (querying without end): {e}")
+    return {}
+
+
 def _session_open_utc() -> dt.datetime:
     """UTC datetime of the current Globex session open (18:00 ET boundary),
     used as the intraday-replay start so O/H/L are correct the moment we connect.
@@ -186,6 +210,8 @@ class DatabentoMD:
         # this account, so we read the prior session's settle-time close straight
         # off the licensed live feed instead.
         self._settle = {}
+        # root -> session key ('YYYY-MM-DD') each settle belongs to (staleness checks)
+        self._settle_sess = {}
         # root -> close of the latest bar at/before 16:00 ET (the 3pm-CT settle)
         # in the session being accumulated; promoted to _settle at the rollover.
         self._sess_settle = {}
@@ -220,7 +246,20 @@ class DatabentoMD:
                     if k in self._roots and isinstance(v, (int, float)) and v > 0:
                         out[k] = float(v)
                 return out
-            self._settle.update(_clean(blob.get("settle")))
+            sess_map = blob.get("settle_sess") or {}
+            expected = _last_completed_session_key(dt.datetime.now(dt.timezone.utc))
+            loaded = _clean(blob.get("settle"))
+            for k in list(loaded.keys()):
+                stamp = sess_map.get(k)
+                if not isinstance(stamp, str):
+                    print(f"  [db] cached settle for {k} has no session stamp: refetching baseline")
+                    loaded.pop(k)
+                elif stamp != expected:
+                    print(f"  [db] cached settle for {k} is from {stamp}, expected {expected}: dropping stale baseline")
+                    loaded.pop(k)
+                else:
+                    self._settle_sess[k] = stamp
+            self._settle.update(loaded)
             self._sess_settle.update(_clean(blob.get("sess_settle")))
             for k, v in (blob.get("sess") or {}).items():
                 if k in self._roots and isinstance(v, str):
@@ -243,6 +282,7 @@ class DatabentoMD:
             self._last_persist = now
             blob = {"saved": now,
                     "settle": {k: v for k, v in self._settle.items() if v},
+                    "settle_sess": {k: v for k, v in self._settle_sess.items() if v},
                     "sess_settle": {k: v for k, v in self._sess_settle.items() if v},
                     "sess": dict(self._sess)}
             tmp = _SETTLE_CACHE + ".tmp"
@@ -268,6 +308,7 @@ class DatabentoMD:
             data = h.timeseries.get_range(
                 dataset=DATASET, schema="ohlcv-1d",
                 stype_in="continuous", symbols=syms, start=start,
+                **_hist_end_kwargs(h),
             )
             df = data.to_df()           # prices come back as scaled floats
             if df is None or len(df) == 0:
@@ -353,6 +394,7 @@ class DatabentoMD:
             data = h.timeseries.get_range(
                 dataset=DATASET, schema="ohlcv-1d",
                 stype_in="raw_symbol", symbols=syms, start=start,
+                **_hist_end_kwargs(h),
             )
             df = data.to_df()
             if df is None or len(df) == 0:
@@ -395,7 +437,7 @@ class DatabentoMD:
         except Exception as e:
             print(f"  [db] front-contract prev-close fetch failed (keeping prior base): {e}")
 
-    def _apply_settle(self, root, price):
+    def _apply_settle(self, root, price, skey=None):
         """Set root's daily-% baseline, rejecting a value wildly off the live price
         (a scaling or wrong-contract artifact) so a bad settle never throws the
         percentage off. Returns True if applied. Assumes self._lock is held."""
@@ -415,6 +457,8 @@ class DatabentoMD:
             except Exception:
                 pass
         self._settle[root] = price
+        if skey:
+            self._settle_sess[root] = skey
         if q and price:
             q["prev_close"] = price
             try:
@@ -445,10 +489,13 @@ class DatabentoMD:
             data = h.timeseries.get_range(
                 dataset=DATASET, schema="statistics",
                 stype_in="raw_symbol", symbols=syms, start=start,
+                **_hist_end_kwargs(h),
             )
             df = data.to_df()
             if df is None or len(df) == 0:
+                print("  [db] statistics query returned 0 rows")
                 return
+            print(f"  [db] statistics query returned {len(df)} rows")
             sym_col = "symbol" if "symbol" in df.columns else None
             SETTLE = 3   # StatType.SETTLEMENT_PRICE
             best = {}    # root -> (ts, price): most recent settlement
@@ -483,11 +530,16 @@ class DatabentoMD:
                 if prev is None or (ts is not None and (prev[0] is None or ts > prev[0])):
                     best[root] = (ts, price)
             if not best:
+                print("  [db] no settlement-price rows matched (stat_type 3)")
                 return
             applied = {}
             with self._lock:
                 for root, (ts, price) in best.items():
-                    if self._apply_settle(root, price):
+                    skey = None
+                    if ts is not None:
+                        tsu = ts if ts.tzinfo else ts.replace(tzinfo=dt.timezone.utc)
+                        skey = _session_key(tsu.astimezone(dt.timezone.utc))
+                    if self._apply_settle(root, price, skey):
                         applied[root] = price
                 if applied:
                     self._persist_state(force=True)
@@ -522,6 +574,7 @@ class DatabentoMD:
             data = h.timeseries.get_range(
                 dataset=DATASET, schema="ohlcv-1m",
                 stype_in="raw_symbol", symbols=syms, start=start,
+                **_hist_end_kwargs(h),
             )
             df = data.to_df()
             if df is None or len(df) == 0:
@@ -562,7 +615,7 @@ class DatabentoMD:
             applied = {}
             with self._lock:
                 for root, (skey, mins, close) in best.items():
-                    if self._apply_settle(root, close):
+                    if self._apply_settle(root, close, skey):
                         applied[root] = close
                 if applied:
                     self._persist_state(force=True)
@@ -639,6 +692,7 @@ class DatabentoMD:
                     cand = self._sess_settle.get(root)
                     if old_skey and cand and old_skey < today_key:
                         self._settle[root] = cand
+                        self._settle_sess[root] = old_skey
                         self._persist_state(force=True)
                     self._sess[root] = skey
                     self._sess_settle[root] = None
@@ -792,23 +846,61 @@ def feed_age():
 
 
 if __name__ == "__main__":
-    # Manual smoke test (needs: pip install databento + a real key + license):
+    # Manual smoke test:
     #   DATABENTO_API_KEY=... python korvus_databento.py
-    # Prints, per root: prior settle (the daily-% baseline), the live price, and
-    # the resulting change - so you can confirm it matches your broker's daily %.
+    # FULL DIAGNOSTIC (prints every baseline source side by side):
+    #   DATABENTO_API_KEY=... python korvus_databento.py --diag
+    import sys
+    DIAG = "--diag" in sys.argv
     if not DATABENTO_API_KEY:
         print("DATABENTO_API_KEY not set - dormant, nothing to test.")
         raise SystemExit(0)
     roots = ["MNQ", "MES", "MYM", "M2K", "CL", "GC", "ZN", "6E"]
+    if DIAG:
+        print("=== KORVUS DATABENTO DIAGNOSTIC ===")
+        print(f"dataset={DATASET}  key=...{DATABENTO_API_KEY[-4:]}  roots={','.join(roots)}")
+        print(f"expected prior-settle session: {_last_completed_session_key(dt.datetime.now(dt.timezone.utc))}")
+        try:
+            with open(_SETTLE_CACHE) as fh:
+                print("settle cache on disk: " + fh.read().strip())
+        except FileNotFoundError:
+            print("settle cache on disk: (none)")
+        except Exception as e:
+            print(f"settle cache on disk: unreadable ({e})")
+        if db is not None:
+            try:
+                rng = db.Historical(DATABENTO_API_KEY).metadata.get_dataset_range(DATASET)
+                print(f"historical availability: {rng}")
+            except Exception as e:
+                print(f"historical availability lookup FAILED: {e}")
     c = get_client()
     c.start(roots)
-    print("connecting + replaying session… (give it ~15s for the first bars)")
+    print("connecting + replaying session... (give it ~15s for the first bars)")
+    if DIAG:
+        for _ in range(30):
+            time.sleep(0.5)
+            with c._lock:
+                have = {r: k for r, k in c._root_to_contract.items() if k}
+            if len(have) >= len(roots):
+                break
+        with c._lock:
+            contracts = {r: k for r, k in c._root_to_contract.items() if k}
+        print("resolved contracts: " + (", ".join(f"{r}={contracts.get(r, '?')}" for r in roots)))
+        if contracts:
+            print("--- tier 1: official settlement (statistics schema) ---")
+            c._fetch_settlement_stats(contracts)
+            print("--- tier 2: intraday 16:00 ET bar (ohlcv-1m) ---")
+            c._fetch_prev_settle_intraday(contracts)
+            print("--- tier 3: daily bars, may lag (ohlcv-1d) ---")
+            c._fetch_prev_closes_for_contracts(contracts)
+        else:
+            print("NO CONTRACTS RESOLVED: live feed is not mapping symbols (subscription/entitlement)")
     try:
-        for i in range(12):
+        for i in range(3 if DIAG else 12):
             time.sleep(5)
             snap = c.get(roots)
             if not snap:
-                print(f"  [{(i+1)*5:>3}s] no bars yet…")
+                print(f"  [{(i+1)*5:>3}s] no bars yet...")
                 continue
             print(f"  --- snapshot at {(i+1)*5}s ---")
             print(f"  {'root':5} {'contract':9} {'prev_close':>11} {'price':>11} {'chg%':>8}")
@@ -821,6 +913,23 @@ if __name__ == "__main__":
                 base_note = "" if pc else "  (no prior settle -> chg vs session open)"
                 print(f"  {r:5} {contract:9} {pc:>11.2f} {q.get('price',0):>11.2f} "
                       f"{q.get('chg_pct',0):>+7.2f}%{base_note}")
+        if DIAG:
+            print("--- baseline summary (which number the board measures from) ---")
+            def _pct(px, b):
+                try:
+                    return f"{(px - b) / b * 100.0:+.2f}%" if (px and b) else "   n/a"
+                except Exception:
+                    return "   n/a"
+            with c._lock:
+                for r in roots:
+                    q = c._quotes.get(r) or {}
+                    px = q.get("price") or 0.0
+                    st = c._settle.get(r) or 0.0
+                    sk = c._settle_sess.get(r) or "no stamp"
+                    pv = c._prev_close.get(r) or 0.0
+                    print(f"  {r:5} price={px:>10.2f}  settle={st:>10.2f} [{sk}] -> {_pct(px, st)}"
+                          f"   prev_close={pv:>10.2f} -> {_pct(px, pv)}")
+            print("PASTE THIS ENTIRE OUTPUT BACK INTO THE CHAT.")
     except KeyboardInterrupt:
         pass
     finally:
