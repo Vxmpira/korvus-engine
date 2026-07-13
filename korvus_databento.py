@@ -402,9 +402,8 @@ class DatabentoMD:
         if db is None or not self._key:
             return
         try:
-            sess_open = _session_open_utc()
-            start = (sess_open - dt.timedelta(days=4)).isoformat()
-            end = sess_open.isoformat()
+            now = dt.datetime.now(dt.timezone.utc)
+            start = (now - dt.timedelta(days=5)).date().isoformat()
             sym_to_root, syms = {}, []
             for root, contract in contracts.items():
                 c = (contract or "").upper().strip()
@@ -416,12 +415,12 @@ class DatabentoMD:
             h = db.Historical(self._key)
             data = h.timeseries.get_range(
                 dataset=DATASET, schema="ohlcv-1m",
-                stype_in="raw_symbol", symbols=syms, start=start, end=end,
+                stype_in="raw_symbol", symbols=syms, start=start,
             )
             df = data.to_df()
             if df is None or len(df) == 0:
                 return
-            today_key = _session_key(dt.datetime.now(dt.timezone.utc))
+            today_key = _session_key(now)
             try:
                 from zoneinfo import ZoneInfo
                 NY = ZoneInfo("America/New_York")
