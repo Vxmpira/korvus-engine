@@ -382,6 +382,27 @@ def post_new_actuals(dry_run=False):
         print(f"  [forex-discord] posted {posted} new actual(s)")
 
 
+def run_forever(interval=None):
+    """Fast, decoupled forex heartbeat. The engine runs this in a daemon thread,
+    so a release posts within about a minute of the shared calendar cache
+    registering it, without speeding up (and re-billing) the news loop. Interval
+    is FOREX_POLL_SECONDS in .env, default 60."""
+    import time as _t
+    if interval is None:
+        try:
+            interval = max(15, int(os.getenv("FOREX_POLL_SECONDS", "60")))
+        except ValueError:
+            interval = 60
+    print(f"  [forex-discord] fast poll running every {interval}s")
+    while True:
+        try:
+            post_daily_agenda()
+            post_new_actuals()
+        except Exception as e:
+            print(f"  [forex-discord] loop error: {e}")
+        _t.sleep(interval)
+
+
 def _test_webhook():
     if not WEBHOOK:
         print("  [forex-discord] no FOREX_DISCORD_WEBHOOK set")
