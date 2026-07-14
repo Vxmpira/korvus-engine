@@ -270,7 +270,9 @@ def _build_agenda_embed(events):
             fc = (e.get("forecast") or "").strip() or "n/a"
             pv = (e.get("previous") or "").strip() or "n/a"
             lines.append(f"{dot} **{e.get('title')}**  `{ccy}`")
-            lines.append(f"{when}  \u00B7  Forecast {fc}  \u00B7  Previous {pv}")
+            lines.append(when)
+            lines.append(f"Forecast: {fc}")
+            lines.append(f"Previous: {pv}")
             lines.append("")
         lines.append("`\U0001F534 High   \U0001F7E0 Medium`")
     else:
@@ -400,6 +402,11 @@ def run_forever(interval=None):
             post_new_actuals()
         except Exception as e:
             print(f"  [forex-discord] loop error: {e}")
+        try:
+            from korvus_truth_discord import post_new_truths
+            post_new_truths()      # @realDonaldTrump market-relevant posts, quietly
+        except Exception as e:
+            print(f"  [truth] loop error: {e}")
         _t.sleep(interval)
 
 
