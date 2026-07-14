@@ -588,12 +588,12 @@ def score_with_claude(client, item: dict, _retry: bool = True) -> Optional[dict]
             max_tokens=1024,                 # headroom so a fuller analysis is never truncated mid-JSON
             system=sys_prompt,
             messages=[
-                {"role": "user", "content": user_blob},
-                {"role": "assistant", "content": "{"},   # prefill forces a clean JSON object, no preamble or hedge
+                {"role": "user",
+                 "content": user_blob + "\n\nRespond with ONLY the JSON object, starting with { and ending with }. No preamble, no markdown, no code fences."},
             ],
         )
         text = "".join(block.text for block in resp.content if block.type == "text")
-        data = _extract_json("{" + text)     # put the prefilled brace back, then parse tolerantly
+        data = _extract_json(text)           # tolerant of any stray preface or trailing prose
         if data is None:
             if _retry:                        # one retry before giving up on this item
                 return score_with_claude(client, item, _retry=False)
