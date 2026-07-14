@@ -544,7 +544,38 @@ OTHER:
 """
 
 
-def score_with_claude(client, item: dict) -> Optional[dict]:
+def _extract_json(text):
+    """Pull a JSON object out of a model reply, tolerant of a preface, code
+    fences, or trailing prose. Returns a dict, or None if nothing parses."""
+    if not text:
+        return None
+    t = text.strip()
+    if t.startswith("```"):
+        t = re.sub(r"^```(?:json)?", "", t).strip()
+        t = re.sub(r"```$", "", t).strip()
+    try:
+        return json.loads(t)
+    except Exception:
+        pass
+    start = t.find("{")
+    if start < 0:
+        return None
+    depth = 0                       # walk to the matching close brace, ignore anything after
+    for i in range(start, len(t)):
+        ch = t[i]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(t[start:i + 1])
+                except Exception:
+                    return None
+    return None
+
+
+def score_with_claude(client, item: dict, _retry: bool = True) -> Optional[dict]:
     sys_prompt = SYSTEM_PROMPT.replace("{INSTRUMENTS}", ", ".join(WATCHED_INSTRUMENTS))
     user_blob = (
         f"SOURCE: {item['source']} ({item.get('source_name','')})\n"
@@ -554,21 +585,27 @@ def score_with_claude(client, item: dict) -> Optional[dict]:
     try:
         resp = client.messages.create(
             model=CLAUDE_MODEL,
-            max_tokens=500,
+            max_tokens=1024,                 # headroom so a fuller analysis is never truncated mid-JSON
             system=sys_prompt,
-            messages=[{"role": "user", "content": user_blob}],
+            messages=[
+                {"role": "user", "content": user_blob},
+                {"role": "assistant", "content": "{"},   # prefill forces a clean JSON object, no preamble or hedge
+            ],
         )
         text = "".join(block.text for block in resp.content if block.type == "text")
-        # Be forgiving if the model wraps JSON in stray text/backticks
-        match = re.search(r"\{.*\}", text, re.DOTALL)
-        if not match:
+        data = _extract_json("{" + text)     # put the prefilled brace back, then parse tolerantly
+        if data is None:
+            if _retry:                        # one retry before giving up on this item
+                return score_with_claude(client, item, _retry=False)
             print(f"    [claude] no JSON in response for: {item['headline'][:50]}")
             return None
-        data = json.loads(match.group(0))
         # normalize / clamp
         data["impact"] = data.get("impact", "low") if data.get("impact") in ("high","med","low") else "low"
         data["direction"] = data.get("direction") if data.get("direction") in ("bull","bear","neut") else "neut"
-        data["confidence"] = max(0, min(100, int(data.get("confidence", 0))))
+        try:
+            data["confidence"] = max(0, min(100, int(data.get("confidence", 0))))
+        except (ValueError, TypeError):
+            data["confidence"] = 0
         if not isinstance(data.get("instruments"), list):
             data["instruments"] = []
         # keep it tight & realistic - at most the 3 most-direct (prompt orders them)
