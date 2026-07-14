@@ -54,8 +54,8 @@ REDDIT_USER_AGENT   = os.getenv("REDDIT_USER_AGENT", "korvus-engine/0.1 by Black
 # Which news provider to use: "benzinga" (free Basic), "benzinga_premium", or "alphavantage"
 NEWS_PROVIDER = os.getenv("NEWS_PROVIDER", "benzinga")
 
-# Which Claude model does the summarizing. Haiku = fast + cheap, ideal here.
-CLAUDE_MODEL = "claude-haiku-4-5"
+# Which Claude model does the scoring. Set CLAUDE_MODEL in .env to switch anytime.
+CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-opus-4-8")
 
 # How often the --loop mode runs (minutes)
 POLL_MINUTES = int(os.getenv("POLL_MINUTES", "5"))
