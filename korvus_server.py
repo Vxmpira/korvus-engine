@@ -29,11 +29,11 @@ from flask_login import (LoginManager, UserMixin, login_user, logout_user,
 import korvus_auth as auth
 import korvus_billing as billing
 
-# Owner/admin gate — comma-separated usernames in .env (e.g. ADMIN_USERNAMES=vxj).
+# Owner/admin gate - comma-separated usernames in .env (e.g. ADMIN_USERNAMES=vxj).
 # Empty by default, which means nobody is an admin until you set it.
 ADMIN_USERNAMES = {u.strip() for u in os.getenv("ADMIN_USERNAMES", "").split(",") if u.strip()}
 
-# Tradovate live-feed gate — ONLY this single username ever receives the real
+# Tradovate live-feed gate - ONLY this single username ever receives the real
 # CME quotes from your own Tradovate entitlement. Set TRADOVATE_OWNER=Vxmpira.N
 # in .env. Empty by default, which means the live feed is served to nobody.
 # This is what keeps the real-time data personal-use: it never reaches a member.
@@ -118,7 +118,7 @@ def api_news():
     if not current_user.is_authenticated:
         return jsonify({"error": "login required", "items": []}), 401
     if not os.path.exists(DB_PATH):
-        return jsonify({"error": "korvus.db not found — run the engine first", "items": []})
+        return jsonify({"error": "korvus.db not found - run the engine first", "items": []})
     conn = db()
     # hide items Claude flagged as pure non-market noise. Guard for older DBs
     # that may not have the column yet.
@@ -170,7 +170,7 @@ def api_ff_calendar():
     """This-week economic calendar for the Forex / Gov News page.
     The provider module (korvus_calendar.py) fetches Forex Factory / FMP
     server-side and caches it, so the browser never trips the feed's CORS
-    block or rate limit. Degrades gracefully — a missing module or failed
+    block or rate limit. Degrades gracefully - a missing module or failed
     fetch just returns an empty list and the page shows its sample week."""
     try:
         from korvus_calendar import get_calendar
@@ -201,7 +201,7 @@ def terminal():
 @app.route("/forex")
 @login_required
 def forex():
-    # Forex / Gov News economic calendar — a sibling of the terminal (gated)
+    # Forex / Gov News economic calendar - a sibling of the terminal (gated)
     return send_from_directory(HERE, "korvus_forex_calendar.html")
 
 
@@ -264,7 +264,7 @@ def logout():
 @app.route("/verify")
 def verify():
     ok = auth.confirm_email(request.args.get("token"))
-    note = ("Your email is verified — thank you." if ok
+    note = ("Your email is verified - thank you." if ok
             else "That verification link is invalid or already used.")
     cls = "ok" if ok else "err"
     return _render("korvus_login.html", f'<div class="msg {cls}">{note}</div>')
@@ -286,7 +286,7 @@ def api_forgot():
     token, email = auth.create_reset_token(data.get("email"))
     if token:
         auth.send_reset_email(email, token)
-    # generic response either way — never reveal whether an account exists
+    # generic response either way - never reveal whether an account exists
     return jsonify({"ok": True,
                     "message": "If an account exists for that email, a reset link is on its way."})
 
@@ -305,13 +305,13 @@ def api_me():
     if current_user.is_authenticated:
         _online[current_user.id] = dt.datetime.now(dt.timezone.utc)
         u = auth.get_user_by_id(current_user.id) or {}
-        # Whether the configured feed serves REAL CME futures (Databento) AND this
-        # user is entitled (Pro). Free users always get the delayed proxy feed, so
-        # the board only requests/show real contracts when this is true.
+        # Whether the configured feed serves REAL CME futures (Databento). In
+        # native mode EVERY tier prices the real contracts: Pro reads the live
+        # tape, free reads the same tape time-shifted 15 minutes server-side.
         _native_fut = False
         try:
             from korvus_quotes import native_futures
-            _native_fut = bool(native_futures()) and (u.get("tier") == "pro")
+            _native_fut = bool(native_futures())
         except Exception:
             _native_fut = False
         return jsonify({"auth": True,
@@ -336,7 +336,7 @@ def api_me():
 
 
 # ----------------------------------------------------------------------------
-# BILLING (Stripe subscriptions) — see korvus_billing.py
+# BILLING (Stripe subscriptions) - see korvus_billing.py
 # ----------------------------------------------------------------------------
 @app.route("/upgrade")
 @login_required
@@ -427,7 +427,7 @@ def billing_webhook():
 
 # in-memory "currently online" tracker: user_id -> last-seen UTC.
 # Counts sessions seen in the last 5 minutes. Resets on server restart
-# (fine — it's a live gauge, not a stored stat).
+# (fine - it's a live gauge, not a stored stat).
 _online = {}
 
 @app.route("/api/online")
@@ -454,7 +454,7 @@ def _is_admin():
 
 def _is_tradovate_owner():
     """True only for the single owner account named in TRADOVATE_OWNER.
-    Used to gate the live CME feed so it never reaches a paying member —
+    Used to gate the live CME feed so it never reaches a paying member -
     the real-time data stays the owner's own personal-use entitlement."""
     return (current_user.is_authenticated and TRADOVATE_OWNER
             and current_user.username == TRADOVATE_OWNER)
@@ -467,7 +467,7 @@ def legal():
 
 
 # ----------------------------------------------------------------------------
-# PHASE 3 — live quotes for the panels
+# PHASE 3 - live quotes for the panels
 # ----------------------------------------------------------------------------
 from flask import request
 
@@ -533,6 +533,11 @@ def api_quotes():
     meta = data.pop("_meta", {})
     meta["tier"] = "pro" if is_pro else "free"
     meta["delayed"] = not is_pro
+    try:
+        from korvus_quotes import FREE_DELAY_MIN
+        meta["delay_min"] = 0 if is_pro else FREE_DELAY_MIN
+    except Exception:
+        pass
     return jsonify({"quotes": data, "meta": meta})
 
 
@@ -716,7 +721,7 @@ def api_watchlist():
         except Exception as e:
             return jsonify({"ok": False, "error": str(e)}), 400
 
-    # GET — free users always get the default board
+    # GET - free users always get the default board
     if is_pro and os.path.exists(user_path):
         try:
             with open(user_path, encoding="utf-8") as f:
@@ -790,7 +795,7 @@ def _ensure_warmer():
 
 if __name__ == "__main__":
     print("\n" + "=" * 60)
-    print("  KORVUS server — open this in your browser:")
+    print("  KORVUS server - open this in your browser:")
     print("      http://localhost:8000")
     print("=" * 60 + "\n")
     if not os.path.exists(DB_PATH):

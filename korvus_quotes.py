@@ -55,6 +55,9 @@ def _clean_env(name: str, default: str = "") -> str:
     return v.strip()
 
 QUOTES_PROVIDER  = _clean_env("QUOTES_PROVIDER", "finnhub").lower()
+# Free-tier delay for the native CME feed, in minutes. Never below CME's 10-min
+# delayed-data threshold. Pro is live; free gets the same tape time-shifted.
+FREE_DELAY_MIN = max(10, int(_clean_env("KORVUS_FREE_DELAY_MIN", "15") or 15))
 ALPHAVANTAGE_KEY = _clean_env("ALPHAVANTAGE_KEY")
 FINNHUB_KEY      = _clean_env("FINNHUB_KEY")
 
@@ -223,6 +226,8 @@ def futures_session() -> str:
 
 def _provider_label(force_delayed: bool) -> str:
     if force_delayed:
+        if QUOTES_PROVIDER == "databento":
+            return "databento-delayed"
         return ("finnhub" if FINNHUB_KEY
                 else ("alphavantage-delayed" if ALPHAVANTAGE_KEY else "none"))
     return QUOTES_PROVIDER
@@ -239,6 +244,19 @@ def _fetch_quotes(symbols: list[str], force_delayed: bool) -> dict:
     if not symbols:
         return {}
     if force_delayed:
+        if QUOTES_PROVIDER == "databento":
+            # Free tier in native mode: the SAME licensed CME tape, time-shifted
+            # FREE_DELAY_MIN behind live. No ETF stand-ins on the futures board;
+            # the remaining symbols (Funds Watch / SMT / macro equities) still
+            # come from the delayed equity feed, which is what they really are.
+            out = _databento_quotes(symbols, delayed=True)
+            rest = [s for s in symbols if s not in DATABENTO_FUT]
+            if rest:
+                if FINNHUB_KEY:
+                    out.update(_finnhub_quotes(rest))
+                elif ALPHAVANTAGE_KEY:
+                    out.update(_alphavantage_quotes(rest, delayed=True))
+            return out
         if FINNHUB_KEY:
             return _finnhub_quotes(symbols)
         if ALPHAVANTAGE_KEY:
@@ -265,7 +283,7 @@ def _fetch_quotes(symbols: list[str], force_delayed: bool) -> dict:
 def _is_live_future(sym: str, force_delayed: bool) -> bool:
     """A real CME future served by the databento snapshot (its own live in-memory
     cache), so it's read fresh every call instead of held in the TTL cache."""
-    return (not force_delayed) and QUOTES_PROVIDER == "databento" and sym in DATABENTO_FUT
+    return QUOTES_PROVIDER == "databento" and sym in DATABENTO_FUT
 
 
 def get_quotes(symbols: list[str], force_delayed: bool = False) -> dict:
@@ -433,7 +451,7 @@ def _finnhub_quotes(symbols: list[str]) -> dict:
 # by ROOT (MNQ, MES, ...). Each call here just reads that snapshot (non-blocking).
 # Returns {} when unconfigured, when the `databento` package isn't installed, or
 # before the first bars arrive - so the dashboard simply keeps its prior numbers.
-def _databento_quotes(symbols: list[str]) -> dict:
+def _databento_quotes(symbols, delayed: bool = False) -> dict:
     if not DATABENTO_API_KEY:
         print("  [quotes] no DATABENTO_API_KEY - set it in .env (provider dormant)")
         return {}
@@ -447,7 +465,8 @@ def _databento_quotes(symbols: list[str]) -> dict:
         return {}
     client = get_client(DATABENTO_API_KEY)
     client.start(sorted(DATABENTO_FUT))   # idempotent: stream starts once
-    quotes = client.get(roots)
+    quotes = (client.get_delayed(roots, FREE_DELAY_MIN * 60) if delayed
+              else client.get(roots))
     if not quotes:
         print("  [quotes] Databento: connected/starting - no bars cached yet "
               "(first 1-min bar can take up to ~60s; check license if it persists)")

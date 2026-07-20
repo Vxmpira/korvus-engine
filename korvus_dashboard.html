@@ -1647,7 +1647,8 @@ async function loadMe(){
       NATIVE_FUTURES = !!me.native_futures;
       const _bs = document.getElementById('boardSource');
       if(_bs){
-        if(NATIVE_FUTURES){ _bs.textContent = 'live CME'; _bs.title = 'Real CME futures streamed live from the exchange feed (Pro).'; }
+        if(NATIVE_FUTURES && USER_TIER === 'pro'){ _bs.textContent = 'live CME'; _bs.title = 'Real CME futures streamed live from the licensed exchange feed.'; }
+        else if(NATIVE_FUTURES){ _bs.textContent = 'live CME \u00b7 15 min delayed'; _bs.title = 'Real CME futures from the licensed exchange feed, time-shifted 15 minutes. Go Pro for real-time.'; }
         else { _bs.textContent = 'via ETF proxies'; _bs.title = 'These panels price each future through its matching ETF (QQQ for NQ, SPY for ES, and so on) during US market hours.'; }
       }
       // Owner-only tools, Promo Studio + Admin, exclusive to the Vxmpira.N account.

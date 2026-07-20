@@ -212,6 +212,9 @@ class DatabentoMD:
         self._settle = {}
         # root -> session key ('YYYY-MM-DD') each settle belongs to (staleness checks)
         self._settle_sess = {}
+        # root -> [(ts_epoch, price, high, low, open), ...] rolling session tape,
+        # backfilled by the connect replay; feeds the free-tier delayed view
+        self._hist = {}
         # root -> close of the latest bar at/before 16:00 ET (the 3pm-CT settle)
         # in the session being accumulated; promoted to _settle at the rollover.
         self._sess_settle = {}
@@ -708,6 +711,15 @@ class DatabentoMD:
                         q["high"] = max(q.get("high", hi), hi)
                     if lo is not None:
                         q["low"] = min(q.get("low", lo) or lo, lo)
+                # rolling tape for the delayed (free-tier) view
+                tape = self._hist.setdefault(root, [])
+                try:
+                    tape.append((ts_utc.timestamp(), q["price"],
+                                 q.get("high"), q.get("low"), q.get("open")))
+                except Exception:
+                    pass
+                if len(tape) > 360:
+                    del tape[:120]
                 # remember this session's settle-time close (last bar at/before 4pm ET)
                 if at_or_before_settle:
                     self._sess_settle[root] = c
@@ -808,6 +820,41 @@ class DatabentoMD:
             for r in roots:
                 if r in self._quotes:
                     out[r] = dict(self._quotes[r])
+        return out
+
+    def get_delayed(self, roots, delay_sec: float) -> dict:
+        """Time-shifted snapshot for the free tier: the SAME licensed CME tape,
+        served at least delay_sec behind live. Never under-delays: if nothing on
+        the tape is old enough yet, the root is omitted. The daily % is
+        recomputed at serve time against the current prior-session settle, so
+        the delayed % matches what the live board showed at that moment."""
+        cutoff = time.time() - max(0.0, float(delay_sec))
+        out = {}
+        with self._lock:
+            for r in roots:
+                tape = self._hist.get(r)
+                if not tape:
+                    continue
+                pick = None
+                for item in reversed(tape):
+                    if item[0] <= cutoff:
+                        pick = item
+                        break
+                if pick is None:
+                    continue
+                ts, price, hi, lo, op = pick
+                pc = self._settle.get(r) or self._prev_close.get(r) or 0.0
+                if pc:
+                    chg = (price - pc) / pc * 100.0
+                elif op:
+                    chg = (price - op) / op * 100.0
+                else:
+                    chg = 0.0
+                out[r] = {"price": price, "chg_pct": chg,
+                          "high": hi if hi is not None else price,
+                          "low": lo if lo is not None else price,
+                          "open": op if op is not None else price,
+                          "prev_close": pc, "delayed_asof": ts}
         return out
 
     def seconds_since_last_bar(self):
