@@ -638,16 +638,19 @@
      ============================================================ */
 
   /* large desktops: widen the right column so it's balanced, not a thin strip */
-  /* Fit the top bands to any window by priority, never by clipping: names drop
-     first, then price + exchange tag, leaving a clean centered SYM + % board.
-     Full detail returns automatically as the window widens. */
-  @media (max-width:1640px){ .fut .sym small{display:none;} .fut{gap:8px;padding:10px 8px;} }
-  @media (max-width:1560px){
-    .fut .viaproxy{display:none;} .fut{gap:10px;}
-    .mfac small,.mfac .sub{display:none;} .mfac{padding:8px 8px;gap:7px;min-width:0;}
-    .kz .kt{display:none;}
-  }
-  @media (max-width:1150px){ .fut{gap:7px;padding:10px 5px;} .fut .sym{font-size:12px;} .fut .chg.big{font-size:12.5px;} }
+  /* Fit the top bands to ANY width by MEASURING, not guessing: a tiny fitter
+     adds .fit classes until the row genuinely fits. Cells can never shrink
+     below their content, so nothing smushes or clips mid-word at any size. */
+  .fut{flex:1 1 auto;min-width:max-content;}
+  .ribbon.fit1 .fut .sym small{display:none;}
+  .ribbon.fit2 .fut .viaproxy{display:none;}
+  .ribbon.fit3 .fut{gap:7px;padding:10px 6px;}
+  .ribbon.fit3 .fut .sym{font-size:12px;}
+  .ribbon.fit3 .fut .chg.big{font-size:12.5px;}
+  .mfac{flex:1 1 auto;min-width:max-content;}
+  .ctxband{overflow:hidden;}
+  .ctxband.fitm1 .mfac small,.ctxband.fitm1 .mfac .sub{display:none;}
+  .ctxband.fitm2 .mfac{padding:8px 8px;gap:7px;}
   @media (min-width: 1500px){
     main{grid-template-columns:1fr 440px;gap:20px;padding:20px;}
     .headline{font-size:16px;}
@@ -2051,6 +2054,29 @@ setInterval(loadContextBands, 30000);
   window.addEventListener('resize',resize);
   resize();
   if(!reduce){ requestAnimationFrame(tick); }
+})();
+</script>
+<script>
+/* Band fitter: measure, then shed detail tier by tier until the row truly fits. */
+(function(){
+  function fit(el, levels){
+    if(!el) return;
+    for(var i=0;i<levels.length;i++) el.classList.remove(levels[i]);
+    for(var j=0;j<levels.length && el.scrollWidth > el.clientWidth + 1;j++) el.classList.add(levels[j]);
+  }
+  function fitBands(){
+    fit(document.querySelector('.ribbon'), ['fit1','fit2','fit3']);
+    var mf=document.getElementById('macroFacs');
+    fit(mf ? mf.closest('.ctxband') : null, ['fitm1','fitm2']);
+  }
+  var rz; window.addEventListener('resize', function(){ clearTimeout(rz); rz=setTimeout(fitBands,80); });
+  if(window.MutationObserver){
+    var rb=document.querySelector('.ribbon');
+    if(rb) new MutationObserver(fitBands).observe(rb,{childList:true,subtree:true});
+    var mf=document.getElementById('macroFacs');
+    if(mf) new MutationObserver(fitBands).observe(mf,{childList:true,subtree:true});
+  }
+  setTimeout(fitBands,60); setTimeout(fitBands,700);
 })();
 </script>
 </body>
