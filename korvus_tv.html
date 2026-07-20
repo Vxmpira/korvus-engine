@@ -391,7 +391,6 @@
               <button type="button" class="yctl" id="muteBtn" aria-label="Mute or unmute"></button>
               <input type="range" class="yvol" id="volSlider" min="0" max="100" value="0" step="1" aria-label="Volume">
               <span class="ybarspacer"></span>
-              <button type="button" class="yctl" id="ccBtn" aria-label="Captions on or off"></button>
               <button type="button" class="yctl" id="fsBtn" aria-label="Fullscreen"></button>
             </div>
             <div class="ytfallback" id="ytFallback">
@@ -705,9 +704,7 @@
     var muteBtn = document.getElementById('muteBtn'),
         volEl   = document.getElementById('volSlider'),
         fsBtn   = document.getElementById('fsBtn'),
-        ccBtn   = document.getElementById('ccBtn'),
         screenEl= document.getElementById('screen');
-    var ICO_CC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M10 10.2a2.2 2.2 0 1 0 0 3.6"/><path d="M16.5 10.2a2.2 2.2 0 1 0 0 3.6"/></svg>';
     var lastVol = 70;
     function volFill(v){ if(volEl) volEl.style.setProperty('--vp', Math.max(0, Math.min(100, v)) + '%'); }
     function syncMuteUI(){
@@ -749,72 +746,6 @@
     if(fsBtn) fsBtn.addEventListener('click', toggleFS);
     document.addEventListener('fullscreenchange', syncFSUI);
     document.addEventListener('webkitfullscreenchange', syncFSUI);
-    /* captions on/off through the IFrame API caption module. Best-effort: it toggles
-       YouTube's own CC track when the live stream carries one (auto-captions count);
-       captions burned into the broadcast picture are part of the video and cannot be
-       switched off from here, by definition. */
-    var ccOn = false, ccTimer = null;
-    function pickTrack(list){
-      /* Prefer the stream's real English caption track (live auto-captions have
-         kind 'asr'); fall back to the first track. Applying the FULL track object
-         from the tracklist, instead of a bare language guess, is what keeps the
-         captions locked to this video's own audio rather than a stray or
-         auto-translated track. */
-      if(!list || !list.length) return null;
-      for(var i=0;i<list.length;i++){
-        var lc=(list[i].languageCode||'').toLowerCase();
-        if(lc==='en'||lc.indexOf('en-')===0) return list[i];
-      }
-      return list[0];
-    }
-    function trySelect(attempt){
-      if(!ccOn || !ytReady || !ytPlayer) return;
-      var tr=null;
-      try{ tr=pickTrack(ytPlayer.getOption('captions','tracklist')); }catch(e){}
-      if(!tr){ try{ tr=pickTrack(ytPlayer.getOption('cc','tracklist')); }catch(e){} }
-      if(tr){
-        try{ ytPlayer.setOption('captions','track',tr); }catch(e){}
-        try{ ytPlayer.setOption('cc','track',tr); }catch(e){}
-      } else {
-        /* Live streams often never expose a tracklist even when auto-captions
-           exist; a bare English request is what makes YouTube resolve and show
-           the ASR track. Keep one applied while we keep checking, and upgrade
-           to the exact track object if the list ever materializes. */
-        try{ ytPlayer.setOption('captions','track',{languageCode:'en'}); }catch(e){}
-        try{ ytPlayer.setOption('cc','track',{languageCode:'en'}); }catch(e){}
-        if(attempt < 14){ ccTimer=setTimeout(function(){ trySelect(attempt+1); }, 350); }
-      }
-    }
-    function applyCC(){
-      if(!ytReady || !ytPlayer) return;
-      if(ccTimer){ clearTimeout(ccTimer); ccTimer=null; }
-      try{
-        if(ccOn){
-          try{ ytPlayer.loadModule('captions'); }catch(e){}
-          try{ ytPlayer.loadModule('cc'); }catch(e){}
-          try{ ytPlayer.setOption('captions','reload',true); }catch(e){}
-          trySelect(0);
-          /* Caption sync: auto-captions are transcribed a beat AFTER the words
-             are spoken, so at the true live edge they can only trail the audio
-             (same on youtube.com). Sitting ~15s behind the edge gives the
-             transcription time to exist for each moment before it plays, which
-             is the only honest way to line captions up with the anchors. */
-          try{
-            var t = ytPlayer.getCurrentTime();
-            if(t > 25){ ytPlayer.seekTo(Math.max(0, t - 15), true); }
-          }catch(e){}
-        } else {
-          try{ ytPlayer.setOption('captions', 'track', {}); }catch(e){}
-          try{ ytPlayer.setOption('cc', 'track', {}); }catch(e){}
-          try{ ytPlayer.unloadModule('captions'); }catch(e){}
-          try{ ytPlayer.unloadModule('cc'); }catch(e){}
-          try{ ytPlayer.seekTo(ytPlayer.getDuration(), true); }catch(e){}  /* snap back to the live edge */
-        }
-      }catch(e){}
-    }
-    if(ccBtn) ccBtn.addEventListener('click', function(){
-      ccOn = !ccOn; ccBtn.classList.toggle('on', ccOn); applyCC();
-    });
     // touch-friendly: tap the screen to reveal the control bar briefly
     var shieldEl = document.getElementById('ytShield');
     if(shieldEl) shieldEl.addEventListener('click', function(){
@@ -825,7 +756,6 @@
     // initial icons + muted state (autoplay starts muted by browser rule)
     if(muteBtn) muteBtn.innerHTML = ICO_MUTE;
     if(fsBtn) fsBtn.innerHTML = ICO_FS;
-    if(ccBtn) ccBtn.innerHTML = ICO_CC;
     volFill(0);
 
     // safety net: if the IFrame API never loads, drop the shield and restore YouTube's native controls
