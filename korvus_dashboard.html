@@ -638,6 +638,14 @@
      ============================================================ */
 
   /* large desktops: widen the right column so it's balanced, not a thin strip */
+  /* Fit the top bands to any window: shed sublabels before anything clips */
+  @media (max-width:1600px){ .fut .sym small{display:none;} .fut{gap:8px;padding:10px 8px;} }
+  @media (max-width:1350px){
+    .fut .viaproxy{display:none;} .fut{padding:10px 6px;justify-content:flex-start;}
+    .mfac small,.mfac .sub{display:none;} .mfac{padding:8px 8px;gap:7px;justify-content:flex-start;min-width:0;overflow:hidden;}
+    .kz .kt{display:none;}
+  }
+  @media (max-width:1150px){ .fut .sym{font-size:12px;} .fut .chg.big{font-size:12px;} }
   @media (min-width: 1500px){
     main{grid-template-columns:1fr 440px;gap:20px;padding:20px;}
     .headline{font-size:16px;}
