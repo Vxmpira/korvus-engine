@@ -794,11 +794,21 @@
           try{ ytPlayer.loadModule('cc'); }catch(e){}
           try{ ytPlayer.setOption('captions','reload',true); }catch(e){}
           trySelect(0);
+          /* Caption sync: auto-captions are transcribed a beat AFTER the words
+             are spoken, so at the true live edge they can only trail the audio
+             (same on youtube.com). Sitting ~15s behind the edge gives the
+             transcription time to exist for each moment before it plays, which
+             is the only honest way to line captions up with the anchors. */
+          try{
+            var t = ytPlayer.getCurrentTime();
+            if(t > 25){ ytPlayer.seekTo(Math.max(0, t - 15), true); }
+          }catch(e){}
         } else {
           try{ ytPlayer.setOption('captions', 'track', {}); }catch(e){}
           try{ ytPlayer.setOption('cc', 'track', {}); }catch(e){}
           try{ ytPlayer.unloadModule('captions'); }catch(e){}
           try{ ytPlayer.unloadModule('cc'); }catch(e){}
+          try{ ytPlayer.seekTo(ytPlayer.getDuration(), true); }catch(e){}  /* snap back to the live edge */
         }
       }catch(e){}
     }
