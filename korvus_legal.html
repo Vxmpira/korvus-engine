@@ -11,9 +11,9 @@
   :root{
     --bg:#000000; --bg-2:#040406; --ink:#f6f8ff; --ink-dim:#aab0c0; --ink-faint:#646b7d;
     --line:rgba(255,255,255,.10); --line-soft:rgba(255,255,255,.05);
-    --gold:#ff1f44; --gold-deep:#d4112f; --crown:#ff1f44;
-    --crimson:#ff1f44; --crimson-deep:#d4112f; --crimson-bright:#ff3355;
-    --crimson-glow:rgba(255,31,68,.6); --crown-glow:rgba(255,31,68,.65);
+    --gold:#ff2d8f; --gold-deep:#d6146e; --crown:#ff2d8f;
+    --crimson:#ff2d8f; --crimson-deep:#d6146e; --crimson-bright:#ff5ba8;
+    --crimson-glow:rgba(255,45,143,.6); --crown-glow:rgba(255,45,143,.65);
     --panel:rgba(13,14,18,.62);
     --body:'Hanken Grotesk',system-ui,sans-serif; --disp:'Bricolage Grotesque',var(--body); --mono:'IBM Plex Mono',monospace;
     --r:14px;
@@ -25,9 +25,9 @@
   /* ---------- atmosphere (matched to the terminal) ---------- */
   .aurora{position:fixed;inset:-20%;z-index:-3;filter:blur(22px);opacity:.42;pointer-events:none;}
   .aurora span{position:absolute;border-radius:50%;mix-blend-mode:screen;}
-  .ag1{width:55vw;height:55vw;left:-8vw;top:-18vw;background:radial-gradient(circle,rgba(255,31,68,.16),transparent 62%);animation:agdrift 28s ease-in-out infinite;}
-  .ag2{width:50vw;height:50vw;right:-6vw;top:10vh;background:radial-gradient(circle,rgba(255,51,85,.16),transparent 62%);animation:agdrift2 34s ease-in-out infinite;}
-  .ag3{width:42vw;height:42vw;left:32vw;bottom:-20vw;background:radial-gradient(circle,rgba(212,17,47,.12),transparent 62%);animation:agdrift 40s ease-in-out infinite reverse;}
+  .ag1{width:55vw;height:55vw;left:-8vw;top:-18vw;background:radial-gradient(circle,rgba(255,45,143,.16),transparent 62%);animation:agdrift 28s ease-in-out infinite;}
+  .ag2{width:50vw;height:50vw;right:-6vw;top:10vh;background:radial-gradient(circle,rgba(255,91,168,.16),transparent 62%);animation:agdrift2 34s ease-in-out infinite;}
+  .ag3{width:42vw;height:42vw;left:32vw;bottom:-20vw;background:radial-gradient(circle,rgba(214,20,110,.12),transparent 62%);animation:agdrift 40s ease-in-out infinite reverse;}
   @keyframes agdrift{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(4vw,3vh) scale(1.08);}}
   @keyframes agdrift2{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(-3vw,4vh) scale(1.1);}}
 
@@ -36,22 +36,22 @@
     background:
       linear-gradient(rgba(120,140,170,.04) 1px,transparent 1px) 0 0/100% 46px,
       linear-gradient(90deg,rgba(120,140,170,.04) 1px,transparent 1px) 0 0/46px 100%,
-      radial-gradient(circle at 50% -5%,rgba(255,31,68,.05),transparent 55%);
+      radial-gradient(circle at 50% -5%,rgba(255,45,143,.05),transparent 55%);
     -webkit-mask-image:radial-gradient(circle at 50% 28%,#000,transparent 92%);
             mask-image:radial-gradient(circle at 50% 28%,#000,transparent 92%);}
 
   .watermark{position:fixed;top:50%;left:50%;transform:translate(-50%,-48%);width:min(58vw,600px);z-index:-1;opacity:.06;pointer-events:none;
-    filter:drop-shadow(0 0 40px rgba(255,31,68,.85)) drop-shadow(0 0 14px rgba(255,60,80,.6));}
+    filter:drop-shadow(0 0 40px rgba(255,45,143,.85)) drop-shadow(0 0 14px rgba(255,60,80,.6));}
   .watermark svg{width:100%;height:auto;display:block;}
 
   /* ---------- header (matched to the terminal) ---------- */
   .topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:13px;padding:13px 26px;
     border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(10,13,18,.88),rgba(6,8,12,.62));backdrop-filter:blur(14px);}
   .glyph{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex:none;
-    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);border:1px solid rgba(255,31,68,.42);
+    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);border:1px solid rgba(255,45,143,.42);
     box-shadow:0 0 28px -5px var(--crown-glow),inset 0 1px 0 rgba(255,255,255,.05);}
   .glyph svg{animation:crownPulse 3.2s ease-in-out infinite;}
-  @keyframes crownPulse{0%,100%{filter:drop-shadow(0 0 7px var(--crown-glow));}50%{filter:drop-shadow(0 0 15px rgba(255,31,68,.98));}}
+  @keyframes crownPulse{0%,100%{filter:drop-shadow(0 0 7px var(--crown-glow));}50%{filter:drop-shadow(0 0 15px rgba(255,45,143,.98));}}
   .brandtxt{line-height:1;}
   .brandtxt .mark{display:block;font-family:var(--disp);font-weight:800;font-size:18px;letter-spacing:-.01em;color:var(--ink);}
   .brandtxt .tagline{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);margin-top:5px;}
@@ -65,7 +65,7 @@
   /* ---------- content panel ---------- */
   .wrap{max-width:880px;margin:34px auto 72px;padding:36px 40px 56px;position:relative;z-index:1;
     background:var(--panel);backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:var(--r);
-    box-shadow:0 36px 90px -38px #000,0 0 0 1px rgba(255,31,68,.05),0 0 70px -34px var(--crimson-glow);
+    box-shadow:0 36px 90px -38px #000,0 0 0 1px rgba(255,45,143,.05),0 0 70px -34px var(--crimson-glow);
     animation:rise .7s ease both;}
   @keyframes rise{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:none;}}
 
@@ -73,7 +73,7 @@
   .jump{display:flex;gap:9px;flex-wrap:wrap;margin:0 0 30px;padding-bottom:26px;border-bottom:1px solid var(--line-soft);}
   .jump a{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-dim);text-decoration:none;
     border:1px solid var(--line);border-radius:999px;padding:8px 16px;transition:all .18s;}
-  .jump a:hover{background:rgba(255,31,68,.12);color:#fff;border-color:rgba(255,31,68,.5);box-shadow:0 0 16px -5px var(--crimson-glow);}
+  .jump a:hover{background:rgba(255,45,143,.12);color:#fff;border-color:rgba(255,45,143,.5);box-shadow:0 0 16px -5px var(--crimson-glow);}
 
   /* ---------- content typography ---------- */
   h1{font-family:var(--disp);font-weight:800;font-size:25px;letter-spacing:-.01em;margin:52px 0 14px;
@@ -88,7 +88,7 @@
   em{color:var(--ink-dim);}
   a{color:var(--gold-deep);text-decoration:none;}
   a:hover{color:var(--gold);text-decoration:underline;}
-  blockquote{border-left:3px solid var(--gold);background:rgba(255,31,68,.07);margin:18px 0;
+  blockquote{border-left:3px solid var(--gold);background:rgba(255,45,143,.07);margin:18px 0;
     padding:14px 18px;border-radius:0 10px 10px 0;font-size:14px;box-shadow:0 0 30px -16px var(--crimson-glow);}
   blockquote p{color:var(--ink-dim);margin:6px 0;}
   hr{border:none;border-top:1px solid var(--line);margin:36px 0;}
@@ -103,39 +103,19 @@
     .topbar{padding:12px 16px;gap:11px;}
     .brandtxt .tagline{display:none;}
   }
+  .chartscape{position:fixed;inset:0;z-index:-3;width:100%;height:100%;overflow:hidden;pointer-events:none;opacity:.45;will-change:transform;backface-visibility:hidden;}
 </style>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CjxyZWN0IHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgcng9IjE0IiBmaWxsPSIjMEEwQTBEIi8+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDExLDE1KSBzY2FsZSgxLjE2KSI+CjxwYXRoIGQ9Ik00IDI0IEw0IDkgTDEyIDE2IEwxOCA1IEwyNCAxNiBMMzIgOSBMMzIgMjQgWiIgZmlsbD0iI0ZGMkQ5NSIvPgo8cmVjdCB4PSI1IiB5PSIyNiIgd2lkdGg9IjI2IiBoZWlnaHQ9IjMiIGZpbGw9IiNGRjJEOTUiLz4KPC9nPgo8L3N2Zz4=">
 </head>
 <body>
+<canvas id="chartscape" class="chartscape"></canvas>
   <div class="aurora"><span class="ag1"></span><span class="ag2"></span><span class="ag3"></span></div>
   <div class="watermark" aria-hidden="true">
-    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="wm" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#ff7a6e"/><stop offset="1" stop-color="#c2160c"/></linearGradient>
-        <linearGradient id="wmHi" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#ffc4bc"/><stop offset="1" stop-color="#ff5b4d"/></linearGradient>
-      </defs>
-      <!-- sharp crown body: crisp peaks, clean valleys -->
-      <path d="M5 35 L8.2 16.5 L17 23.5 L24 9 L31 23.5 L39.8 16.5 L43 35 Z"
-            fill="url(#wm)" stroke="url(#wmHi)" stroke-width="0.7" stroke-linejoin="round"/>
-      <!-- subtle inner facet lines for definition -->
-      <path d="M24 9 L24 35 M8.2 16.5 L17 35 M39.8 16.5 L31 35"
-            stroke="url(#wmHi)" stroke-width="0.4" opacity="0.5"/>
-      <!-- base band with crisp edges -->
-      <rect x="6" y="34.5" width="36" height="5" rx="1.2" fill="url(#wm)" stroke="url(#wmHi)" stroke-width="0.6"/>
-      <!-- crisp jewel points -->
-      <circle cx="8.2" cy="16.5" r="2" fill="#ffd0ca"/>
-      <circle cx="24" cy="9" r="2.4" fill="#ffe4df"/>
-      <circle cx="39.8" cy="16.5" r="2" fill="#ffd0ca"/>
-    </svg>
+    <svg viewBox="0 0 36 33" fill="none" stroke="#ff2d8f" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
   </div>
   <div class="topbar">
     <span class="glyph">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff6b5e"/><stop offset="1" stop-color="#d4271c"/></linearGradient></defs>
-        <path d="M3 18.5 L3 8.2 L7.2 11.4 L12 4.5 L16.8 11.4 L21 8.2 L21 18.5 Z" fill="url(#c)" stroke="#ff8a7e" stroke-width="0.5" stroke-linejoin="round"/>
-        <rect x="3" y="18.2" width="18" height="2.6" rx="0.6" fill="url(#c)"/>
-      </svg>
+      <svg viewBox="0 0 36 33" width="20" height="20" fill="none" stroke="#ff2d8f" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
     </span>
     <span class="brandtxt">
       <span class="mark">KORVUS</span>
@@ -278,5 +258,65 @@
 </blockquote>
   </div>
   <div class="footer">© 2026 BlackCrownVxJ.LLC · Korvus</div>
+<script>
+(function(){
+  var cv=document.getElementById('chartscape');
+  if(!cv||!cv.getContext) return;
+  var ctx=cv.getContext('2d');
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+  var CW=16, GAP=5, SLOT=CW+GAP, SPEED=0.35, BUF=SLOT*3;
+  var W=0,H=0,CWID=0, candles=[], shift=0, trend=0.5, tvel=0;
+  var reduce=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function theme(){
+    var light=document.documentElement.getAttribute('data-theme')==='light';
+    return light
+      ? {bull:'#0e0b16', bear:'#c9146a', body:0.88}
+      : {bull:'#f4f6ff', bear:'#ff2d8f', body:0.95};
+  }
+  function nextC(prev){
+    tvel+=(Math.random()-0.5)*0.02; tvel*=0.9; trend+=tvel;
+    trend=Math.max(0.22,Math.min(0.78,trend));
+    var o=prev?prev.c:trend;
+    var c=o+(trend-o)*0.32+(Math.random()-0.5)*0.24;
+    c=Math.max(0.06,Math.min(0.95,c));
+    return {o:o,c:c,h:Math.max(o,c)+Math.random()*0.06,l:Math.min(o,c)-Math.random()*0.06};
+  }
+  function fill(){ var need=Math.ceil(CWID/SLOT)+3; while(candles.length<need) candles.push(nextC(candles[candles.length-1])); }
+  // draw every candle once, crisp, at whole-pixel positions (re-run only when the strip shifts one slot)
+  function render(){
+    var t=theme(); ctx.clearRect(0,0,CWID,H);
+    var surface=Math.round(H*0.80), top=H*0.20, bot=surface;
+    function yy(l){ return Math.round(bot-(bot-top)*Math.max(0,Math.min(1.05,l))); }
+    for(var i=0;i<candles.length;i++){
+      var x=i*SLOT; if(x>CWID+CW) break;
+      var cd=candles[i], up=cd.c>=cd.o, col=up?t.bull:t.bear;
+      var yt=yy(Math.max(cd.o,cd.c)), yb=yy(Math.min(cd.o,cd.c)), h=Math.max(2,yb-yt);
+      var yh=yy(cd.h), yl=yy(cd.l), cx=x+CW/2;
+      ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=2; ctx.globalAlpha=t.body;
+      ctx.beginPath(); ctx.moveTo(cx,yh); ctx.lineTo(cx,yl); ctx.stroke();
+      ctx.fillRect(x,yt,CW,h);
+    }
+    ctx.globalAlpha=1;
+  }
+  function place(){ cv.style.transform='translate3d('+(-(BUF+shift))+'px,0,0)'; }
+  function resize(){
+    W=window.innerWidth; H=window.innerHeight; CWID=W+BUF*2;
+    cv.width=CWID*dpr; cv.height=H*dpr;
+    cv.style.width=CWID+'px'; cv.style.height=H+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    fill(); render(); place();
+  }
+  // glide the whole crisp strip with a GPU transform: smooth, sub-pixel, never re-rasterized
+  function tick(){
+    shift+=SPEED;
+    if(shift>=SLOT){ shift-=SLOT; candles.shift(); candles.push(nextC(candles[candles.length-1])); render(); }
+    place();
+    requestAnimationFrame(tick);
+  }
+  window.addEventListener('resize',resize);
+  resize();
+  if(!reduce){ requestAnimationFrame(tick); }
+})();
+</script>
 </body>
 </html>

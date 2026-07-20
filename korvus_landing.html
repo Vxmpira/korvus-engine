@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script>document.documentElement.className += ' js';</script>
 <title>Korvus · Market Intelligence That Works While You Sleep · BlackCrownVxJ.LLC</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0Ij4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTUiIGZpbGw9IiMwMDAwMDAiLz4KPHJlY3QgeD0iMS40IiB5PSIxLjQiIHdpZHRoPSI2MS4yIiBoZWlnaHQ9IjYxLjIiIHJ4PSIxMy42IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZjFmNDQiIHN0cm9rZS13aWR0aD0iMi42Ii8+CjxnIGZpbGw9IiNmZjFmNDQiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDUuMyA2KSBzY2FsZSgxLjExMSkiPgo8cGF0aCBkPSJNNSAzNSBMOC4yIDE2LjUgTDE3IDIzLjUgTDI0IDkgTDMxIDIzLjUgTDM5LjggMTYuNSBMNDMgMzUgWiIvPgo8cmVjdCB4PSI2IiB5PSIzNC41IiB3aWR0aD0iMzYiIGhlaWdodD0iNSIgcng9IjEuMiIvPgo8L2c+Cjwvc3ZnPgo=">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CjxyZWN0IHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgcng9IjE0IiBmaWxsPSIjMEEwQTBEIi8+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDExLDE1KSBzY2FsZSgxLjE2KSI+CjxwYXRoIGQ9Ik00IDI0IEw0IDkgTDEyIDE2IEwxOCA1IEwyNCAxNiBMMzIgOSBMMzIgMjQgWiIgZmlsbD0iI0ZGMkQ5NSIvPgo8cmVjdCB4PSI1IiB5PSIyNiIgd2lkdGg9IjI2IiBoZWlnaHQ9IjMiIGZpbGw9IiNGRjJEOTUiLz4KPC9nPgo8L3N2Zz4=">
   <link rel="alternate icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="description" content="Korvus turns the firehose of market news and social chatter into clear, scored intelligence for index-futures traders. By BlackCrownVxJ.LLC." />
@@ -23,21 +23,21 @@
     --ink-faint:#646b7d;
     --line:rgba(255,255,255,.09);
     --line-bright:rgba(255,255,255,.18);
-    --gold:#ff1f44;            /* alias -> crimson (existing rules pick it up) */
-    --gold-deep:#d4112f;
-    --crimson:#ff1f44;
-    --crimson-deep:#d4112f;
-    --crimson-bright:#ff3355;
-    --crimson-glow:rgba(255,31,68,.6);
+    --gold:#ff2d8f;            /* alias -> crimson (existing rules pick it up) */
+    --gold-deep:#d6146e;
+    --crimson:#ff2d8f;
+    --crimson-deep:#d6146e;
+    --crimson-bright:#ff5ba8;
+    --crimson-glow:rgba(255,45,143,.6);
     --brand-yellow:#f5c542;    /* trademark yellow · for the LLC mark */
-    --crown:#ff1f44;
+    --crown:#ff2d8f;
     --up:#3ce594;
     --down:#ff2e4d;
     --candle-bull:#f6f8ff;
-    --candle-bear:#ff1f44;
+    --candle-bear:#ff2d8f;
     --mono:'IBM Plex Mono',ui-monospace,monospace;
     --body:'Hanken Grotesk',system-ui,sans-serif;
-    --disp:'Fraunces',Georgia,serif;
+    --disp:'Bricolage Grotesque',system-ui,sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   html{scroll-behavior:smooth;overflow-x:hidden;overflow-x:clip;}
@@ -51,7 +51,7 @@
     -webkit-mask-image:radial-gradient(ellipse 92% 78% at 50% 20%,#000 38%,transparent 94%);
             mask-image:radial-gradient(ellipse 92% 78% at 50% 20%,#000 38%,transparent 94%);}
   .glow{position:fixed;top:-32vh;left:50%;transform:translateX(-50%);width:78vw;height:68vh;z-index:0;pointer-events:none;
-    background:radial-gradient(ellipse at center,rgba(255,31,68,.11),rgba(255,31,68,.04) 44%,transparent 70%);filter:blur(34px);}
+    background:radial-gradient(ellipse at center,rgba(255,45,143,.11),rgba(255,45,143,.04) 44%,transparent 70%);filter:blur(34px);}
 
   /* animated candlestick field */
   #candles{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.3;
@@ -65,9 +65,9 @@
   .nav-inner{display:flex;align-items:center;gap:14px;padding:16px 28px;max-width:1140px;margin:0 auto;}
   .brand{display:flex;align-items:center;gap:11px;}
   .crown{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex:none;
-    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);border:1px solid rgba(255,31,68,.38);
+    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);border:1px solid rgba(255,45,143,.38);
     box-shadow:0 0 22px -6px var(--crown);}
-  .crown svg{filter:drop-shadow(0 0 5px rgba(255,31,68,.6));}
+  .crown svg{filter:drop-shadow(0 0 5px rgba(255,45,143,.6));}
   .brand-name{font-family:var(--disp);font-weight:600;font-size:21px;letter-spacing:.01em;}
   .brand-sub{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);margin-top:2px;}
   .nav-links{margin-left:auto;display:flex;align-items:center;gap:28px;}
@@ -126,7 +126,7 @@
   .pricing-wrap{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:54px;max-width:840px;margin-left:auto;margin-right:auto;}
   .plan{background:rgba(14,17,22,.45);border:1px solid var(--line-bright);border-radius:16px;padding:38px 32px;position:relative;transition:transform .25s,border-color .25s;backdrop-filter:blur(10px);}
   .plan:hover{transform:translateY(-4px);}
-  .plan.paid{border-color:rgba(255,31,68,.4);box-shadow:0 0 44px -14px rgba(255,31,68,.45);background:rgba(16,10,12,.5);}
+  .plan.paid{border-color:rgba(255,45,143,.4);box-shadow:0 0 44px -14px rgba(255,45,143,.45);background:rgba(16,10,12,.5);}
   .plan-tag{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px;}
   .plan.paid .plan-tag{color:var(--gold);}
   .plan h3{font-family:var(--disp);font-weight:600;font-size:26px;margin-bottom:6px;}
@@ -172,7 +172,7 @@
   .reassure{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:56px;align-items:stretch;}
   .rcard{position:relative;display:flex;flex-direction:column;border-radius:20px;padding:42px 40px;
     background:linear-gradient(180deg,rgba(17,20,26,.62),rgba(9,11,15,.5));border:1px solid var(--line-bright);backdrop-filter:blur(12px);}
-  .rcard.facts{border-color:var(--crimson-line);background:linear-gradient(180deg,rgba(22,12,15,.6),rgba(12,8,10,.5));box-shadow:0 0 60px -22px rgba(255,31,68,.5);}
+  .rcard.facts{border-color:var(--crimson-line);background:linear-gradient(180deg,rgba(22,12,15,.6),rgba(12,8,10,.5));box-shadow:0 0 60px -22px rgba(255,45,143,.5);}
   .rcard .eyebrow2{font-family:var(--mono);font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);
     display:flex;align-items:center;gap:10px;margin-bottom:20px;}
   .rcard .eyebrow2::before{content:"";width:24px;height:1px;background:var(--gold);opacity:.7;}
@@ -254,7 +254,7 @@
   .dawn{position:absolute;left:50%;bottom:-8vh;width:135vw;height:78vh;
     transform:translateX(-50%) translateY(calc(16vh - var(--p,0)*26vh));
     opacity:calc(.34 + var(--p,0)*.36);filter:blur(44px);
-    background:radial-gradient(ellipse 54% 100% at 50% 100%,rgba(255,31,68,.15),rgba(255,31,68,.045) 46%,transparent 72%);}
+    background:radial-gradient(ellipse 54% 100% at 50% 100%,rgba(255,45,143,.15),rgba(255,45,143,.045) 46%,transparent 72%);}
   /* the existing top glow recedes (parallax) and dims as the dawn takes over */
   .glow{transform:translateX(-50%) translateY(calc(var(--p,0) * -140px));opacity:calc(1 - var(--p,0)*.55);transition:opacity .15s linear;}
 
@@ -272,7 +272,7 @@
   /* browser frame */
   .browser{position:relative;z-index:2;width:100%;border-radius:14px;overflow:hidden;
     border:1px solid rgba(255,255,255,.10);background:#0b0b0e;
-    box-shadow:0 50px 90px -30px rgba(0,0,0,.85),0 0 0 1px rgba(0,0,0,.5),0 0 80px -34px rgba(255,31,68,.5);}
+    box-shadow:0 50px 90px -30px rgba(0,0,0,.85),0 0 0 1px rgba(0,0,0,.5),0 0 80px -34px rgba(255,45,143,.5);}
   .win-bar{display:flex;align-items:center;gap:12px;height:40px;padding:0 16px;border-bottom:1px solid var(--line);
     background:linear-gradient(180deg,#161619,#101013);}
   .win-dots{display:flex;gap:7px;}
@@ -298,9 +298,9 @@
     border:1px solid var(--line);border-radius:2em;color:var(--ink-dim);background:rgba(255,255,255,.02);}
   .kx-pill i{width:.5em;height:.5em;border-radius:50%;background:currentColor;}
   .kx-pill.ok{color:var(--up);border-color:rgba(60,229,148,.3);}
-  .kx-pill.live{color:var(--crimson);border-color:rgba(255,31,68,.3);}
+  .kx-pill.live{color:var(--crimson);border-color:rgba(255,45,143,.3);}
   .kx-pill.disc{color:#9aa6ff;border-color:rgba(154,166,255,.3);}
-  .kx-pill.warn{color:var(--crimson);border-color:rgba(255,31,68,.3);}
+  .kx-pill.warn{color:var(--crimson);border-color:rgba(255,45,143,.3);}
   .kx-clock{margin-left:auto;text-align:right;}
   .kx-clock b{font-size:1.05em;color:var(--ink);}
   .kx-clock span{display:block;font-size:.62em;letter-spacing:.14em;color:var(--ink-faint);}
@@ -378,7 +378,7 @@
   @keyframes screenOn{from{transform:translateX(-130%);}to{transform:translateX(130%);}}
 
   .floor{position:relative;z-index:1;width:70%;height:60px;margin:-6px auto 0;
-    background:radial-gradient(ellipse 70% 100% at 50% 0%,rgba(255,31,68,.20),transparent 70%);filter:blur(9px);opacity:.7;}
+    background:radial-gradient(ellipse 70% 100% at 50% 0%,rgba(255,45,143,.20),transparent 70%);filter:blur(9px);opacity:.7;}
 
   /* hero feature badges */
   .hero-badges{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:26px;}
@@ -485,6 +485,7 @@
     .sec-label::after{transition:none;width:42px;}
   }
 </style>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="scene" aria-hidden="true">
@@ -497,12 +498,7 @@
     <div class="nav-inner">
       <div class="brand">
         <span class="crown">
-          <svg viewBox="0 0 48 48" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs><linearGradient id="c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a6e"/><stop offset="1" stop-color="#c2160c"/></linearGradient></defs>
-            <path d="M5 35 L8.2 16.5 L17 23.5 L24 9 L31 23.5 L39.8 16.5 L43 35 Z" fill="url(#c)" stroke="#ff8a7e" stroke-width="0.7" stroke-linejoin="round"/>
-            <rect x="6" y="34.5" width="36" height="5" rx="1.2" fill="url(#c)"/>
-            <circle cx="8.2" cy="16.5" r="2" fill="#ffd0ca"/><circle cx="24" cy="9" r="2.4" fill="#ffe4df"/><circle cx="39.8" cy="16.5" r="2" fill="#ffd0ca"/>
-          </svg>
+          <svg viewBox="0 0 36 33" width="18" height="18" fill="none" stroke="#ff2d8f" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
         </span>
         <div>
           <div class="brand-name">Korvus</div>
@@ -555,7 +551,7 @@
         <div class="kx">
           <div class="kx-head">
             <div class="kx-brand">
-              <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 35 L8.2 16.5 L17 23.5 L24 9 L31 23.5 L39.8 16.5 L43 35 Z" fill="#ff1f44"/><rect x="6" y="34.5" width="36" height="5" rx="1.2" fill="#ff1f44"/></svg>
+              <svg viewBox="0 0 36 33" fill="none" stroke="#ff2d8f" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
               <div class="kx-bd"><b>KORVUS</b><span>YOUR EDGE WHILE THE WORLD SLEEPS</span></div>
             </div>
             <div class="kx-pills">
@@ -914,7 +910,7 @@
     const ctx = cv.getContext('2d');
     const REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;
     let W, H;
-    const BULL = '#ffffff', BEAR = '#ff1f44';
+    const BULL = '#ffffff', BEAR = '#ff2d8f';
     const CW = 8;        // candle body width
     const GAP = 12;      // gap between candles
     const STEP = CW + GAP;

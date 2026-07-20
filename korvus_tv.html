@@ -45,7 +45,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Korvus · Live Market TV</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0Ij4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTUiIGZpbGw9IiMwMDAwMDAiLz4KPHJlY3QgeD0iMS40IiB5PSIxLjQiIHdpZHRoPSI2MS4yIiBoZWlnaHQ9IjYxLjIiIHJ4PSIxMy42IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZjFmNDQiIHN0cm9rZS13aWR0aD0iMi42Ii8+CjxnIGZpbGw9IiNmZjFmNDQiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDUuMyA2KSBzY2FsZSgxLjExMSkiPgo8cGF0aCBkPSJNNSAzNSBMOC4yIDE2LjUgTDE3IDIzLjUgTDI0IDkgTDMxIDIzLjUgTDM5LjggMTYuNSBMNDMgMzUgWiIvPgo8cmVjdCB4PSI2IiB5PSIzNC41IiB3aWR0aD0iMzYiIGhlaWdodD0iNSIgcng9IjEuMiIvPgo8L2c+Cjwvc3ZnPgo=">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CjxyZWN0IHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgcng9IjE0IiBmaWxsPSIjMEEwQTBEIi8+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDExLDE1KSBzY2FsZSgxLjE2KSI+CjxwYXRoIGQ9Ik00IDI0IEw0IDkgTDEyIDE2IEwxOCA1IEwyNCAxNiBMMzIgOSBMMzIgMjQgWiIgZmlsbD0iI0ZGMkQ5NSIvPgo8cmVjdCB4PSI1IiB5PSIyNiIgd2lkdGg9IjI2IiBoZWlnaHQ9IjMiIGZpbGw9IiNGRjJEOTUiLz4KPC9nPgo8L3N2Zz4=">
   <link rel="alternate icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -56,9 +56,9 @@
     --line:rgba(255,255,255,.10); --line-soft:rgba(255,255,255,.055);
     --ink:#f3f5fb; --ink-dim:#9aa0b2; --ink-faint:#5b6072;
     --bull:#3ce594; --bear:#ff2e4d; --amber:#ff9d2e;
-    --crimson:#ff1f44; --crimson-deep:#d4112f; --crimson-bright:#ff3a58;
-    --crimson-glow:rgba(255,31,68,.72);
-    --gold:#ff1f44; --gold-deep:#d4112f;
+    --crimson:#ff2d8f; --crimson-deep:#d6146e; --crimson-bright:#ff3a58;
+    --crimson-glow:rgba(255,45,143,.72);
+    --gold:#ff2d8f; --gold-deep:#d6146e;
     --mono:'IBM Plex Mono',ui-monospace,monospace;
     --body:'Hanken Grotesk',system-ui,sans-serif;
     --disp:'Bricolage Grotesque',var(--body);
@@ -74,7 +74,7 @@
     opacity:.22; filter:blur(2px) saturate(.85);}
   .bgtex::after{content:""; position:absolute; inset:0;
     background:
-      radial-gradient(120% 80% at 50% -10%, rgba(255,31,68,.10), transparent 55%),
+      radial-gradient(120% 80% at 50% -10%, rgba(255,45,143,.10), transparent 55%),
       repeating-linear-gradient(115deg, rgba(255,255,255,.015) 0 2px, transparent 2px 7px),
       radial-gradient(120% 100% at 50% 50%, transparent 38%, rgba(0,0,0,.72) 100%);}
 
@@ -92,8 +92,8 @@
     background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0));
     transition:color .18s, border-color .18s, background .18s, box-shadow .18s;}
   .navlink:hover{color:var(--ink); border-color:rgba(255,255,255,.24); box-shadow:0 8px 20px -14px rgba(0,0,0,.9);}
-  .navlink.active{color:#fff; border-color:rgba(255,31,68,.85);
-    background:linear-gradient(180deg, rgba(255,31,68,.17), rgba(255,31,68,.04));
+  .navlink.active{color:#fff; border-color:rgba(255,45,143,.85);
+    background:linear-gradient(180deg, rgba(255,45,143,.17), rgba(255,45,143,.04));
     box-shadow:0 0 16px -3px var(--crimson-glow), inset 0 0 14px -8px var(--crimson-bright);}
   .tright{display:flex; align-items:center; gap:18px;}
   .tclock{font-family:var(--mono); font-size:11px; letter-spacing:.1em; color:var(--ink-dim);}
@@ -119,15 +119,15 @@
   .tab.active{color:var(--ink);}
   .tab:not(.active):hover{color:var(--ink-dim);}
   /* Bloomberg: neon outlined button, launches the external broadcast */
-  .tab.neon{padding:6px 12px; border:1px solid rgba(255,31,68,.55); border-radius:9px;
+  .tab.neon{padding:6px 12px; border:1px solid rgba(255,45,143,.55); border-radius:9px;
     color:var(--crimson-bright); text-decoration:none; letter-spacing:.13em;
-    background:linear-gradient(180deg, rgba(255,31,68,.12), rgba(255,31,68,.02));
-    text-shadow:0 0 8px rgba(255,31,68,.45); transition:color .18s, border-color .18s, background .18s, box-shadow .18s;}
+    background:linear-gradient(180deg, rgba(255,45,143,.12), rgba(255,45,143,.02));
+    text-shadow:0 0 8px rgba(255,45,143,.45); transition:color .18s, border-color .18s, background .18s, box-shadow .18s;}
   .tab.neon:hover{color:#fff; border-color:var(--crimson-bright);
-    background:linear-gradient(180deg, rgba(255,31,68,.2), rgba(255,31,68,.05));
+    background:linear-gradient(180deg, rgba(255,45,143,.2), rgba(255,45,143,.05));
     text-shadow:0 0 9px rgba(255,58,88,.85); box-shadow:0 0 18px -3px var(--crimson-glow);}
   .wordmark{font-family:var(--disp); font-weight:600; font-size:clamp(13px,1vw,15px); letter-spacing:.42em; padding-left:.42em;
-    text-transform:uppercase; color:var(--ink); white-space:nowrap; text-shadow:0 0 18px rgba(255,31,68,.35);}
+    text-transform:uppercase; color:var(--ink); white-space:nowrap; text-shadow:0 0 18px rgba(255,45,143,.35);}
   .cardcta{flex:1; display:flex; align-items:center; justify-content:flex-end; gap:14px; min-width:0;}
   .onair{display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:10.5px; font-weight:600;
     letter-spacing:.18em; text-transform:uppercase; color:var(--crimson-bright);}
@@ -145,7 +145,7 @@
   .sval{font-family:var(--disp); font-weight:500; font-size:clamp(38px,4.4vw,62px); line-height:.9; letter-spacing:-.02em;
     color:var(--ink); font-variant-numeric:tabular-nums; display:block;}
   #bigClock{font-family:var(--mono); font-weight:500; font-size:clamp(38px,4vw,66px); letter-spacing:-.01em;
-    text-shadow:0 0 22px rgba(255,31,68,.16);}
+    text-shadow:0 0 22px rgba(255,45,143,.16);}
   .merid{font-size:.30em; font-weight:600; letter-spacing:.12em; color:var(--ink-dim); margin-left:.4em; vertical-align:.62em;}
   .sval-sm{font-size:clamp(26px,3vw,42px); display:inline-flex; align-items:center; gap:12px; white-space:nowrap;}
   .sdot{width:10px; height:10px; border-radius:50%; background:var(--ink-faint); flex:none;}
@@ -175,9 +175,9 @@
   .ixpx{font-family:var(--mono); font-size:12px; font-variant-numeric:tabular-nums; color:var(--ink-dim);}
   .ichbox{position:relative; width:100%; height:clamp(82px,11vh,128px); border:1px solid var(--line-soft);
     border-radius:11px; overflow:hidden;
-    background:radial-gradient(120% 92% at 50% 112%, rgba(255,31,68,.07), rgba(0,0,0,0) 70%);}
+    background:radial-gradient(120% 92% at 50% 112%, rgba(255,45,143,.07), rgba(0,0,0,0) 70%);}
   .ichbox.sm{height:clamp(46px,6vh,64px); border-radius:9px;}
-  .ichsvg{display:block; width:100%; height:100%; filter:drop-shadow(0 0 5px rgba(255,31,68,.30));}
+  .ichsvg{display:block; width:100%; height:100%; filter:drop-shadow(0 0 5px rgba(255,45,143,.30));}
   .ichnote{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     font-family:var(--mono); font-size:9.5px; letter-spacing:.16em; text-transform:uppercase;
     color:var(--ink-faint); pointer-events:none;}
@@ -188,7 +188,7 @@
   /* right: the live feed centerpiece, sized by viewport height so it scales to any screen */
   .stagevid{min-width:0; position:relative;}
   .stagevid::before{content:""; position:absolute; left:-4%; top:-7%; width:88%; height:74%; z-index:0; pointer-events:none;
-    background:radial-gradient(58% 58% at 50% 42%, rgba(255,31,68,.20), transparent 72%); filter:blur(26px);}
+    background:radial-gradient(58% 58% at 50% 42%, rgba(255,45,143,.20), transparent 72%); filter:blur(26px);}
   .screen{position:relative; z-index:1; width:min(100%, calc(68vh * 16 / 9)); margin-inline:auto;
     aspect-ratio:16/9; border-radius:14px; overflow:hidden; background:#000;
     border:1px solid rgba(255,255,255,.08); box-shadow:inset 0 0 0 1px rgba(255,255,255,.03), 0 30px 60px -34px rgba(0,0,0,.9), 0 0 90px -28px var(--crimson-glow);}
@@ -208,8 +208,8 @@
   .yctl{display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; flex:none; padding:0;
     border:1px solid rgba(255,255,255,.16); border-radius:8px; background:rgba(0,0,0,.42); color:#fff; cursor:pointer;
     transition:border-color .18s, background .18s, box-shadow .18s;}
-  .yctl:hover{border-color:var(--crimson); background:rgba(255,31,68,.18); box-shadow:0 0 14px -5px var(--crimson-glow);}
-  .yctl.on{border-color:var(--crimson); color:var(--crimson-bright); background:rgba(255,31,68,.16);}
+  .yctl:hover{border-color:var(--crimson); background:rgba(255,45,143,.18); box-shadow:0 0 14px -5px var(--crimson-glow);}
+  .yctl.on{border-color:var(--crimson); color:var(--crimson-bright); background:rgba(255,45,143,.16);}
   .yctl svg{width:16px; height:16px; display:block;}
   .ybarspacer{flex:1;}
   .yvol{-webkit-appearance:none; appearance:none; width:130px; max-width:44%; height:4px; border-radius:999px; cursor:pointer; outline:none;
@@ -225,9 +225,9 @@
   .ytfallback.show{display:flex;}
   .ytfallback p{margin:0; max-width:46ch; color:var(--ink-dim); font-size:13px; line-height:1.6;}
   .ytfallback .ybtn{display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:999px; text-decoration:none; cursor:pointer;
-    border:1px solid var(--crimson); color:#fff; background:rgba(255,31,68,.12);
+    border:1px solid var(--crimson); color:#fff; background:rgba(255,45,143,.12);
     font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;}
-  .ytfallback .ybtn:hover{background:rgba(255,31,68,.22);}
+  .ytfallback .ybtn:hover{background:rgba(255,45,143,.22);}
 
   .bodyline{position:relative; z-index:1; display:flex; gap:14px; margin-top:clamp(14px,1.6vw,18px); max-width:56ch; color:var(--ink-dim); font-size:13px; line-height:1.55;}
   .bodyline .rule{width:1px; background:var(--crimson); opacity:.55; flex:none;}
@@ -236,10 +236,10 @@
   .botbar{display:flex; align-items:center; justify-content:space-between; gap:14px; padding-top:4px; flex-wrap:wrap;}
   .botcenter{display:inline-flex; align-items:center; gap:13px;}
   .deckbtn{display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:999px;
-    border:1px solid rgba(255,31,68,.45); background:rgba(255,31,68,.05); color:var(--crimson-bright); text-decoration:none;
+    border:1px solid rgba(255,45,143,.45); background:rgba(255,45,143,.05); color:var(--crimson-bright); text-decoration:none;
     font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; white-space:nowrap; transition:.2s;
-    text-shadow:0 0 8px rgba(255,31,68,.45); box-shadow:0 0 16px -7px var(--crimson-glow), inset 0 0 12px -9px var(--crimson-glow);}
-  .deckbtn:hover{border-color:var(--crimson-bright); color:#fff; background:rgba(255,31,68,.14);
+    text-shadow:0 0 8px rgba(255,45,143,.45); box-shadow:0 0 16px -7px var(--crimson-glow), inset 0 0 12px -9px var(--crimson-glow);}
+  .deckbtn:hover{border-color:var(--crimson-bright); color:#fff; background:rgba(255,45,143,.14);
     text-shadow:0 0 10px rgba(255,58,88,.8); box-shadow:0 0 26px -6px var(--crimson-glow), inset 0 0 16px -7px var(--crimson-glow);}
   .eq{display:inline-flex; align-items:flex-end; gap:3px; height:14px;}
   .eq i{width:2.5px; background:var(--crimson-bright); height:40%; border-radius:1px; animation:eq 1.1s ease-in-out infinite;}
@@ -303,9 +303,11 @@
     .tab{font-size:10px;} .tab.neon{padding:5px 9px;}
     .deckbtn{font-size:9.5px; padding:7px 11px; letter-spacing:.1em;}
   }
+  .chartscape{position:fixed;inset:0;z-index:-3;width:100%;height:100%;overflow:hidden;pointer-events:none;opacity:.85;will-change:transform;backface-visibility:hidden;}
 </style>
 </head>
 <body>
+<canvas id="chartscape" class="chartscape"></canvas>
   <div class="bgtex" aria-hidden="true"></div>
 
   <div class="stage">
@@ -313,11 +315,7 @@
     <div class="topbar">
       <div class="tnav">
         <span class="crown" aria-label="BlackCrownVxJ">
-          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs><linearGradient id="crwn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff6a5d"/><stop offset="1" stop-color="#c2160c"/></linearGradient></defs>
-            <path d="M2.6 17.6 L4.4 8.4 L8.7 12.4 L12 4.6 L15.3 12.4 L19.6 8.4 L21.4 17.6 Z" fill="url(#crwn)" stroke="#ff8a7e" stroke-width="0.5" stroke-linejoin="round"/>
-            <rect x="3" y="18.4" width="18" height="2.5" rx="1.1" fill="url(#crwn)"/>
-          </svg>
+          <svg viewBox="0 0 36 33" width="22" height="20" fill="none" stroke="#ff2d8f" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
         </span>
         <a class="navlink" href="/terminal">:Terminal</a>
         <a class="navlink" href="/forex">:Forex</a>
@@ -602,8 +600,8 @@
       var gid = svgId + '-g', sw = big ? 1.7 : 1.5, op = big ? 0.30 : 0.18;
       svg.innerHTML =
         '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
-        '<stop offset="0" stop-color="#ff1f44" stop-opacity="' + op + '"/>' +
-        '<stop offset="1" stop-color="#ff1f44" stop-opacity="0"/></linearGradient></defs>' +
+        '<stop offset="0" stop-color="#ff2d8f" stop-opacity="' + op + '"/>' +
+        '<stop offset="1" stop-color="#ff2d8f" stop-opacity="0"/></linearGradient></defs>' +
         '<line x1="0" y1="' + y0 + '" x2="' + W + '" y2="' + y0 + '" stroke="#5b6072" stroke-width="1" stroke-dasharray="3 3" opacity=".55" vector-effect="non-scaling-stroke"/>' +
         '<path d="' + area + '" fill="url(#' + gid + ')" stroke="none"/>' +
         '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#ff3a58" stroke-width="' + sw + '" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>';
@@ -798,5 +796,65 @@
 
     (function(){ var t = document.createElement('script'); t.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(t); })();
   </script>
+<script>
+(function(){
+  var cv=document.getElementById('chartscape');
+  if(!cv||!cv.getContext) return;
+  var ctx=cv.getContext('2d');
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+  var CW=16, GAP=5, SLOT=CW+GAP, SPEED=0.35, BUF=SLOT*3;
+  var W=0,H=0,CWID=0, candles=[], shift=0, trend=0.5, tvel=0;
+  var reduce=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function theme(){
+    var light=document.documentElement.getAttribute('data-theme')==='light';
+    return light
+      ? {bull:'#0e0b16', bear:'#c9146a', body:0.88}
+      : {bull:'#f4f6ff', bear:'#ff2d8f', body:0.95};
+  }
+  function nextC(prev){
+    tvel+=(Math.random()-0.5)*0.02; tvel*=0.9; trend+=tvel;
+    trend=Math.max(0.22,Math.min(0.78,trend));
+    var o=prev?prev.c:trend;
+    var c=o+(trend-o)*0.32+(Math.random()-0.5)*0.24;
+    c=Math.max(0.06,Math.min(0.95,c));
+    return {o:o,c:c,h:Math.max(o,c)+Math.random()*0.06,l:Math.min(o,c)-Math.random()*0.06};
+  }
+  function fill(){ var need=Math.ceil(CWID/SLOT)+3; while(candles.length<need) candles.push(nextC(candles[candles.length-1])); }
+  // draw every candle once, crisp, at whole-pixel positions (re-run only when the strip shifts one slot)
+  function render(){
+    var t=theme(); ctx.clearRect(0,0,CWID,H);
+    var surface=Math.round(H*0.80), top=H*0.20, bot=surface;
+    function yy(l){ return Math.round(bot-(bot-top)*Math.max(0,Math.min(1.05,l))); }
+    for(var i=0;i<candles.length;i++){
+      var x=i*SLOT; if(x>CWID+CW) break;
+      var cd=candles[i], up=cd.c>=cd.o, col=up?t.bull:t.bear;
+      var yt=yy(Math.max(cd.o,cd.c)), yb=yy(Math.min(cd.o,cd.c)), h=Math.max(2,yb-yt);
+      var yh=yy(cd.h), yl=yy(cd.l), cx=x+CW/2;
+      ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=2; ctx.globalAlpha=t.body;
+      ctx.beginPath(); ctx.moveTo(cx,yh); ctx.lineTo(cx,yl); ctx.stroke();
+      ctx.fillRect(x,yt,CW,h);
+    }
+    ctx.globalAlpha=1;
+  }
+  function place(){ cv.style.transform='translate3d('+(-(BUF+shift))+'px,0,0)'; }
+  function resize(){
+    W=window.innerWidth; H=window.innerHeight; CWID=W+BUF*2;
+    cv.width=CWID*dpr; cv.height=H*dpr;
+    cv.style.width=CWID+'px'; cv.style.height=H+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    fill(); render(); place();
+  }
+  // glide the whole crisp strip with a GPU transform: smooth, sub-pixel, never re-rasterized
+  function tick(){
+    shift+=SPEED;
+    if(shift>=SLOT){ shift-=SLOT; candles.shift(); candles.push(nextC(candles[candles.length-1])); render(); }
+    place();
+    requestAnimationFrame(tick);
+  }
+  window.addEventListener('resize',resize);
+  resize();
+  if(!reduce){ requestAnimationFrame(tick); }
+})();
+</script>
 </body>
 </html>
