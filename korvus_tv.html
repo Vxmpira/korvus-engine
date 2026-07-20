@@ -775,9 +775,14 @@
       if(tr){
         try{ ytPlayer.setOption('captions','track',tr); }catch(e){}
         try{ ytPlayer.setOption('cc','track',tr); }catch(e){}
-      } else if(attempt < 14){
-        /* live streams publish the tracklist a beat after the module loads */
-        ccTimer=setTimeout(function(){ trySelect(attempt+1); }, 350);
+      } else {
+        /* Live streams often never expose a tracklist even when auto-captions
+           exist; a bare English request is what makes YouTube resolve and show
+           the ASR track. Keep one applied while we keep checking, and upgrade
+           to the exact track object if the list ever materializes. */
+        try{ ytPlayer.setOption('captions','track',{languageCode:'en'}); }catch(e){}
+        try{ ytPlayer.setOption('cc','track',{languageCode:'en'}); }catch(e){}
+        if(attempt < 14){ ccTimer=setTimeout(function(){ trySelect(attempt+1); }, 350); }
       }
     }
     function applyCC(){
@@ -787,6 +792,7 @@
         if(ccOn){
           try{ ytPlayer.loadModule('captions'); }catch(e){}
           try{ ytPlayer.loadModule('cc'); }catch(e){}
+          try{ ytPlayer.setOption('captions','reload',true); }catch(e){}
           trySelect(0);
         } else {
           try{ ytPlayer.setOption('captions', 'track', {}); }catch(e){}
