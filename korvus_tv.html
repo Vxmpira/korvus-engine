@@ -749,15 +749,41 @@
        YouTube's own CC track when the live stream carries one (auto-captions count);
        captions burned into the broadcast picture are part of the video and cannot be
        switched off from here, by definition. */
-    var ccOn = false;
+    var ccOn = false, ccTimer = null;
+    function pickTrack(list){
+      /* Prefer the stream's real English caption track (live auto-captions have
+         kind 'asr'); fall back to the first track. Applying the FULL track object
+         from the tracklist, instead of a bare language guess, is what keeps the
+         captions locked to this video's own audio rather than a stray or
+         auto-translated track. */
+      if(!list || !list.length) return null;
+      for(var i=0;i<list.length;i++){
+        var lc=(list[i].languageCode||'').toLowerCase();
+        if(lc==='en'||lc.indexOf('en-')===0) return list[i];
+      }
+      return list[0];
+    }
+    function trySelect(attempt){
+      if(!ccOn || !ytReady || !ytPlayer) return;
+      var tr=null;
+      try{ tr=pickTrack(ytPlayer.getOption('captions','tracklist')); }catch(e){}
+      if(!tr){ try{ tr=pickTrack(ytPlayer.getOption('cc','tracklist')); }catch(e){} }
+      if(tr){
+        try{ ytPlayer.setOption('captions','track',tr); }catch(e){}
+        try{ ytPlayer.setOption('cc','track',tr); }catch(e){}
+      } else if(attempt < 14){
+        /* live streams publish the tracklist a beat after the module loads */
+        ccTimer=setTimeout(function(){ trySelect(attempt+1); }, 350);
+      }
+    }
     function applyCC(){
       if(!ytReady || !ytPlayer) return;
+      if(ccTimer){ clearTimeout(ccTimer); ccTimer=null; }
       try{
         if(ccOn){
           try{ ytPlayer.loadModule('captions'); }catch(e){}
           try{ ytPlayer.loadModule('cc'); }catch(e){}
-          try{ ytPlayer.setOption('captions', 'track', {languageCode:'en'}); }catch(e){}
-          try{ ytPlayer.setOption('cc', 'track', {languageCode:'en'}); }catch(e){}
+          trySelect(0);
         } else {
           try{ ytPlayer.setOption('captions', 'track', {}); }catch(e){}
           try{ ytPlayer.setOption('cc', 'track', {}); }catch(e){}
