@@ -54,8 +54,8 @@ REDDIT_USER_AGENT   = os.getenv("REDDIT_USER_AGENT", "korvus-engine/0.1 by Black
 # Which news provider to use: "benzinga" (free Basic), "benzinga_premium", or "alphavantage"
 NEWS_PROVIDER = os.getenv("NEWS_PROVIDER", "benzinga")
 
-# Which Claude model does the scoring. Set CLAUDE_MODEL in .env to switch anytime.
-CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-opus-4-8")
+# Which Claude model does the summarizing. Haiku = fast + cheap, ideal here.
+CLAUDE_MODEL = "claude-haiku-4-5"
 
 # How often the --loop mode runs (minutes)
 POLL_MINUTES = int(os.getenv("POLL_MINUTES", "5"))
@@ -401,6 +401,17 @@ def fetch_x() -> list[dict]:
 # keep the timeline advancing. Parsed with the stdlib (no extra dependency).
 # Toggle/extend via RSS_FEEDS below.
 # ----------------------------------------------------------------------------
+# Browser-grade headers for feed pulls. Several outlets (FXStreet included)
+# firewall obvious bot user-agents with a 403, so we identify as a normal
+# browser asking for RSS.
+_RSS_HEADERS = {
+    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                   "AppleWebKit/537.36 (KHTML, like Gecko) "
+                   "Chrome/126.0.0.0 Safari/537.36"),
+    "Accept": "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5",
+    "Accept-Language": "en-US,en;q=0.8",
+}
+
 # Each feed: (display_name, url, category). category is "forex" or "general"
 # and drives the News-panel tab split on the dashboard.
 RSS_FEEDS = [
@@ -413,10 +424,15 @@ RSS_FEEDS = [
     ("SeekingAlpha",  "https://seekingalpha.com/market_currents.xml", "general"),
     ("InvestingLive", "https://www.investinglive.com/feed", "general"),
     # --- Forex / FX-focused feeds (engine logs+skips any that don't return 200) ---
-    ("FXStreet",      "https://www.fxstreet.com/rss/news", "forex"),
+    ("FXStreet",      ("https://www.fxstreet.com/rss/news",
+                       "https://xml.fxstreet.com/news/forex-news/index.xml"), "forex"),
     ("ForexLive",     "https://www.forexlive.com/feed", "forex"),
-    ("DailyForex",    "https://www.dailyforex.com/rss/forexnews.xml", "forex"),
+    ("DailyForex",    ("https://www.dailyforex.com/rss/forexnews.xml",
+                       "https://www.dailyforex.com/rss",
+                       "https://www.dailyforex.com/feed"), "forex"),
     ("Investing FX",  "https://www.investing.com/rss/news_1.rss", "forex"),
+    ("FXEmpire",      "https://www.fxempire.com/api/v1/en/articles/rss/news", "forex"),
+    ("ActionForex",   "https://www.actionforex.com/feed/", "forex"),
 ]
 
 def fetch_rss() -> list[dict]:
@@ -424,9 +440,18 @@ def fetch_rss() -> list[dict]:
     out = []
     for name, url, category in RSS_FEEDS:
         try:
-            r = requests.get(url, timeout=15, headers={"User-Agent": "korvus-engine/0.2"})
-            if r.status_code != 200:
-                print(f"  [rss] {name} returned {r.status_code} - skipping")
+            # A feed may list fallback URLs; try each until one answers 200.
+            urls = url if isinstance(url, (list, tuple)) else (url,)
+            r = None
+            for i, u in enumerate(urls):
+                resp = requests.get(u, timeout=15, headers=_RSS_HEADERS)
+                if resp.status_code == 200:
+                    r = resp
+                    if i:
+                        print(f"  [rss] {name} ok via fallback URL #{i + 1}")
+                    break
+            if r is None:
+                print(f"  [rss] {name} returned {resp.status_code} - skipping")
                 continue
             root = ET.fromstring(r.content)
             # RSS items live at channel/item; handle namespaces loosely
@@ -544,38 +569,7 @@ OTHER:
 """
 
 
-def _extract_json(text):
-    """Pull a JSON object out of a model reply, tolerant of a preface, code
-    fences, or trailing prose. Returns a dict, or None if nothing parses."""
-    if not text:
-        return None
-    t = text.strip()
-    if t.startswith("```"):
-        t = re.sub(r"^```(?:json)?", "", t).strip()
-        t = re.sub(r"```$", "", t).strip()
-    try:
-        return json.loads(t)
-    except Exception:
-        pass
-    start = t.find("{")
-    if start < 0:
-        return None
-    depth = 0                       # walk to the matching close brace, ignore anything after
-    for i in range(start, len(t)):
-        ch = t[i]
-        if ch == "{":
-            depth += 1
-        elif ch == "}":
-            depth -= 1
-            if depth == 0:
-                try:
-                    return json.loads(t[start:i + 1])
-                except Exception:
-                    return None
-    return None
-
-
-def score_with_claude(client, item: dict, _retry: bool = True) -> Optional[dict]:
+def score_with_claude(client, item: dict) -> Optional[dict]:
     sys_prompt = SYSTEM_PROMPT.replace("{INSTRUMENTS}", ", ".join(WATCHED_INSTRUMENTS))
     user_blob = (
         f"SOURCE: {item['source']} ({item.get('source_name','')})\n"
@@ -585,27 +579,21 @@ def score_with_claude(client, item: dict, _retry: bool = True) -> Optional[dict]
     try:
         resp = client.messages.create(
             model=CLAUDE_MODEL,
-            max_tokens=1024,                 # headroom so a fuller analysis is never truncated mid-JSON
+            max_tokens=500,
             system=sys_prompt,
-            messages=[
-                {"role": "user",
-                 "content": user_blob + "\n\nRespond with ONLY the JSON object, starting with { and ending with }. No preamble, no markdown, no code fences."},
-            ],
+            messages=[{"role": "user", "content": user_blob}],
         )
         text = "".join(block.text for block in resp.content if block.type == "text")
-        data = _extract_json(text)           # tolerant of any stray preface or trailing prose
-        if data is None:
-            if _retry:                        # one retry before giving up on this item
-                return score_with_claude(client, item, _retry=False)
+        # Be forgiving if the model wraps JSON in stray text/backticks
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if not match:
             print(f"    [claude] no JSON in response for: {item['headline'][:50]}")
             return None
+        data = json.loads(match.group(0))
         # normalize / clamp
         data["impact"] = data.get("impact", "low") if data.get("impact") in ("high","med","low") else "low"
         data["direction"] = data.get("direction") if data.get("direction") in ("bull","bear","neut") else "neut"
-        try:
-            data["confidence"] = max(0, min(100, int(data.get("confidence", 0))))
-        except (ValueError, TypeError):
-            data["confidence"] = 0
+        data["confidence"] = max(0, min(100, int(data.get("confidence", 0))))
         if not isinstance(data.get("instruments"), list):
             data["instruments"] = []
         # keep it tight & realistic - at most the 3 most-direct (prompt orders them)
@@ -709,9 +697,14 @@ def run_once():
     print(f"  [db] korvus.db now holds {total} item(s)")
     conn.close()
 
-    # Forex to Discord no longer runs here. It has its own fast heartbeat
-    # (korvus_forex_discord.run_forever), started as a daemon thread in main(),
-    # so releases post within a minute instead of waiting on this 5-min loop.
+    # forex Discord: daily agenda (once ~1 AM ET) + new actuals as they print,
+    # wrapped so a Discord hiccup never breaks the news pass.
+    try:
+        from korvus_forex_discord import post_daily_agenda, post_new_actuals
+        post_daily_agenda()     # today's schedule, once, ~1 AM ET, one ping
+        post_new_actuals()      # each actual as it prints, quietly
+    except Exception as e:
+        print(f"  [forex-discord] pass error: {e}")
 
 
 def main():
@@ -722,14 +715,6 @@ def main():
 
     db_init()
     if args.loop:
-        # Forex posts on its own fast heartbeat, decoupled from the 5-min news
-        # loop, so releases land within a minute of the calendar registering them.
-        try:
-            import threading
-            from korvus_forex_discord import run_forever
-            threading.Thread(target=run_forever, daemon=True).start()
-        except Exception as e:
-            print(f"  [forex-discord] could not start fast poll: {e}")
         print(f"Korvus engine in LOOP mode - every {POLL_MINUTES} min. Ctrl+C to stop.")
         while True:
             try:
