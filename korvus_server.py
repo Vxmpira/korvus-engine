@@ -205,13 +205,6 @@ def forex():
     return send_from_directory(HERE, "korvus_forex_calendar.html")
 
 
-@app.route("/tv")
-@login_required
-def tv():
-    # Live Market TV, a sibling of the terminal (gated to members)
-    return send_from_directory(HERE, "korvus_tv.html")
-
-
 # ----------------------------------------------------------------------------
 # AUTH ROUTES
 # ----------------------------------------------------------------------------
@@ -544,7 +537,7 @@ def api_quotes():
 @app.route("/api/intraday")
 def api_intraday():
     """
-    Real intraday % series (price vs prev close) for the Live TV sidebar charts.
+    Real intraday % series (price vs prev close) for the index tape charts.
     Pulls 5-minute bars from Alpha Vantage, server-cached and shared across all
     viewers. Tier-enforced the same way as /api/quotes: pro -> realtime
     entitlement, free / logged-out -> delayed. Returns an empty series per symbol

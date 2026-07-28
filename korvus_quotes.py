@@ -594,7 +594,7 @@ if __name__ == "__main__":
 
 
 # ---------------------------------------------------------------------------
-# Intraday series for the Live TV sidebar charts.
+# Intraday series for the index tape charts.
 # Real 5-minute bars from Alpha Vantage (TIME_SERIES_INTRADAY, regular hours),
 # expressed as percent change vs the prior session's close so the dashed zero
 # line on the chart IS the real previous close. Server-cached and shared across

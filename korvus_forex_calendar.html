@@ -320,6 +320,52 @@
   .evjoin{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--crimson);text-decoration:none;white-space:nowrap;}
   .evjoin:hover{color:var(--crimson-bright);}
   @media(max-width:480px){ .evtitle{font-size:19px;} .evcard{padding:22px 18px 18px;} .evn .v{font-size:15px;} }
+  /* ---------- index tape: sticky side rail on the Forex page ----------
+     NQ / ES / YM / RTY intraday path vs previous close (the dashed line IS the
+     previous close). Relocated from the retired Live TV page. A sticky glass rail
+     beside the calendar, so you read how the majors react while a release prints. */
+  main.calmain{display:grid;grid-template-columns:minmax(0,1fr) 302px;gap:18px;align-items:start;}
+  .idxrail{position:sticky;top:12px;align-self:start;overflow:hidden;border:1px solid var(--line);border-radius:var(--r);
+    background:var(--panel);backdrop-filter:blur(10px);box-shadow:0 22px 54px -36px rgba(0,0,0,.75);}
+  html[data-theme="light"] .idxrail{box-shadow:0 18px 44px -30px rgba(20,24,40,.30),0 0 0 1px rgba(255,45,143,.05);}
+  .idxrailhd{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 15px 11px;
+    border-bottom:1px solid var(--line-soft);background:linear-gradient(180deg,rgba(255,45,143,.05),rgba(255,45,143,0));}
+  .idxrailhd .t{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);}
+  .idxrailhd .t::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--crimson);box-shadow:0 0 9px var(--crimson-glow);animation:idxpulse 2.4s ease-in-out infinite;}
+  @keyframes idxpulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  @media (prefers-reduced-motion:reduce){.idxrailhd .t::before{animation:none;}}
+  .idxrailhd .st{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--crimson-bright);opacity:.92;}
+  .idxstack{display:flex;flex-direction:column;}
+  .idxcard{display:flex;flex-direction:column;gap:8px;padding:13px 15px;border-bottom:1px solid var(--line-soft);}
+  .idxstack .idxcard:last-child{border-bottom:none;}
+  .idxtop{display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
+  .idxlab{font-family:var(--mono);font-size:12.5px;font-weight:600;letter-spacing:.08em;color:var(--ink);}
+  .idxcard.big .idxlab{font-size:13.5px;}
+  .idxq{display:inline-flex;align-items:baseline;gap:7px;min-width:0;}
+  .idxsrc{font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);opacity:.85;}
+  .idxsrc:empty{display:none;}
+  .idxpx{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;color:var(--ink-dim);}
+  .idxpct{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:11.5px;color:var(--ink-faint);font-style:normal;}
+  .idxpct.up{color:var(--bull);} .idxpct.down{color:var(--bear);} .idxpct.flat{color:var(--ink-faint);}
+  .idxbox{position:relative;width:100%;height:58px;border:1px solid var(--line-soft);border-radius:9px;overflow:hidden;
+    background:radial-gradient(120% 92% at 50% 112%,rgba(255,45,143,.08),rgba(0,0,0,0) 70%);}
+  .idxcard.big .idxbox{height:104px;}
+  .idxsvg{display:block;width:100%;height:100%;filter:drop-shadow(0 0 5px rgba(255,45,143,.30));}
+  .idxnote{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);
+    font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);pointer-events:none;}
+  .idxfoot{padding:9px 15px 11px;border-top:1px solid var(--line-soft);font-family:var(--mono);font-size:8px;
+    letter-spacing:.13em;text-transform:uppercase;color:var(--ink-faint);text-align:center;}
+  /* below the two-column breakpoint the rail rides on top as a compact horizontal strip */
+  @media(max-width:980px){
+    main.calmain{grid-template-columns:1fr;}
+    .idxrail{position:static;order:-1;}
+    .idxstack{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line-soft);}
+    .idxcard{background:var(--panel-solid);border-bottom:none;padding:11px 13px;}
+    html[data-theme="light"] .idxcard{background:rgba(255,255,255,.6);}
+    .idxcard.big .idxbox{height:58px;}
+    .idxfoot{display:none;}
+  }
+  @media(max-width:560px){ .idxstack{grid-template-columns:repeat(2,1fr);} }
   .chartscape{position:fixed;inset:0;z-index:-3;width:100%;height:100%;overflow:hidden;pointer-events:none;opacity:.85;will-change:transform;backface-visibility:hidden;}
 </style>
 <script>
@@ -392,7 +438,7 @@
     <span class="lk"><b class="miss">&#9660;</b> actual missed</span>
   </div>
 
-  <main>
+  <main class="calmain">
     <div class="cal">
       <div class="colhead">
         <span>Time</span><span>CCY</span><span>Impact</span><span>Event</span>
@@ -400,6 +446,31 @@
       </div>
       <div id="calBody"></div>
     </div>
+    <aside class="idxrail" aria-label="Index tape">
+      <div class="idxrailhd">
+        <span class="t">Index Tape</span>
+        <span class="st" id="ic-NQ-state">--</span>
+      </div>
+      <div class="idxstack">
+        <div class="idxcard big">
+          <div class="idxtop"><span class="idxlab">NQ</span><span class="idxq"><span class="idxsrc" id="src-NQ"></span><span class="idxpx" id="px-NQ">--</span><i class="idxpct flat" id="ic-NQ-pct">--</i></span></div>
+          <div class="idxbox"><svg class="idxsvg" id="ic-NQ-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><span class="idxnote" id="ic-NQ-note">building live feed</span></div>
+        </div>
+        <div class="idxcard">
+          <div class="idxtop"><span class="idxlab">ES</span><span class="idxq"><span class="idxsrc" id="src-ES"></span><span class="idxpx" id="px-ES">--</span><i class="idxpct flat" id="ic-ES-pct">--</i></span></div>
+          <div class="idxbox"><svg class="idxsvg" id="ic-ES-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg></div>
+        </div>
+        <div class="idxcard">
+          <div class="idxtop"><span class="idxlab">YM</span><span class="idxq"><span class="idxsrc" id="src-YM"></span><span class="idxpx" id="px-YM">--</span><i class="idxpct flat" id="ic-YM-pct">--</i></span></div>
+          <div class="idxbox"><svg class="idxsvg" id="ic-YM-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg></div>
+        </div>
+        <div class="idxcard">
+          <div class="idxtop"><span class="idxlab">RTY</span><span class="idxq"><span class="idxsrc" id="src-RTY"></span><span class="idxpx" id="px-RTY">--</span><i class="idxpct flat" id="ic-RTY-pct">--</i></span></div>
+          <div class="idxbox"><svg class="idxsvg" id="ic-RTY-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg></div>
+        </div>
+      </div>
+      <div class="idxfoot">intraday path vs previous close</div>
+    </aside>
   </main>
 
   <footer>
@@ -844,6 +915,167 @@ function openFromUrl(){
   window.addEventListener('resize',resize);
   resize();
   if(!reduce){ requestAnimationFrame(tick); }
+})();
+</script>
+<script>
+/* Index Tape: NQ/ES/YM/RTY intraday path vs previous close. Relocated from the
+   retired Live TV page. Same /api/quotes + /api/intraday feed, same honest
+   prev-close baseline. Wrapped in an IIFE so nothing leaks into calendar scope. */
+(function(){
+  function clientSession(){
+    var parts = new Intl.DateTimeFormat('en-US', {timeZone:'America/New_York', weekday:'short', hour:'2-digit', minute:'2-digit', hour12:false}).formatToParts(new Date());
+    var o = {}; parts.forEach(function(p){ o[p.type] = p.value; });
+    var dow = o.weekday, t = (+o.hour) * 60 + (+o.minute);
+    if(dow === 'Sat') return 'closed';
+    if(dow === 'Sun' && t < 18 * 60) return 'closed';
+    if(dow === 'Fri' && t >= 17 * 60) return 'closed';
+    if(t >= 9 * 60 + 30 && t < 16 * 60) return 'rth';
+    return 'globex';
+  }
+  var USER_TIER = 'free', NATIVE_FUTURES = false;
+  var FUT = [
+    {lab:'NQ',  root:'MNQ', proxy:'QQQ'},
+    {lab:'ES',  root:'MES', proxy:'SPY'},
+    {lab:'YM',  root:'MYM', proxy:'DIA'},
+    {lab:'RTY', root:'M2K', proxy:'IWM'}
+  ];
+  async function loadMe(){
+    try{
+      var r = await fetch('/api/me', {cache:'no-store'});
+      if(r.ok){ var me = await r.json(); USER_TIER = me.tier || 'free'; NATIVE_FUTURES = !!me.native_futures; }
+    }catch(e){}
+  }
+  function setPct(id, v){
+    var el = document.getElementById(id); if(!el) return;
+    if(typeof v === 'number'){ el.textContent = (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+      el.className = 'idxpct ' + (v > 0 ? 'up' : (v < 0 ? 'down' : 'flat')); }
+    else { el.textContent = '--'; el.className = 'idxpct flat'; }
+  }
+  function setFeed(fs, anyReal){
+    var el = document.getElementById('ic-NQ-state'); if(!el) return; var t;
+    var native = NATIVE_FUTURES || anyReal;
+    if(fs === 'closed') t = 'cash closed';
+    else if(fs === 'globex') t = native ? 'real-time' : 'cash closed';
+    else t = (USER_TIER === 'pro') ? 'live \u00b7 real-time' : 'delayed 15 min';
+    el.textContent = t;
+  }
+  function fmtPx(p){
+    return p >= 1000 ? p.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : p.toFixed(2);
+  }
+  function setQuote(lab, price, pct, isReal, proxy, live){
+    var pxEl = document.getElementById('px-' + lab), srcEl = document.getElementById('src-' + lab),
+        pctEl = document.getElementById('ic-' + lab + '-pct');
+    var has = (typeof price === 'number' && price > 0);
+    if(pxEl) pxEl.textContent = has ? fmtPx(price) : '--';
+    if(srcEl) srcEl.textContent = has ? (isReal ? 'CME' : proxy) : '';
+    if(live){ setPct('ic-' + lab + '-pct', pct); }
+    else if(pctEl){ pctEl.textContent = 'closed'; pctEl.className = 'idxpct flat'; }
+  }
+  var SER = {NQ:[], ES:[], YM:[], RTY:[]}, SPK_CAP = 240;
+  function etDateKey(){
+    try{ return new Intl.DateTimeFormat('en-CA', {timeZone:'America/New_York', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date()); }
+    catch(e){ return 'na'; }
+  }
+  function spkLoad(){
+    try{
+      var day = etDateKey();
+      ['NQ','ES','YM','RTY'].forEach(function(k){
+        var raw = localStorage.getItem('kidx:' + k + ':' + day);
+        SER[k] = raw ? (JSON.parse(raw) || []) : [];
+      });
+      for(var i = localStorage.length - 1; i >= 0; i--){
+        var key = localStorage.key(i);
+        if(key && key.indexOf('kidx:') === 0 && key.indexOf(':' + day) === -1) localStorage.removeItem(key);
+      }
+    }catch(e){}
+  }
+  function spkSave(k){ try{ localStorage.setItem('kidx:' + k + ':' + etDateKey(), JSON.stringify(SER[k])); }catch(e){} }
+  function spkPush(k, p){
+    if(typeof p !== 'number' || !SER[k]) return;
+    var a = SER[k]; a.push({t:Date.now(), p:p});
+    if(a.length > SPK_CAP) a.splice(0, a.length - SPK_CAP);
+    spkSave(k);
+  }
+  function drawSpark(svgId, arr, big){
+    var svg = document.getElementById(svgId); if(!svg) return;
+    if(!arr || arr.length < 2){ svg.innerHTML = ''; return; }
+    var W = 100, H = 100, ps = arr.map(function(o){ return o.p; });
+    var lo = Math.min.apply(null, ps), hi = Math.max.apply(null, ps);
+    lo = Math.min(lo, 0); hi = Math.max(hi, 0);
+    var pad = (hi - lo) * 0.12 || 0.05; lo -= pad; hi += pad;
+    var rng = (hi - lo) || 1, n = ps.length;
+    function X(i){ return (i / (n - 1)) * W; }
+    function Y(p){ return H - ((p - lo) / rng) * H; }
+    var y0 = Y(0).toFixed(2);
+    var pts = ps.map(function(p, i){ return X(i).toFixed(2) + ',' + Y(p).toFixed(2); });
+    var area = 'M0,' + y0 + ' L' + pts.join(' L') + ' L' + W + ',' + y0 + ' Z';
+    var gid = svgId + '-g', sw = big ? 1.7 : 1.5, op = big ? 0.30 : 0.18;
+    svg.innerHTML =
+      '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="#ff2d8f" stop-opacity="' + op + '"/>' +
+      '<stop offset="1" stop-color="#ff2d8f" stop-opacity="0"/></linearGradient></defs>' +
+      '<line x1="0" y1="' + y0 + '" x2="' + W + '" y2="' + y0 + '" stroke="#5b6072" stroke-width="1" stroke-dasharray="3 3" opacity=".55" vector-effect="non-scaling-stroke"/>' +
+      '<path d="' + area + '" fill="url(#' + gid + ')" stroke="none"/>' +
+      '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#ff3a58" stroke-width="' + sw + '" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>';
+  }
+  function renderSparks(fs){
+    drawSpark('ic-NQ-svg', SER.NQ, true);
+    drawSpark('ic-ES-svg', SER.ES, false);
+    drawSpark('ic-YM-svg', SER.YM, false);
+    drawSpark('ic-RTY-svg', SER.RTY, false);
+    var note = document.getElementById('ic-NQ-note');
+    var have = SER.NQ && SER.NQ.length >= 2;
+    if(note){
+      if(have){ note.style.display = 'none'; }
+      else { note.style.display = ''; note.textContent = (fs === 'rth' ? 'building live feed' : 'at last close'); }
+    }
+  }
+  async function refreshMarket(){
+    var fsClient = clientSession();
+    try{
+      var syms = ['QQQ','SPY','DIA','IWM'];
+      if(NATIVE_FUTURES) syms = syms.concat(['MNQ','MES','MYM','M2K']);
+      var res = await fetch('/api/quotes?symbols=' + syms.join(','), {cache:'no-store'});
+      if(!res.ok) throw new Error('no quotes');
+      var data = await res.json(), q = data.quotes || {}, meta = data.meta || {};
+      var fs = meta.futures_session || fsClient, anyReal = false;
+      FUT.forEach(function(f){
+        var real = NATIVE_FUTURES ? q[f.root] : null, prox = q[f.proxy];
+        var price = null, v = null, isReal = false;
+        if(real && typeof real.price === 'number' && real.price > 0 && typeof real.chg_pct === 'number'){
+          price = real.price; v = real.chg_pct; isReal = true; anyReal = true;
+        } else if(prox && typeof prox.chg_pct === 'number'){
+          price = (typeof prox.price === 'number' ? prox.price : null); v = prox.chg_pct;
+        }
+        var live = isReal || fs === 'rth';
+        setQuote(f.lab, price, v, isReal, f.proxy, live);
+        spkPush(f.lab, live ? v : null);
+      });
+      setFeed(fs, anyReal); renderSparks(fs);
+    }catch(e){
+      FUT.forEach(function(f){ setQuote(f.lab, null, null, false, f.proxy, fsClient === 'rth'); });
+      setFeed(fsClient, false); renderSparks(fsClient);
+    }
+  }
+  var IDX_BY_PROXY = {QQQ:'NQ', SPY:'ES', DIA:'YM', IWM:'RTY'};
+  async function fetchIntraday(){
+    try{
+      var res = await fetch('/api/intraday?symbols=QQQ,SPY,DIA,IWM', {cache:'no-store'});
+      if(!res.ok) return;
+      var data = await res.json(), changed = false;
+      Object.keys(IDX_BY_PROXY).forEach(function(px){
+        var lab = IDX_BY_PROXY[px], d = data[px];
+        if(d && d.pct && d.pct.length >= 2){
+          SER[lab] = d.pct.map(function(p){ return {t:0, p:p}; });
+          spkSave(lab); changed = true;
+        }
+      });
+      if(changed) renderSparks(clientSession());
+    }catch(e){}
+  }
+  spkLoad(); renderSparks(clientSession());
+  fetchIntraday(); setInterval(fetchIntraday, 300000);
+  loadMe().then(refreshMarket); setInterval(refreshMarket, 20000);
 })();
 </script>
 </body>
