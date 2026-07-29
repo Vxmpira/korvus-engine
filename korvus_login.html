@@ -20,7 +20,15 @@
   #candles{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.45;}
   .glow{position:fixed;top:-20vh;left:50%;transform:translateX(-50%);width:80vw;height:60vh;z-index:0;pointer-events:none;
     background:radial-gradient(ellipse at center,rgba(255,45,143,.13),rgba(255,45,143,.05) 40%,transparent 70%);filter:blur(30px);}
-  .card{position:relative;z-index:2;width:100%;max-width:430px;background:rgba(14,17,22,.55);backdrop-filter:blur(16px);
+  .brandsign{position:fixed;inset:0;z-index:1;display:grid;place-items:center;pointer-events:none;}
+  .brandsign::before{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:min(104vw,980px);height:min(104vw,980px);border-radius:50%;
+    background:radial-gradient(circle,rgba(255,45,143,.22),rgba(255,45,143,.06) 46%,transparent 70%);filter:blur(34px);animation:signGlow 5.5s ease-in-out infinite;}
+  .brandsign svg{position:relative;width:min(90vw,740px);height:auto;opacity:.9;
+    filter:drop-shadow(0 0 52px rgba(255,45,143,.6)) drop-shadow(0 0 130px rgba(255,45,143,.42));animation:signGlow 5.5s ease-in-out infinite;}
+  @keyframes signGlow{0%,100%{opacity:.8;}50%{opacity:1;}}
+  @media (prefers-reduced-motion:reduce){.brandsign svg,.brandsign::before{animation:none;}}
+  .card{position:relative;z-index:2;width:100%;max-width:430px;background:rgba(14,17,22,.40);backdrop-filter:blur(16px);
     border:1px solid var(--line-bright);border-radius:18px;padding:40px 36px;box-shadow:0 30px 80px -30px #000;}
   .brand{display:flex;align-items:center;gap:11px;justify-content:center;margin-bottom:28px;}
   .crown{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
@@ -51,6 +59,9 @@
 <body>
   <canvas id="candles"></canvas>
   <div class="glow"></div>
+  <div class="brandsign" aria-hidden="true">
+    <svg viewBox="0 0 36 33" fill="none" stroke="#ff2d8f" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
+  </div>
   <div class="card">
     <div class="brand">
       <span class="crown">
