@@ -191,6 +191,26 @@ def home():
     return send_from_directory(HERE, "korvus_landing.html")
 
 
+@app.route("/favicon.ico")
+def favicon_ico():
+    return send_from_directory(HERE, "favicon.ico")
+
+
+@app.route("/favicon.png")
+def favicon_png():
+    return send_from_directory(HERE, "favicon.png")
+
+
+@app.route("/apple-touch-icon.png")
+def apple_touch_icon():
+    return send_from_directory(HERE, "apple-touch-icon.png")
+
+
+@app.route("/og-image.png")
+def og_image():
+    return send_from_directory(HERE, "og-image.png")
+
+
 @app.route("/terminal")
 @login_required
 def terminal():
