@@ -569,7 +569,51 @@ OTHER:
 """
 
 
-def score_with_claude(client, item: dict) -> Optional[dict]:
+def _extract_json(text: str) -> Optional[str]:
+    """Walk the first balanced JSON object out of a model reply. Tolerates
+    stray prose and backticks around it, and refuses truncated objects so
+    the caller can retry instead of feeding json.loads a broken blob."""
+    if not text:
+        return None
+    start = text.find("{")
+    if start < 0:
+        return None
+    depth = 0
+    in_str = False
+    esc = False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if esc:
+            esc = False
+            continue
+        if ch == "\\":
+            esc = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+    return None  # never closed, the response was truncated
+
+
+def _as_int(v, default: int = 0) -> int:
+    """int() that never throws on None, numeric strings, or junk."""
+    try:
+        if v is None:
+            return default
+        return int(float(v))
+    except (TypeError, ValueError):
+        return default
+
+
+def score_with_claude(client, item: dict, _retry: bool = True) -> Optional[dict]:
     sys_prompt = SYSTEM_PROMPT.replace("{INSTRUMENTS}", ", ".join(WATCHED_INSTRUMENTS))
     user_blob = (
         f"SOURCE: {item['source']} ({item.get('source_name','')})\n"
@@ -579,21 +623,32 @@ def score_with_claude(client, item: dict) -> Optional[dict]:
     try:
         resp = client.messages.create(
             model=CLAUDE_MODEL,
-            max_tokens=500,
+            max_tokens=1024,
             system=sys_prompt,
             messages=[{"role": "user", "content": user_blob}],
         )
         text = "".join(block.text for block in resp.content if block.type == "text")
-        # Be forgiving if the model wraps JSON in stray text/backticks
-        match = re.search(r"\{.*\}", text, re.DOTALL)
-        if not match:
+        # Be forgiving if the model wraps JSON in stray text/backticks, and
+        # take one automatic retry when the object is missing or truncated.
+        blob = _extract_json(text)
+        if blob is None:
+            if _retry:
+                time.sleep(2)
+                return score_with_claude(client, item, _retry=False)
             print(f"    [claude] no JSON in response for: {item['headline'][:50]}")
             return None
-        data = json.loads(match.group(0))
+        try:
+            data = json.loads(blob, strict=False)
+        except ValueError:
+            if _retry:
+                time.sleep(2)
+                return score_with_claude(client, item, _retry=False)
+            print(f"    [claude] unparseable JSON for: {item['headline'][:50]}")
+            return None
         # normalize / clamp
         data["impact"] = data.get("impact", "low") if data.get("impact") in ("high","med","low") else "low"
         data["direction"] = data.get("direction") if data.get("direction") in ("bull","bear","neut") else "neut"
-        data["confidence"] = max(0, min(100, int(data.get("confidence", 0))))
+        data["confidence"] = max(0, min(100, _as_int(data.get("confidence"), 0)))
         if not isinstance(data.get("instruments"), list):
             data["instruments"] = []
         # keep it tight & realistic - at most the 3 most-direct (prompt orders them)
@@ -607,6 +662,12 @@ def score_with_claude(client, item: dict) -> Optional[dict]:
         data["noise"] = bool(data.get("noise", False))
         return data
     except Exception as e:
+        msg = str(e).lower()
+        transient = ("529" in msg or "overloaded" in msg
+                     or "429" in msg or "rate limit" in msg or "rate_limit" in msg)
+        if _retry and transient:
+            time.sleep(8)
+            return score_with_claude(client, item, _retry=False)
         print(f"    [claude] error: {e}")
         return None
 
@@ -705,6 +766,15 @@ def run_once():
         post_new_actuals()      # each actual as it prints, quietly
     except Exception as e:
         print(f"  [forex-discord] pass error: {e}")
+
+    # presidential wire: market-moving Truth Social posts as they print,
+    # wrapped the same way so a Discord hiccup never breaks the news pass.
+    # Runs inside the engine so systemd supervises it and restarts survive.
+    try:
+        from korvus_truth_discord import post_new_truths
+        post_new_truths()
+    except Exception as e:
+        print(f"  [truth-discord] pass error: {e}")
 
 
 def main():
