@@ -1460,6 +1460,11 @@ async function loadLiveQuotes(){
         f.chg = real.chg_pct; f.price = real.price; f.real = true;
         if(typeof real.high === 'number') f.high = real.high;
         if(typeof real.low === 'number')  f.low  = real.low;
+        // Sparkline honesty: the seed arrays are static shapes. The first real
+        // price replaces them, then each poll appends, so the squiggle is the
+        // actual last ~90 samples of the live (or time-shifted) tape.
+        if(!f._liveSeries){ f._liveSeries = true; f.series = [real.price, real.price]; }
+        else { f.series.push(real.price); if(f.series.length > 90) f.series.shift(); }
       } else if(prox){
         f.chg = prox.chg_pct; f.real = false; f.price = null;
       }
@@ -1961,7 +1966,26 @@ loadLiveNews(); loadHealth();
 syncPanelMode();   // set tab vs two-column based on current width
 setInterval(loadLiveNews, 30000);   // news every 30s
 setInterval(loadHealth, 30000);
-setInterval(loadLiveQuotes, 5000);  // quotes every 5s: the CME snapshot ticks second by second, so the board + SMT follow the market
+// Quotes fast-lane. Pro on the live CME feed polls every second, matching the
+// 1-second bar cadence of the snapshot, so the board moves with the market.
+// Free polls every 5s (their tape is time-shifted, nothing to gain). Hidden
+// tabs slow to 15s and refresh instantly when you come back. Sequential
+// scheduling (not setInterval) so a slow response can never stack requests.
+function _quotesDelay(){
+  if(document.hidden) return 15000;
+  var pro = (typeof USER_TIER !== 'undefined' && USER_TIER === 'pro');
+  var nat = (typeof NATIVE_FUTURES !== 'undefined' && NATIVE_FUTURES);
+  return (pro && nat) ? 1000 : 5000;
+}
+function _quotesLoop(){
+  loadLiveQuotes().catch(function(){}).then(function(){
+    setTimeout(_quotesLoop, _quotesDelay());
+  });
+}
+setTimeout(_quotesLoop, _quotesDelay());
+document.addEventListener('visibilitychange', function(){
+  if(!document.hidden) loadLiveQuotes().catch(function(){});
+});
 setInterval(renderMembers, 60000);  // refresh online count every 60s
 setInterval(loadMe, 120000);        // re-check tier/session every 2 min
 
