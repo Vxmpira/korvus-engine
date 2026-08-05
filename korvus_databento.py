@@ -761,9 +761,25 @@ class DatabentoMD:
                 # Try the long window first; fall back to a shorter replay (current
                 # session O/H/L still correct), then live-from-now.
                 now = dt.datetime.now(dt.timezone.utc)
-                starts = [(now - dt.timedelta(hours=22)).isoformat(),
-                          _session_open_utc().isoformat(),
-                          None]
+                # Databento's live intraday replay cannot start before the current
+                # UTC day; a start before today 00:00 UTC is rejected at stream
+                # start with "Invalid start time", which the subscribe loop cannot
+                # catch (the gateway validates AFTER subscribe), so we would loop
+                # forever without data. Clamp every replay candidate to >= today
+                # 00:00 UTC. The prior-session settle for the daily-% baseline comes
+                # from the historical tiers, not this replay.
+                if getattr(self, "_no_replay", False):
+                    starts = [None]                       # live-from-now (self-healed)
+                else:
+                    day0 = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                    _cands = [max(now - dt.timedelta(hours=22), day0),
+                              max(_session_open_utc(), day0)]
+                    _seen = set(); starts = []
+                    for _t in _cands:
+                        _k = _t.isoformat()
+                        if _k not in _seen:
+                            _seen.add(_k); starts.append(_k)
+                    starts.append(None)                   # live-from-now fallback
                 subscribed = False
                 for st in starts:
                     try:
@@ -783,8 +799,14 @@ class DatabentoMD:
                 print(f"  [db] live: {DATASET} ohlcv-1m {syms} (roll={DATABENTO_ROLL})")
                 live.start()
                 live.block_for_close()
+                self._err_streak = 0          # clean close: replay is healthy
+                self._no_replay = False
             except Exception as e:
                 print(f"  [db] stream error: {e}")
+                self._err_streak = getattr(self, "_err_streak", 0) + 1
+                if self._err_streak >= 3 and not getattr(self, "_no_replay", False):
+                    self._no_replay = True
+                    print("  [db] repeated stream errors -> falling back to live-from-now")
             finally:
                 self._live = None
             if self._running:
