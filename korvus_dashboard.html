@@ -1237,7 +1237,9 @@ async function loadSMT(){
 }
 function renderSMT(d){
   const v=d.verdict;
-  const live=_proxiesLive();
+  // Native CME futures trade ~24h, so they are "live" outside equity regular
+  // hours; only fall back to the ETF proxy-hours gate when not on the native feed.
+  const live = d.native ? (d.freshness !== 'last_close') : _proxiesLive();
   const legs=d.legs.map(l=>{
     const up=l.chg>=0;
     // bar reflects POSITION IN TODAY'S RANGE (0..1) when we have it, centered at 50%
@@ -1253,7 +1255,7 @@ function renderSMT(d){
       ? `<div class="cchg ${up?'up':'down'}">${sign(l.chg)}${l.chg.toFixed(2)}%</div><div class="swing">${l.swing}</div>`
       : `<div class="cchg" style="color:var(--ink-faint);letter-spacing:.06em">CLOSED</div><div class="swing">-</div>`;
     return `<div class="crow">
-      <div class="csym">${l.sym}<small>via ${l.proxy}</small></div>
+      <div class="csym">${l.sym}<small>${d.native ? 'CME' : 'via '+l.proxy}</small></div>
       <div class="track"><i style="${fill}"></i></div>
       <div>${chgCell}</div>
     </div>`;

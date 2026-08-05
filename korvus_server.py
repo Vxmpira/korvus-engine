@@ -599,8 +599,21 @@ def api_smt():
     except Exception as e:
         return jsonify({"error": str(e), "legs": [], "verdict": None})
 
-    is_pro = current_user.is_authenticated and current_user.tier == "pro"
-    proxies = [p for _, p in _SMT_LEGS]
+    is_owner = (current_user.is_authenticated
+                and current_user.username in ADMIN_USERNAMES)
+    is_pro = current_user.is_authenticated and (current_user.tier == "pro" or is_owner)
+    # Pro / owner on the live CME feed reads the REAL contracts (MNQ/MES/MYM),
+    # which trade nearly 24h, so divergence is valid overnight too. Free / proxy
+    # mode keeps the ETF proxies (QQQ/SPY/DIA), which only trade US regular hours.
+    use_native = False
+    try:
+        from korvus_quotes import native_futures
+        use_native = bool(native_futures()) and is_pro
+    except Exception:
+        use_native = False
+    legs_map = ([("NQ", "MNQ"), ("ES", "MES"), ("YM", "MYM")]
+                if use_native else _SMT_LEGS)
+    proxies = [p for _, p in legs_map]
     data = get_quotes(proxies, force_delayed=not is_pro)
     meta = data.pop("_meta", {}) or {}
     market_open = bool(meta.get("market_open"))
@@ -608,7 +621,7 @@ def api_smt():
     delayed     = provider in ("finnhub", "alphavantage-delayed")
 
     legs = []
-    for sym, proxy in _SMT_LEGS:
+    for sym, proxy in legs_map:
         q = data.get(proxy) or {}
         price = q.get("price") or 0
         hi = q.get("high") or 0
@@ -633,7 +646,13 @@ def api_smt():
     # ---- freshness: are we reading live RTH prices, a delayed feed, or a frozen
     # last-session close? The verdict is computed the same way, but we label its
     # provenance honestly instead of presenting a stale read as if it were live.
-    if not market_open:
+    if use_native:
+        # CME futures trade ~24h, so the live feed itself is the source of truth,
+        # not equity regular hours. Pro/owner reads it live; the free tier never
+        # reaches this branch (it is forced onto the delayed proxy feed above).
+        freshness = "live"
+        fresh_note = ""
+    elif not market_open:
         freshness = "last_close"
         fresh_note = (" Markets are closed, so this reflects the last regular-session "
                       "close: the QQQ / SPY / DIA proxies do not trade overnight. Live "
@@ -649,10 +668,15 @@ def api_smt():
     # ---- verdict, computed honestly from the leg positions + direction ----
     valid = [l for l in legs if l["has_data"]]
     if len(valid) < 2:
-        verdict = {"state": "ok", "title": "Awaiting data",
-                   "note": ("Index-range data is not available right now. The QQQ / SPY / DIA "
-                            "proxies only trade during regular US hours (9:30 AM to 4:00 PM ET); "
-                            "divergence resumes when they reopen.")}
+        if use_native:
+            _note = ("Index-range data is not available right now. The live CME futures "
+                     "feed is momentarily quiet; divergence resumes as soon as MNQ, MES "
+                     "and MYM print again.")
+        else:
+            _note = ("Index-range data is not available right now. The QQQ / SPY / DIA "
+                     "proxies only trade during regular US hours (9:30 AM to 4:00 PM ET); "
+                     "divergence resumes when they reopen.")
+        verdict = {"state": "ok", "title": "Awaiting data", "note": _note}
     else:
         positions = [l["pos"] for l in valid]
         spread = max(positions) - min(positions)   # how far apart the indices sit in their ranges
@@ -707,7 +731,7 @@ def api_smt():
 
     return jsonify({"legs": legs, "verdict": verdict,
                     "freshness": freshness, "delayed": delayed,
-                    "market_open": market_open})
+                    "market_open": market_open, "native": use_native})
 
 
 @app.route("/api/watchlist", methods=["GET", "POST"])

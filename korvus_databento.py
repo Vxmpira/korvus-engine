@@ -798,6 +798,13 @@ class DatabentoMD:
                 live.add_callback(self._handle)
                 print(f"  [db] live: {DATASET} ohlcv-1m {syms} (roll={DATABENTO_ROLL})")
                 live.start()
+                # Prime the prior-session settle (official settlement -> 16:00 ET
+                # bar -> daily) so the daily % is measured from the settle the
+                # chart uses, not from the session open. Daemon thread: never
+                # blocks the stream. Without this the baseline is never fetched
+                # and the board reads change-from-open.
+                threading.Thread(target=self._refresh_prev_for_contracts,
+                                 daemon=True).start()
                 live.block_for_close()
                 self._err_streak = 0          # clean close: replay is healthy
                 self._no_replay = False
