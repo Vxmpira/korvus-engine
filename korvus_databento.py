@@ -70,6 +70,23 @@ DATABENTO_API_KEY = os.getenv("DATABENTO_API_KEY", "").strip()
 # open interest, 'v' = by volume. Volume/OI front is often the most-traded
 # contract; calendar is the simplest. Switch in .env if a chart disagrees.
 DATABENTO_ROLL = (os.getenv("DATABENTO_ROLL", "c").lower().strip() or "c")
+# Live bar granularity. "ohlcv-1s" updates the board second by second so the
+# percentages move with the market; "ohlcv-1m" steps once per minute (cheaper).
+# The session REPLAY on connect always uses 1-minute bars either way, so a
+# reconnect never re-pulls a day of 1-second history.
+DATABENTO_SCHEMA = (os.getenv("DATABENTO_SCHEMA", "ohlcv-1s").lower().strip()
+                    or "ohlcv-1s")
+if DATABENTO_SCHEMA not in ("ohlcv-1s", "ohlcv-1m"):
+    DATABENTO_SCHEMA = "ohlcv-1s"
+# How much rolling tape to keep per root for the free-tier time shift. Must be
+# trimmed by AGE, not record count: at 1-second bars a count cap would hold only
+# minutes of tape and the 15-minute shift would find nothing old enough,
+# blanking the free board. Keep 3x the delay window (>= 1 hour).
+try:
+    _FREE_DELAY_MIN = max(10, int(os.getenv("KORVUS_FREE_DELAY_MIN", "15") or 15))
+except Exception:
+    _FREE_DELAY_MIN = 15
+_TAPE_KEEP_SEC = max(3600, _FREE_DELAY_MIN * 60 * 3)
 DATASET = "GLBX.MDP3"
 
 # Futures roots we can stream from GLBX.MDP3. NOTE: VX (VIX futures) trades on
@@ -718,8 +735,19 @@ class DatabentoMD:
                                  q.get("high"), q.get("low"), q.get("open")))
                 except Exception:
                     pass
-                if len(tape) > 360:
-                    del tape[:120]
+                # Trim by AGE so the free-tier shift always has enough tape at
+                # any bar granularity (a count cap holds only minutes at 1s bars).
+                if len(tape) >= 200 and (len(tape) % 200 == 0):
+                    try:
+                        cut = ts_utc.timestamp() - _TAPE_KEEP_SEC
+                        k = 0
+                        while k < len(tape) and tape[k][0] < cut:
+                            k += 1
+                        if k:
+                            del tape[:k]
+                    except Exception:
+                        if len(tape) > 20000:
+                            del tape[:10000]
                 # remember this session's settle-time close (last bar at/before 4pm ET)
                 if at_or_before_settle:
                     self._sess_settle[root] = c
@@ -795,8 +823,19 @@ class DatabentoMD:
                         print(f"  [db] subscribe start={st or 'now'} rejected ({e_sub})")
                 if not subscribed:
                     raise RuntimeError("all ohlcv-1m subscribe attempts failed")
+                # Second, finer live subscription from NOW (no replay) so the
+                # snapshot ticks second by second. The 1m replay above already
+                # rebuilt the session O/H/L and settle; this only adds forward
+                # ticks. Best-effort: on failure we keep running on 1m bars.
+                if DATABENTO_SCHEMA == "ohlcv-1s":
+                    try:
+                        live.subscribe(dataset=DATASET, schema="ohlcv-1s",
+                                       stype_in="continuous", symbols=syms)
+                        print("  [db] subscribed ohlcv-1s (live ticks)")
+                    except Exception as e_1s:
+                        print(f"  [db] ohlcv-1s subscribe failed ({e_1s}) - staying on 1m bars")
                 live.add_callback(self._handle)
-                print(f"  [db] live: {DATASET} ohlcv-1m {syms} (roll={DATABENTO_ROLL})")
+                print(f"  [db] live: {DATASET} {DATABENTO_SCHEMA} {syms} (roll={DATABENTO_ROLL})")
                 live.start()
                 # Prime the prior-session settle (official settlement -> 16:00 ET
                 # bar -> daily) so the daily % is measured from the settle the

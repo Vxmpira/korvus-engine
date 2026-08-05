@@ -370,7 +370,7 @@
 </style>
 <script>
   /* apply the saved theme BEFORE first paint so there's no flash of dark */
-  (function(){try{if(localStorage.getItem('korvus_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
+  (function(){try{if(localStorage.getItem('korvus-theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
 </script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CjxyZWN0IHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgcng9IjE0IiBmaWxsPSIjMEEwQTBEIi8+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDExLDE1KSBzY2FsZSgxLjE2KSI+CjxwYXRoIGQ9Ik00IDI0IEw0IDkgTDEyIDE2IEwxOCA1IEwyNCAxNiBMMzIgOSBMMzIgMjQgWiIgZmlsbD0iI0ZGMkQ5NSIvPgo8cmVjdCB4PSI1IiB5PSIyNiIgd2lkdGg9IjI2IiBoZWlnaHQ9IjMiIGZpbGw9IiNGRjJEOTUiLz4KPC9nPgo8L3N2Zz4=">
 </head>
@@ -703,7 +703,7 @@ function setBadge(isLive){
   if(btn) btn.addEventListener('click', function(){
     const goingLight = root.getAttribute('data-theme') !== 'light';
     if(goingLight) root.setAttribute('data-theme','light'); else root.removeAttribute('data-theme');
-    try{ localStorage.setItem('korvus_theme', goingLight ? 'light' : 'dark'); }catch(e){}
+    try{ localStorage.setItem('korvus-theme', goingLight ? 'light' : 'dark'); }catch(e){}
     paint();
   });
 })();
@@ -1075,7 +1075,7 @@ function openFromUrl(){
   }
   spkLoad(); renderSparks(clientSession());
   fetchIntraday(); setInterval(fetchIntraday, 300000);
-  loadMe().then(refreshMarket); setInterval(refreshMarket, 20000);
+  loadMe().then(refreshMarket); setInterval(refreshMarket, 10000);
 })();
 </script>
 </body>

@@ -1961,7 +1961,7 @@ loadLiveNews(); loadHealth();
 syncPanelMode();   // set tab vs two-column based on current width
 setInterval(loadLiveNews, 30000);   // news every 30s
 setInterval(loadHealth, 30000);
-setInterval(loadLiveQuotes, 30000); // quotes every 30s
+setInterval(loadLiveQuotes, 5000);  // quotes every 5s: the CME snapshot ticks second by second, so the board + SMT follow the market
 setInterval(renderMembers, 60000);  // refresh online count every 60s
 setInterval(loadMe, 120000);        // re-check tier/session every 2 min
 
