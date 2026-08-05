@@ -4,7 +4,7 @@
  KORVUS ENGINE  ·  Phase 1   (by BlackCrownVxJ.LLC)
 ==============================================================================
  WHAT THIS DOES
-   1. Pulls market news from Alpha Vantage (ticker-tagged, with sentiment)
+   1. Pulls market news from Benzinga (ticker-tagged headlines)
    2. Pulls social chatter from Reddit (finance subreddits)
    3. (X / Twitter is stubbed - flip it on later when you add a key)
    4. Sends each NEW item to Claude (Haiku) for a summary + impact score +
@@ -46,12 +46,11 @@ load_dotenv()
 
 ANTHROPIC_API_KEY   = os.getenv("ANTHROPIC_API_KEY", "")
 BENZINGA_KEY        = os.getenv("BENZINGA_KEY", "")
-ALPHAVANTAGE_KEY    = os.getenv("ALPHAVANTAGE_KEY", "")
 REDDIT_CLIENT_ID    = os.getenv("REDDIT_CLIENT_ID", "")
 REDDIT_CLIENT_SECRET= os.getenv("REDDIT_CLIENT_SECRET", "")
 REDDIT_USER_AGENT   = os.getenv("REDDIT_USER_AGENT", "korvus-engine/0.1 by BlackCrownVxJ")
 
-# Which news provider to use: "benzinga" (free Basic), "benzinga_premium", or "alphavantage"
+# Which news provider to use: "benzinga" (free Basic) or "benzinga_premium"
 NEWS_PROVIDER = os.getenv("NEWS_PROVIDER", "benzinga")
 
 # Which Claude model does the summarizing. Haiku = fast + cheap, ideal here.
@@ -121,9 +120,9 @@ WATCHED_INSTRUMENTS = [
     "AVGO", "AMD", "NFLX", "JPM", "XOM",
 ]
 
-# Alpha Vantage news "topics"/tickers to track. Index futures move on big tech,
+# News tickers to track. Index futures move on big tech,
 # the broad market, and macro - so we pull those tickers' news.
-AV_TICKERS = ["QQQ", "SPY", "NVDA", "AAPL", "MSFT", "AMZN", "META", "TSLA"]
+NEWS_TICKERS = ["QQQ", "SPY", "NVDA", "AAPL", "MSFT", "AMZN", "META", "TSLA"]
 
 # Reddit subreddits to scan for chatter
 SUBREDDITS = ["wallstreetbets", "stocks", "options", "futures", "Daytrading"]
@@ -209,7 +208,7 @@ def insert_raw_item(conn, item: dict):
 
 # ----------------------------------------------------------------------------
 # SOURCE 1 - NEWS PROVIDER LAYER  (swappable)
-# Set NEWS_PROVIDER in .env to one of: "benzinga", "benzinga_premium", "alphavantage"
+# Set NEWS_PROVIDER in .env to one of: "benzinga", "benzinga_premium"
 # Same return shape for all three, so the rest of the engine never changes.
 # Upgrading from free Benzinga Basic to premium = change ONE line in .env.
 # ----------------------------------------------------------------------------
@@ -219,8 +218,6 @@ def fetch_news() -> list[dict]:
         return fetch_benzinga(premium=False)
     if provider == "benzinga_premium":
         return fetch_benzinga(premium=True)
-    if provider == "alphavantage":
-        return fetch_alphavantage_news()
     print(f"  [wire] unknown NEWS_PROVIDER '{NEWS_PROVIDER}' - skipping news")
     return []
 
@@ -238,7 +235,7 @@ def fetch_benzinga(premium: bool = False) -> list[dict]:
     url = "https://api.benzinga.com/api/v2/news"
     params = {
         "token": BENZINGA_KEY,
-        "tickers": ",".join(AV_TICKERS),
+        "tickers": ",".join(NEWS_TICKERS),
         "pageSize": 50,
         "displayOutput": "full" if premium else "abstract",
         "sort": "created:desc",
@@ -272,46 +269,6 @@ def fetch_benzinga(premium: bool = False) -> list[dict]:
     except Exception as e:
         print(f"  [wire] Benzinga error: {e}")
     print(f"  [wire] Benzinga pulled {len(out)} articles ({'premium' if premium else 'basic'})")
-    return out
-
-
-# --- Alpha Vantage (kept as a free fallback / alternative) ------------------
-# Docs: https://www.alphavantage.co/documentation/  (NEWS_SENTIMENT)
-def fetch_alphavantage_news() -> list[dict]:
-    if not ALPHAVANTAGE_KEY:
-        print("  [wire] no ALPHAVANTAGE_KEY set - skipping")
-        return []
-
-    tickers = ",".join(AV_TICKERS)
-    url = (
-        "https://www.alphavantage.co/query"
-        f"?function=NEWS_SENTIMENT&tickers={tickers}"
-        f"&sort=LATEST&limit=50&apikey={ALPHAVANTAGE_KEY}"
-    )
-    out = []
-    try:
-        r = requests.get(url, timeout=20)
-        data = r.json()
-        if "feed" not in data:
-            print(f"  [wire] unexpected response: {list(data.keys())} "
-                  f"(often a rate-limit note on the free tier)")
-            return []
-        for art in data["feed"]:
-            headline = art.get("title", "").strip()
-            if not headline:
-                continue
-            out.append({
-                "id": make_id("wire", headline),
-                "source": "wire",
-                "source_name": art.get("source", "Newswire"),
-                "url": art.get("url"),
-                "published_at": art.get("time_published"),
-                "headline": headline,
-                "raw_text": art.get("summary", "")[:1200],
-            })
-    except Exception as e:
-        print(f"  [wire] error: {e}")
-    print(f"  [wire] Alpha Vantage pulled {len(out)} articles")
     return out
 
 
@@ -737,7 +694,7 @@ def run_once():
 
     # 1) gather from all sources
     pulled = []
-    pulled += fetch_news()      # Benzinga Basic / premium / Alpha Vantage (per .env)
+    pulled += fetch_news()      # Benzinga Basic / premium (per .env)
     pulled += fetch_rss()       # free financial RSS feeds (no key) - fills the gaps
     pulled += fetch_reddit()
     pulled += fetch_x()

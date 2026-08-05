@@ -1,5 +1,5 @@
 """
-Korvus — admin gating, pages, and owner analytics (hardened)
+Korvus - admin gating, pages, and owner analytics (hardened)
 ============================================================
 
 Why this version exists: the first cut hardcoded the DB path and trusted the
@@ -9,7 +9,7 @@ keys "missing" even though the rest of the app reads them fine.
 
 This version is self-sufficient:
   * DB path comes from korvus_auth.DB_PATH (the exact file the users table
-    lives in) — falls back to ./korvus.db only if that import fails.
+    lives in) - falls back to ./korvus.db only if that import fails.
   * It loads .env itself (explicit paths), so key-presence checks are accurate
     no matter how gunicorn was launched.
   * It opens the DB read-only (mode=ro) so a wrong path can never silently
@@ -189,7 +189,6 @@ def admin_stats():
     # ---- API key + data-source + health (presence only, never values) ------
     out["status"] = {
         "anthropic_key":    bool(os.getenv("ANTHROPIC_API_KEY")),
-        "alphavantage_key": bool(os.getenv("ALPHAVANTAGE_KEY")),
         "finnhub_key":      bool(os.getenv("FINNHUB_KEY")),
         "quotes_provider":  os.getenv("QUOTES_PROVIDER") or "(unset)",
         "news_provider":    os.getenv("NEWS_PROVIDER") or "(unset)",

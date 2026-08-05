@@ -23,7 +23,7 @@
   html{scroll-behavior:smooth;}
   body{background:var(--bg);color:var(--ink);font-family:var(--body);min-height:100vh;-webkit-font-smoothing:antialiased;
     letter-spacing:-.003em;}
-  /* restrained static atmosphere — depth, not flash */
+  /* restrained static atmosphere - depth, not flash */
   body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
     background:radial-gradient(720px 480px at 88% -8%,rgba(255,31,68,.07),transparent 60%);}
   .tnum{font-variant-numeric:tabular-nums;}
@@ -214,7 +214,7 @@
           <span><i style="background:var(--info);box-shadow:0 0 8px var(--info)"></i>Info</span>
         </div>
         Owner console · server-enforced. Figures read live from your database &amp; environment. Revenue is an estimate
-        derived from member counts — wire your billing module for exact billed totals. API keys are shown as present/absent only, never the values.
+        derived from member counts - wire your billing module for exact billed totals. API keys are shown as present/absent only, never the values.
       </div>
     </div>
   </div>
@@ -241,7 +241,7 @@ async function load(){
       fetch('/api/health',{cache:'no-store',credentials:'same-origin'}).then(r=>r.json()).catch(()=>({})),
     ]);
   }catch(e){
-    $("#root").innerHTML = '<div class="err">Couldn\'t load /api/admin/stats — '+esc(e.message||e)+
+    $("#root").innerHTML = '<div class="err">Couldn\'t load /api/admin/stats - '+esc(e.message||e)+
       '<br>Make sure the server restarted after the korvus_admin.py update, and that you\'re the owner.</div>';
     if(btn) btn.classList.remove("spin"); return;
   }
@@ -264,27 +264,27 @@ function render(stats, online, health){
   const u = stats.users || {};
   const rev = stats.revenue || {};
   const st = stats.status || {};
-  const activeNow = (online && online.online != null) ? online.online : "—";
+  const activeNow = (online && online.online != null) ? online.online : "-";
   let html = "";
 
   // OVERVIEW
   html += '<section id="overview"><div class="shead"><h2>Overview</h2><p>Membership snapshot, read live from the user table.</p></div><div class="kpis">';
-  html += kpi("Total users", u.total!=null?u.total:"—");
-  html += kpi("Pro", u.pro!=null?u.pro:"—", "accent");
-  html += kpi("Free", u.free!=null?u.free:"—");
+  html += kpi("Total users", u.total!=null?u.total:"-");
+  html += kpi("Pro", u.pro!=null?u.pro:"-", "accent");
+  html += kpi("Free", u.free!=null?u.free:"-");
   html += kpi("Active now", activeNow, "live", '<span class="ld"></span>live sessions');
   if(u.verified!=null) html += kpi("Verified", u.verified);
   if(u.new_7d!=null)   html += kpi("New · 7d", u.new_7d);
   html += '</div></section>';
 
   // REVENUE
-  html += '<section id="revenue"><div class="shead"><h2>Revenue <span class="est">Estimate</span></h2><p>Derived from member counts — wire billing for exact totals.</p></div>';
+  html += '<section id="revenue"><div class="shead"><h2>Revenue <span class="est">Estimate</span></h2><p>Derived from member counts - wire billing for exact totals.</p></div>';
   html += '<div class="card pad"><div class="rev"><div class="fig tnum">'+money(rev.estimated_mrr)+'</div>'+
-    '<div class="meta">estimated <b>MRR</b> · <b>'+esc(rev.paying_members!=null?rev.paying_members:"—")+'</b> paying @ '+money(rev.monthly_price)+'/mo<br>'+
-    '<span class="g">basis: '+esc(rev.basis||"—")+'</span></div></div>';
+    '<div class="meta">estimated <b>MRR</b> · <b>'+esc(rev.paying_members!=null?rev.paying_members:"-")+'</b> paying @ '+money(rev.monthly_price)+'/mo<br>'+
+    '<span class="g">basis: '+esc(rev.basis||"-")+'</span></div></div>';
   html += '<div class="breakdown">';
   html += '<div class="bd"><span class="l">Est. ARR</span><span class="n tnum">'+money(rev.estimated_arr)+'</span></div>';
-  html += '<div class="bd"><span class="l">Paying</span><span class="n tnum">'+esc(rev.paying_members!=null?rev.paying_members:"—")+'</span></div>';
+  html += '<div class="bd"><span class="l">Paying</span><span class="n tnum">'+esc(rev.paying_members!=null?rev.paying_members:"-")+'</span></div>';
   html += '<div class="bd"><span class="l">Price / mo</span><span class="n tnum">'+money(rev.monthly_price)+'</span></div>';
   if(stats.subscriptions){ Object.keys(stats.subscriptions).forEach(k=>{
     html += '<div class="bd"><span class="l">Subs · '+esc(k)+'</span><span class="n tnum">'+esc(stats.subscriptions[k])+'</span></div>'; }); }
@@ -295,13 +295,12 @@ function render(stats, online, health){
   html += srow("ok", "server", "online · up "+uptime(st.server_uptime_seconds));
   html += srow(st.db_present?"ok":"bad", "database", st.db_present?"present":"missing");
   html += srow(st.anthropic_key?"ok":"bad", "Anthropic key", st.anthropic_key?"set":"missing");
-  html += srow(st.alphavantage_key?"ok":"bad", "Alpha Vantage key", st.alphavantage_key?"set":"missing");
   html += srow(st.finnhub_key?"ok":"bad", "Finnhub key", st.finnhub_key?"set":"missing");
   html += srow("info", "quotes provider", st.quotes_provider);
   html += srow("info", "news provider", st.news_provider);
   html += srow("info", "email", st.email_provider);
   if(health && (health.last_update || health.scored!=null)){
-    html += srow("info", "engine last update", health.last_update || "—");
+    html += srow("info", "engine last update", health.last_update || "-");
     if(health.scored!=null) html += srow("info", "items scored", health.scored);
   }
   html += '</div></section>';
@@ -313,7 +312,7 @@ function render(stats, online, health){
     const hasSub = stats.pro_members[0].subscription_status!==undefined;
     html += '<table><thead><tr><th>User</th><th>Email</th><th>Joined</th>'+(hasSub?'<th>Sub</th>':'')+'</tr></thead><tbody>';
     stats.pro_members.forEach(m=>{ html += '<tr><td class="mono name">'+esc(m.username)+'</td><td class="mono">'+esc(m.email)+'</td>'+
-      '<td class="mono">'+esc((m.created_at||"").slice(0,10))+'</td>'+(hasSub?'<td class="mono">'+esc(m.subscription_status||"—")+'</td>':'')+'</tr>'; });
+      '<td class="mono">'+esc((m.created_at||"").slice(0,10))+'</td>'+(hasSub?'<td class="mono">'+esc(m.subscription_status||"-")+'</td>':'')+'</tr>'; });
     html += '</tbody></table>';
   } else { html += '<div class="empty">No pro members yet.</div>'; }
   html += '</div>';

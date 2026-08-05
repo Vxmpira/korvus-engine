@@ -7,13 +7,12 @@
 
  Swappable, just like the news layer. Set QUOTES_PROVIDER in .env to:
    "databento"     -> REAL CME futures (MNQ/MES/etc.), licensed feed  [accurate]
-   "alphavantage"  -> ETF-proxy live/realtime (PREMIUM key required)
    "finnhub"       -> ETF-proxy free tier (~15-20 min delayed)        [no cost]
    "off"           -> panels stay on the dashboard's sample numbers
 
  Upgrading from free to live = change ONE line in .env. No code changes.
 
- NOTE ON ACCURACY: alphavantage/finnhub price the ETF PROXIES (QQQ for NQ, SPY
+ NOTE ON ACCURACY: finnhub prices the ETF PROXIES (QQQ for NQ, SPY
  for ES, ...), so the board shows the proxy's % move, not the real contract.
  "databento" pulls the ACTUAL CME contract (MNQ ~21,000), so the board, session
  map and prices match a futures chart. It is DORMANT until DATABENTO_API_KEY is
@@ -58,7 +57,6 @@ QUOTES_PROVIDER  = _clean_env("QUOTES_PROVIDER", "finnhub").lower()
 # Free-tier delay for the native CME feed, in minutes. Never below CME's 10-min
 # delayed-data threshold. Pro is live; free gets the same tape time-shifted.
 FREE_DELAY_MIN = max(10, int(_clean_env("KORVUS_FREE_DELAY_MIN", "15") or 15))
-ALPHAVANTAGE_KEY = _clean_env("ALPHAVANTAGE_KEY")
 FINNHUB_KEY      = _clean_env("FINNHUB_KEY")
 
 # --- Databento (real CME futures; dormant until a licensed key is set) -------
@@ -228,8 +226,7 @@ def _provider_label(force_delayed: bool) -> str:
     if force_delayed:
         if QUOTES_PROVIDER == "databento":
             return "databento-delayed"
-        return ("finnhub" if FINNHUB_KEY
-                else ("alphavantage-delayed" if ALPHAVANTAGE_KEY else "none"))
+        return "finnhub" if FINNHUB_KEY else "none"
     return QUOTES_PROVIDER
 
 
@@ -254,13 +251,9 @@ def _fetch_quotes(symbols: list[str], force_delayed: bool) -> dict:
             if rest:
                 if FINNHUB_KEY:
                     out.update(_finnhub_quotes(rest))
-                elif ALPHAVANTAGE_KEY:
-                    out.update(_alphavantage_quotes(rest, delayed=True))
             return out
         if FINNHUB_KEY:
             return _finnhub_quotes(symbols)
-        if ALPHAVANTAGE_KEY:
-            return _alphavantage_quotes(symbols, delayed=True)
         return {}
     if QUOTES_PROVIDER == "databento":
         out = _databento_quotes(symbols)                       # futures roots (CME)
@@ -268,11 +261,7 @@ def _fetch_quotes(symbols: list[str], force_delayed: bool) -> dict:
         if rest:
             if FINNHUB_KEY:
                 out.update(_finnhub_quotes(rest))
-            elif ALPHAVANTAGE_KEY:
-                out.update(_alphavantage_quotes(rest))
         return out
-    if QUOTES_PROVIDER == "alphavantage":
-        return _alphavantage_quotes(symbols)
     if QUOTES_PROVIDER == "finnhub":
         return _finnhub_quotes(symbols)
     if QUOTES_PROVIDER == "tradovate":
@@ -360,58 +349,6 @@ def native_futures() -> bool:
     The server gates this to Pro users in /api/me, since free users are always
     forced onto the delayed proxy feed regardless of provider."""
     return QUOTES_PROVIDER == "databento" and bool(DATABENTO_API_KEY)
-
-
-# --- Alpha Vantage PREMIUM (true live; bulk endpoint, up to 100 symbols) ----
-def _alphavantage_quotes(symbols: list[str], delayed: bool = False) -> dict:
-    if not ALPHAVANTAGE_KEY:
-        print("  [quotes] no ALPHAVANTAGE_KEY - set it in .env")
-        return {}
-    out = {}
-
-    def _f(v):
-        try:
-            return float(str(v).replace("%", "").strip())
-        except Exception:
-            return 0.0
-
-    try:
-        # REALTIME_BULK_QUOTES is a premium endpoint; takes up to 100 symbols.
-        # IMPORTANT: without entitlement, Alpha Vantage returns HISTORICAL data.
-        #   entitlement=realtime -> true real-time US data (Pro members)
-        #   entitlement=delayed  -> 15-min delayed (free / logged-out / public
-        #                           landing ticker). Never serves real-time to
-        #                           non-paying users even though the key is premium.
-        entitlement = "delayed" if delayed else "realtime"
-        url = ("https://www.alphavantage.co/query"
-               f"?function=REALTIME_BULK_QUOTES&symbol={','.join(symbols)}"
-               f"&entitlement={entitlement}"
-               f"&apikey={ALPHAVANTAGE_KEY}")
-        r = requests.get(url, timeout=20)
-        data = r.json()
-        rows = data.get("data", [])
-        if not rows and ("Information" in data or "Note" in data or "Error Message" in data):
-            # usually means the key isn't premium yet, or entitlement isn't set up
-            print(f"  [quotes] Alpha Vantage: {data.get('Information') or data.get('Note') or data.get('Error Message')}")
-            return {}
-        for row in rows:
-            sym = row.get("symbol")
-            if not sym:
-                continue
-            price = _f(row.get("close") or row.get("price") or 0)
-            # carry OHLC + prev close so the SMT range read and macro bands work
-            # on the live feed too (parsed defensively - keys may be absent).
-            out[sym] = {
-                "price": price,
-                "chg_pct": _f(row.get("change_percent", 0)),
-                "high": _f(row.get("high") or 0),
-                "low": _f(row.get("low") or 0),
-                "open": _f(row.get("open") or 0),
-                "prev_close": _f(row.get("previous_close") or row.get("prev_close") or 0),
-            }
-    except Exception as e:
-        print(f"  [quotes] Alpha Vantage error: {e}")
-    return out
 
 
 # --- Finnhub FREE (delayed ~15-20 min; one call per symbol) ------------------
@@ -595,98 +532,10 @@ if __name__ == "__main__":
 
 # ---------------------------------------------------------------------------
 # Intraday series for the index tape charts.
-# Real 5-minute bars from Alpha Vantage (TIME_SERIES_INTRADAY, regular hours),
-# expressed as percent change vs the prior session's close so the dashed zero
-# line on the chart IS the real previous close. Server-cached and shared across
-# all viewers so we never hammer the AV rate limit: each symbol is refetched at
-# most once per _INTRADAY_TTL. A free AV key (25 req/day) will not sustain this;
-# a premium key is required. On any miss we return an empty series for that
-# symbol and the client keeps its live-accumulated line.
+# The dedicated intraday-bar provider was retired. The tape now builds its
+# line from live-accumulated quotes on the client, so this returns an empty
+# series and /api/intraday keeps its contract (empty -> client keeps drawing).
 # ---------------------------------------------------------------------------
-_INTRADAY_CACHE = {}          # sym -> {"at": datetime, "data": {...}}
-_INTRADAY_TTL   = 300         # seconds
-
-
-def _safe_float(v):
-    try:
-        return float(str(v).replace(",", "").strip())
-    except Exception:
-        return 0.0
-
-
 def get_intraday(symbols, force_delayed=False):
-    out = {}
-    if not ALPHAVANTAGE_KEY:
-        out["_meta"] = {"provider": "none", "ok": False, "note": "no ALPHAVANTAGE_KEY set"}
-        return out
-
-    now = dt.datetime.now(dt.timezone.utc)
-    entitlement = "delayed" if force_delayed else "realtime"
-
-    try:
-        from zoneinfo import ZoneInfo
-        et_today = dt.datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
-    except Exception:
-        et_today = None
-
-    for sym in symbols:
-        sym = (sym or "").strip().upper()
-        if not sym:
-            continue
-        cached = _INTRADAY_CACHE.get(sym)
-        if cached and (now - cached["at"]).total_seconds() < _INTRADAY_TTL:
-            out[sym] = cached["data"]
-            continue
-        try:
-            url = ("https://www.alphavantage.co/query"
-                   "?function=TIME_SERIES_INTRADAY"
-                   f"&symbol={sym}&interval=5min&outputsize=full&extended_hours=false"
-                   f"&entitlement={entitlement}&apikey={ALPHAVANTAGE_KEY}")
-            r = requests.get(url, timeout=20)
-            j = r.json()
-            series = j.get("Time Series (5min)")
-            if not series:
-                msg = j.get("Information") or j.get("Note") or j.get("Error Message")
-                if msg:
-                    print(f"  [intraday] Alpha Vantage {sym}: {msg}")
-                continue   # leave any prior cache in place; symbol simply absent
-
-            by_date = {}
-            for k, v in sorted(series.items()):          # oldest -> newest
-                by_date.setdefault(k.split(" ")[0], []).append((k, v))
-            dates = sorted(by_date.keys())
-            today = dates[-1]
-
-            # prev close = last regular-session close of the prior trading day
-            prev_close = None
-            if len(dates) >= 2:
-                prev_close = _safe_float(by_date[dates[-2]][-1][1].get("4. close"))
-            if not prev_close:
-                prev_close = _safe_float(by_date[today][0][1].get("1. open"))
-
-            # if the latest bars are not for the current ET session (pre-open /
-            # weekend / holiday), do not plot a stale prior day as "today"
-            if et_today and today != et_today:
-                data = {"pct": [], "prev_close": round(prev_close, 4) if prev_close else None,
-                        "delayed": (entitlement == "delayed"), "stale": True, "asof": now.isoformat()}
-                _INTRADAY_CACHE[sym] = {"at": now, "data": data}
-                out[sym] = data
-                continue
-
-            pts = []
-            for k, v in by_date[today]:
-                c = _safe_float(v.get("4. close"))
-                if c <= 0 or not prev_close:
-                    continue
-                pts.append(round((c - prev_close) / prev_close * 100.0, 3))
-
-            data = {"pct": pts, "prev_close": round(prev_close, 4) if prev_close else None,
-                    "delayed": (entitlement == "delayed"), "stale": False, "asof": now.isoformat()}
-            _INTRADAY_CACHE[sym] = {"at": now, "data": data}
-            out[sym] = data
-        except Exception as e:
-            print(f"  [intraday] Alpha Vantage {sym} error: {e}")
-            continue
-
-    out["_meta"] = {"provider": "alphavantage", "ok": True, "entitlement": entitlement}
-    return out
+    return {"_meta": {"provider": "none", "ok": False,
+                      "note": "intraday bar provider retired; client accumulates live"}}

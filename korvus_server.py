@@ -528,7 +528,7 @@ def api_quotes():
     """
     Live prices for a comma-separated ?symbols= list.
     TIER ENFORCEMENT (server-side, not bypassable):
-      - pro users get the configured live provider (e.g. alphavantage)
+      - pro users get the configured live provider (e.g. databento)
       - free / logged-out users are forced onto the delayed feed
     """
     try:
@@ -558,10 +558,9 @@ def api_quotes():
 def api_intraday():
     """
     Real intraday % series (price vs prev close) for the index tape charts.
-    Pulls 5-minute bars from Alpha Vantage, server-cached and shared across all
-    viewers. Tier-enforced the same way as /api/quotes: pro -> realtime
-    entitlement, free / logged-out -> delayed. Returns an empty series per symbol
-    on any miss so the client keeps its live-accumulated line.
+    The dedicated intraday-bar provider was retired, so this returns an empty
+    series per symbol and the client keeps its live-accumulated line. The route
+    is preserved so the tape and any callers keep working.
     """
     try:
         from korvus_quotes import get_intraday
@@ -618,7 +617,7 @@ def api_smt():
     meta = data.pop("_meta", {}) or {}
     market_open = bool(meta.get("market_open"))
     provider    = meta.get("provider", "")
-    delayed     = provider in ("finnhub", "alphavantage-delayed")
+    delayed     = provider == "finnhub"
 
     legs = []
     for sym, proxy in legs_map:
