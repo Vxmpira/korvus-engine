@@ -35,4 +35,26 @@ accesslog = "-"
 errorlog = "-"
 loglevel = "info"
 
+# Make the app's own print() lines reach journald IMMEDIATELY. Python
+# block-buffers stdout when it is a pipe, so diagnostics like the [db] stream
+# lines could sit unflushed for a long time; ironically the old worker
+# recycling flushed them on every worker death, and with recycling disabled a
+# healthy process might log nothing for hours. Unbuffered + captured output
+# makes `journalctl | grep '[db]'` a reliable health check.
+raw_env = ["PYTHONUNBUFFERED=1"]
+capture_output = True
+
+
+def post_worker_init(worker):
+    """Start the background warmer (and with it the licensed CME stream, the
+    settle baseline, and the quote-cache warm-up) the moment the worker boots,
+    instead of waiting for the first HTTP request. After every restart the
+    board is primed before the first visitor arrives, and the [db] startup
+    lines appear in the journal right away."""
+    try:
+        from korvus_server import _start_warmer
+        _start_warmer()
+    except Exception as e:
+        print(f"[gunicorn] warmer boot skipped: {e}")
+
 proc_name = "korvus"
