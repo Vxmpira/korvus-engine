@@ -530,6 +530,28 @@ if __name__ == "__main__":
             print(f"  {s:5} (no data - check key / provider)")
 
 
+def native_series(symbols, seconds=3600.0):
+    """Recent live price tape per CME root, ascending (ts, price) pairs, when
+    the licensed Databento feed is active; {} otherwise. Feeds the SMT swing
+    engine in the server. Cheap and read-only: a lock-guarded copy of the same
+    in-memory tape that serves the board."""
+    if not native_futures():
+        return {}
+    try:
+        from korvus_databento import get_client
+    except Exception:
+        return {}
+    roots = [s for s in symbols if s in DATABENTO_FUT]
+    if not roots:
+        return {}
+    try:
+        client = get_client(DATABENTO_API_KEY)
+        client.start(sorted(DATABENTO_FUT))   # idempotent: stream starts once
+        return client.series(roots, seconds)
+    except Exception:
+        return {}
+
+
 # ---------------------------------------------------------------------------
 # Intraday series for the index tape charts.
 # The dedicated intraday-bar provider was retired. The tape now builds its

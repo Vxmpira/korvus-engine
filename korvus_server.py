@@ -669,6 +669,89 @@ def api_smt():
         freshness = "live"
         fresh_note = ""
 
+    # ---- TRUE SMT (native feed): swing-sweep engine on the licensed CME tape.
+    # ICT SMT divergence lives at swing POINTS, not in the daily % sign: bearish
+    # when one index takes out the recent swing high while a correlated index
+    # fails to take its own; bullish when one sweeps the swing low while the
+    # others hold theirs. Deterministic read of the last hour of tape:
+    #   reference window = 60..20 minutes ago  -> its high/low ARE the swings
+    #   recent window    = last 20 minutes     -> did price take them out?
+    # A 1-basis-point epsilon guards against float ties. If the tape is too
+    # thin on either side of the split (fresh restart), we fall back to the
+    # range/direction read below rather than guess.
+    smt = None
+    if use_native:
+        try:
+            from korvus_quotes import native_series
+            tapes = native_series([p for _, p in legs_map], seconds=3600)
+        except Exception:
+            tapes = {}
+        _now = dt.datetime.now(dt.timezone.utc).timestamp()
+        _split = _now - 20 * 60
+        rows = []
+        for _sym, _root in legs_map:
+            pts = tapes.get(_root) or []
+            ref = [p for t, p in pts if t < _split]
+            rec = [p for t, p in pts if t >= _split]
+            if len(ref) >= 8 and len(rec) >= 4:
+                r_hi, r_lo = max(ref), min(ref)
+                c_hi, c_lo = max(rec), min(rec)
+                eps = r_hi * 0.0001
+                rows.append({"sym": _sym,
+                             "hh": c_hi > r_hi + eps, "ll": c_lo < r_lo - eps,
+                             "swing_hi": r_hi, "swing_lo": r_lo})
+        if len(rows) >= 2:
+            def _px(v):
+                return f"{v:,.2f}"
+            took_hi = [r for r in rows if r["hh"]]
+            held_hi = [r for r in rows if not r["hh"]]
+            took_lo = [r for r in rows if r["ll"]]
+            held_lo = [r for r in rows if not r["ll"]]
+            if took_hi and held_hi and took_lo and held_lo:
+                smt = {"state": "warn", "title": "Mixed SMT: sweeps on both sides",
+                       "note": ("Within the last 20 minutes the complexes have taken "
+                                "swings on BOTH sides of the prior hour's range without "
+                                "agreement. Two-way liquidity hunting, chop conditions. "
+                                "A reading, not a trade signal.")}
+            elif took_hi and held_hi:
+                a = " / ".join(r["sym"] for r in took_hi)
+                b = " / ".join(r["sym"] for r in held_hi)
+                smt = {"state": "warn",
+                       "title": f"Bearish SMT: {a} took the high, {b} did not confirm",
+                       "note": (f"{a} traded above its prior-hour swing high "
+                                f"({_px(took_hi[0]['swing_hi'])}) inside the last 20 minutes "
+                                f"while {b} held below its own "
+                                f"({_px(held_hi[0]['swing_hi'])}). Buy-side liquidity was "
+                                "swept without agreement across the complexes, the classic "
+                                "bearish smart-money divergence. A reading, not a trade "
+                                "signal.")}
+            elif took_lo and held_lo:
+                a = " / ".join(r["sym"] for r in took_lo)
+                b = " / ".join(r["sym"] for r in held_lo)
+                smt = {"state": "warn",
+                       "title": f"Bullish SMT: {a} swept the low, {b} held",
+                       "note": (f"{a} traded below its prior-hour swing low "
+                                f"({_px(took_lo[0]['swing_lo'])}) inside the last 20 minutes "
+                                f"while {b} held above its own "
+                                f"({_px(held_lo[0]['swing_lo'])}). Sell-side liquidity was "
+                                "swept without agreement, the classic bullish smart-money "
+                                "divergence. A reading, not a trade signal.")}
+            elif len(took_hi) == len(rows):
+                smt = {"state": "ok", "title": "Confirming: highs taken together",
+                       "note": ("Each complex has taken out its prior-hour swing high in "
+                                "agreement. Aligned expansion, no divergence.")}
+            elif len(took_lo) == len(rows):
+                smt = {"state": "ok", "title": "Confirming: lows taken together",
+                       "note": ("Each complex has taken out its prior-hour swing low in "
+                                "agreement. Aligned weakness, no divergence.")}
+            else:
+                lv = ", ".join(f"{r['sym']} {_px(r['swing_hi'])} / {_px(r['swing_lo'])}"
+                               for r in rows)
+                smt = {"state": "ok", "title": "In range: no swing taken",
+                       "note": ("No complex has taken out its prior-hour swing high or "
+                                "low in the last 20 minutes, so there is no SMT divergence "
+                                f"to flag. Swing levels being watched: {lv}.")}
+
     # ---- verdict, computed honestly from the leg positions + direction ----
     valid = [l for l in legs if l["has_data"]]
     if len(valid) < 2:
@@ -681,6 +764,11 @@ def api_smt():
                      "proxies only trade during regular US hours (9:30 AM to 4:00 PM ET); "
                      "divergence resumes when they reopen.")
         verdict = {"state": "ok", "title": "Awaiting data", "note": _note}
+    elif smt is not None:
+        # The swing engine read the tape successfully: its verdict IS the SMT
+        # read. The range/direction logic below stays as the fallback for the
+        # proxy feed and for a too-thin tape right after a restart.
+        verdict = smt
     else:
         positions = [l["pos"] for l in valid]
         spread = max(positions) - min(positions)   # how far apart the indices sit in their ranges

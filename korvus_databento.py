@@ -890,6 +890,22 @@ class DatabentoMD:
                     out[r] = dict(self._quotes[r])
         return out
 
+    def series(self, roots, seconds: float = 3600.0) -> dict:
+        """Recent price tape per root as ascending (ts_epoch, price) pairs, up
+        to `seconds` back. Powers the SMT swing engine server-side. The stored
+        high/low columns on the tape are session-cumulative, so swing analysis
+        reads the close series, which is honest at 1-second granularity."""
+        cutoff = time.time() - max(60.0, float(seconds))
+        out = {}
+        with self._lock:
+            for r in roots:
+                tape = self._hist.get(r) or []
+                pts = [(it[0], it[1]) for it in tape
+                       if it[0] >= cutoff and it[1]]
+                if pts:
+                    out[r] = pts
+        return out
+
     def get_delayed(self, roots, delay_sec: float) -> dict:
         """Time-shifted snapshot for the free tier: the SAME licensed CME tape,
         served at least delay_sec behind live. Never under-delays: if nothing on
