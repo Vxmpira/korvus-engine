@@ -857,6 +857,12 @@ class DatabentoMD:
                         print(f"  [db] subscribe start={st or 'now'} rejected ({e_sub})")
                 if not subscribed:
                     raise RuntimeError("all ohlcv-1m subscribe attempts failed")
+                # Provenance print: the resolved bar schema and where it came
+                # from. An env override here silently pins the feed to 1-minute
+                # bars, which is invisible without this line.
+                _sch_env = (os.getenv("DATABENTO_SCHEMA") or "").strip()
+                print(f"  [db] bar schema: {DATABENTO_SCHEMA} "
+                      f"({'env override: ' + _sch_env if _sch_env else 'code default'})")
                 # Second, finer live subscription from NOW (no replay) so the
                 # snapshot ticks second by second. The 1m replay above already
                 # rebuilt the session O/H/L and settle; this only adds forward
