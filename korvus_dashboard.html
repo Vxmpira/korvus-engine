@@ -1632,6 +1632,7 @@ document.getElementById('importReset').onclick = async () => {
 
 // ---- who's logged in + their tier (drives the header label) ----
 let USER_TIER = 'free';   // default; loadMe() updates it
+let REALTIME  = false;    // server-truth: this session is served the LIVE feed
 let IS_OWNER = false;     // only the TRADOVATE_OWNER account; gates the live feed
 let NATIVE_FUTURES = false; // true when the feed serves REAL CME futures (Databento, Pro)
 let PRICE_DISPLAY = '';   // monthly price string from billing (e.g. "$3.99")
@@ -1654,6 +1655,7 @@ async function loadMe(){
       USER_TIER = me.tier || 'free';
       IS_OWNER = !!me.is_owner;
       NATIVE_FUTURES = !!me.native_futures;
+      REALTIME = !!me.realtime;
       const _bs = document.getElementById('boardSource');
       if(_bs){
         if(NATIVE_FUTURES && USER_TIER === 'pro'){ _bs.textContent = 'live CME'; _bs.title = 'Real CME futures streamed live from the licensed exchange feed.'; }
@@ -1975,7 +1977,8 @@ function _quotesDelay(){
   if(document.hidden) return 15000;
   var pro = (typeof USER_TIER !== 'undefined' && USER_TIER === 'pro');
   var nat = (typeof NATIVE_FUTURES !== 'undefined' && NATIVE_FUTURES);
-  return (pro && nat) ? 1000 : 5000;
+  var rt  = (typeof REALTIME !== 'undefined' && REALTIME);   // server-truth wins
+  return (rt || (pro && nat)) ? 1000 : 5000;
 }
 function _quotesLoop(){
   loadLiveQuotes().catch(function(){}).then(function(){

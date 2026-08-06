@@ -337,6 +337,9 @@ def api_me():
                         "alert_opt_in": int(u.get("alert_opt_in") if u.get("alert_opt_in") is not None else 1),
                         "is_owner": bool(TRADOVATE_OWNER and u.get("username") == TRADOVATE_OWNER),
                         "native_futures": _native_fut,
+                        "realtime": bool(_native_fut and (
+                            (u.get("tier") == "pro")
+                            or (u.get("username") in ADMIN_USERNAMES))),
                         "billing_enabled": billing.billing_enabled(),
                         "price_display": billing.price_display(),
                         "yearly_enabled": billing.yearly_enabled(),
@@ -540,7 +543,9 @@ def api_quotes():
     if not symbols:
         return jsonify({"quotes": {}, "_meta": {}})
 
-    is_pro = current_user.is_authenticated and current_user.tier == "pro"
+    is_owner = (current_user.is_authenticated
+                and current_user.username in ADMIN_USERNAMES)
+    is_pro = current_user.is_authenticated and (current_user.tier == "pro" or is_owner)
     # free/logged-out -> force delayed feed regardless of the configured provider
     data = get_quotes(symbols, force_delayed=not is_pro)
     meta = data.pop("_meta", {})
