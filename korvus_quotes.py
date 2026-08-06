@@ -337,6 +337,18 @@ def warm_quotes() -> int:
     (databento.start() is idempotent), so bars begin accumulating immediately."""
     try:
         data = get_quotes(WARM_UNIVERSE, force_delayed=False)
+        # Equities ride the same single Finnhub feed for every tier, so mirror
+        # them into the delayed store too: free and logged-out pages (landing
+        # ticker, free terminals) read a warm cache instead of paying the
+        # vendor round trips inline. Futures are NOT mirrored; the free tier's
+        # futures stay on the server-side 15-minute time shift.
+        try:
+            live, dly = _qcache["live"], _qcache["delayed"]
+            for s in list(live.keys()):
+                if s not in DATABENTO_FUT:
+                    dly[s] = live[s]
+        except Exception:
+            pass
         return max(0, len(data) - 1)             # minus the _meta key
     except Exception as e:
         print(f"  [quotes] warm error: {e}")
@@ -353,18 +365,23 @@ def native_futures() -> bool:
 
 # --- Finnhub FREE (delayed ~15-20 min; one call per symbol) ------------------
 def _finnhub_quotes(symbols: list[str]) -> dict:
+    """Parallel fetch. The old sequential loop cost one HTTPS round trip PER
+    symbol (a ~35-equity cold universe took 8-16 s) while holding a gunicorn
+    request slot the whole time. Eight lanes bring a full cold fetch to ~1-2 s,
+    and the shorter per-symbol timeout stops one bad symbol from hanging a
+    slot for 15 s."""
     if not FINNHUB_KEY:
         print("  [quotes] no FINNHUB_KEY - set it in .env")
         return {}
-    out = {}
-    for sym in symbols:
+
+    def _one(sym):
         try:
             r = requests.get("https://finnhub.io/api/v1/quote",
-                             params={"symbol": sym, "token": FINNHUB_KEY}, timeout=15)
+                             params={"symbol": sym, "token": FINNHUB_KEY}, timeout=6)
             q = r.json()
             # c=current, dp=percent change, h=day high, l=day low, o=open, pc=prev close
             if q.get("c"):
-                out[sym] = {
+                return sym, {
                     "price": float(q["c"]),
                     "chg_pct": float(q.get("dp") or 0),
                     "high": float(q.get("h") or 0),
@@ -374,6 +391,14 @@ def _finnhub_quotes(symbols: list[str]) -> dict:
                 }
         except Exception as e:
             print(f"  [quotes] Finnhub error on {sym}: {e}")
+        return sym, None
+
+    out = {}
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        for sym, q in ex.map(_one, symbols):
+            if q:
+                out[sym] = q
     return out
 
 
