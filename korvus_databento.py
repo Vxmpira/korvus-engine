@@ -232,6 +232,11 @@ class DatabentoMD:
         # root -> [(ts_epoch, price, high, low, open), ...] rolling session tape,
         # backfilled by the connect replay; feeds the free-tier delayed view
         self._hist = {}
+        # root -> [(ts_epoch, close), ...] coarse 1-MINUTE tape kept ~26h, one
+        # point per minute (last close wins within the minute). Tiny in memory
+        # and spans whole sessions, which the fine tape cannot: it powers the
+        # session-anchored SMT swings (Asia / London / New York ranges).
+        self._mtape = {}
         # root -> close of the latest bar at/before 16:00 ET (the 3pm-CT settle)
         # in the session being accumulated; promoted to _settle at the rollover.
         self._sess_settle = {}
@@ -748,6 +753,25 @@ class DatabentoMD:
                     except Exception:
                         if len(tape) > 20000:
                             del tape[:10000]
+                # Coarse 1-minute tape for session-anchored SMT swings: append a
+                # point when the minute changes, otherwise refresh the minute's
+                # close, and trim past ~26 hours.
+                try:
+                    mt = self._mtape.setdefault(root, [])
+                    _t0 = ts_utc.timestamp()
+                    if (not mt) or int(mt[-1][0] // 60) != int(_t0 // 60):
+                        mt.append((_t0, q["price"]))
+                        if len(mt) > 1700:
+                            _cutm = _t0 - 26 * 3600
+                            k = 0
+                            while k < len(mt) and mt[k][0] < _cutm:
+                                k += 1
+                            if k:
+                                del mt[:k]
+                    else:
+                        mt[-1] = (_t0, q["price"])
+                except Exception:
+                    pass
                 # remember this session's settle-time close (last bar at/before 4pm ET)
                 if at_or_before_settle:
                     self._sess_settle[root] = c
@@ -902,6 +926,20 @@ class DatabentoMD:
                 tape = self._hist.get(r) or []
                 pts = [(it[0], it[1]) for it in tape
                        if it[0] >= cutoff and it[1]]
+                if pts:
+                    out[r] = pts
+        return out
+
+    def minute_series(self, roots, since_ts: float) -> dict:
+        """Coarse 1-minute close tape per root since `since_ts`, ascending
+        (ts_epoch, price) pairs, ~26h retained. Session-anchored SMT swings
+        read this: session windows span hours, where 1-minute closes are the
+        honest granularity and the fine tape is too short."""
+        out = {}
+        with self._lock:
+            for r in roots:
+                mt = self._mtape.get(r) or []
+                pts = [(t, pr) for t, pr in mt if t >= since_ts and pr]
                 if pts:
                     out[r] = pts
         return out

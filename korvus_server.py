@@ -585,6 +585,31 @@ def api_intraday():
 
 
 # Index proxies for the SMT panel: NQ->QQQ, ES->SPY, YM->DIA
+def _smt_session_windows(now_utc):
+    """Korvus session map in ET (matches the terminal's Session Map row):
+    Asia 18:00-24:00, London 00:00-08:00, New York 08:00-17:00; 17:00-18:00 is
+    the CME maintenance hour (no session). Returns (cur_name, cur_start_ts,
+    prior_name, prior_start_ts, prior_end_ts) as epoch seconds, or None during
+    the maintenance hour. The PRIOR session is the swing anchor, ICT-style:
+    New York trades against the London range, London against Asia, and Asia
+    against the prior New York session."""
+    from zoneinfo import ZoneInfo
+    et = now_utc.astimezone(ZoneInfo("America/New_York"))
+    day = et.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    def H(hours, days=0):
+        return (day + dt.timedelta(days=days, hours=hours)).timestamp()
+
+    h = et.hour + et.minute / 60.0
+    if h < 8:
+        return ("London", H(0), "Asia", H(18, -1), H(0))
+    if h < 17:
+        return ("New York", H(8), "London", H(0), H(8))
+    if h < 18:
+        return None
+    return ("Asia", H(18), "New York", H(8), H(17))
+
+
 _SMT_LEGS = [("NQ", "QQQ"), ("ES", "SPY"), ("YM", "DIA")]
 
 @app.route("/api/smt")
@@ -681,26 +706,75 @@ def api_smt():
     # range/direction read below rather than guess.
     smt = None
     if use_native:
+        _now_utc = dt.datetime.now(dt.timezone.utc)
+        _now = _now_utc.timestamp()
+        rows, anchor = [], None
+
+        # -- anchor 1: SESSION RANGE off the 1-minute tape (preferred). The
+        #    reference swings are the prior session's high/low of closes; the
+        #    sweep test is everything the current session has done so far.
         try:
-            from korvus_quotes import native_series
-            tapes = native_series([p for _, p in legs_map], seconds=3600)
+            from korvus_quotes import native_minute_series
+            _sw = _smt_session_windows(_now_utc)
         except Exception:
-            tapes = {}
-        _now = dt.datetime.now(dt.timezone.utc).timestamp()
-        _split = _now - 20 * 60
-        rows = []
-        for _sym, _root in legs_map:
-            pts = tapes.get(_root) or []
-            ref = [p for t, p in pts if t < _split]
-            rec = [p for t, p in pts if t >= _split]
-            if len(ref) >= 8 and len(rec) >= 4:
-                r_hi, r_lo = max(ref), min(ref)
-                c_hi, c_lo = max(rec), min(rec)
-                eps = r_hi * 0.0001
-                rows.append({"sym": _sym,
-                             "hh": c_hi > r_hi + eps, "ll": c_lo < r_lo - eps,
-                             "swing_hi": r_hi, "swing_lo": r_lo})
-        if len(rows) >= 2:
+            _sw = None
+        if _sw:
+            cur_name, cur_s, pri_name, pri_s, pri_e = _sw
+            try:
+                mtapes = native_minute_series([p for _, p in legs_map],
+                                              since_ts=pri_s - 120)
+            except Exception:
+                mtapes = {}
+            _need = max(30, int(((pri_e - pri_s) / 60) * 0.5))
+            for _sym, _root in legs_map:
+                pts = mtapes.get(_root) or []
+                ref = [p for t, p in pts if pri_s <= t < pri_e]
+                rec = [p for t, p in pts if t >= cur_s]
+                if len(ref) >= _need and len(rec) >= 3:
+                    r_hi, r_lo = max(ref), min(ref)
+                    eps = r_hi * 0.0001
+                    rows.append({"sym": _sym,
+                                 "hh": max(rec) > r_hi + eps,
+                                 "ll": min(rec) < r_lo - eps,
+                                 "swing_hi": r_hi, "swing_lo": r_lo})
+            if len(rows) >= 2:
+                anchor = {"name": pri_name,
+                          "hi_word": f"the {pri_name} high",
+                          "lo_word": f"the {pri_name} low",
+                          "range_word": f"the {pri_name} session range",
+                          "scope": f"the current {cur_name} session"}
+
+        # -- anchor 2: ROLLING HOUR off the fine tape (fallback for thin
+        #    session coverage: fresh restart, maintenance hour, weekend).
+        #    Reference = 60..20 minutes ago, sweep test = last 20 minutes.
+        if anchor is None:
+            rows = []
+            try:
+                from korvus_quotes import native_series
+                tapes = native_series([p for _, p in legs_map], seconds=3600)
+            except Exception:
+                tapes = {}
+            _split = _now - 20 * 60
+            for _sym, _root in legs_map:
+                pts = tapes.get(_root) or []
+                ref = [p for t, p in pts if t < _split]
+                rec = [p for t, p in pts if t >= _split]
+                if len(ref) >= 8 and len(rec) >= 4:
+                    r_hi, r_lo = max(ref), min(ref)
+                    eps = r_hi * 0.0001
+                    rows.append({"sym": _sym,
+                                 "hh": max(rec) > r_hi + eps,
+                                 "ll": min(rec) < r_lo - eps,
+                                 "swing_hi": r_hi, "swing_lo": r_lo})
+            if len(rows) >= 2:
+                anchor = {"name": "prior hour",
+                          "hi_word": "the prior-hour swing high",
+                          "lo_word": "the prior-hour swing low",
+                          "range_word": "the prior-hour range",
+                          "scope": "the last 20 minutes"}
+
+        # -- shared decision table: deterministic, verifiable against the chart
+        if anchor and len(rows) >= 2:
             def _px(v):
                 return f"{v:,.2f}"
             took_hi = [r for r in rows if r["hh"]]
@@ -709,48 +783,53 @@ def api_smt():
             held_lo = [r for r in rows if not r["ll"]]
             if took_hi and held_hi and took_lo and held_lo:
                 smt = {"state": "warn", "title": "Mixed SMT: sweeps on both sides",
-                       "note": ("Within the last 20 minutes the complexes have taken "
-                                "swings on BOTH sides of the prior hour's range without "
-                                "agreement. Two-way liquidity hunting, chop conditions. "
-                                "A reading, not a trade signal.")}
+                       "note": (f"Within {anchor['scope']} the complexes have taken "
+                                f"swings on BOTH sides of {anchor['range_word']} "
+                                "without agreement. Two-way liquidity hunting, chop "
+                                "conditions. A reading, not a trade signal.")}
             elif took_hi and held_hi:
-                a = " / ".join(r["sym"] for r in took_hi)
-                b = " / ".join(r["sym"] for r in held_hi)
+                a_s = " / ".join(r["sym"] for r in took_hi)
+                b_s = " / ".join(r["sym"] for r in held_hi)
                 smt = {"state": "warn",
-                       "title": f"Bearish SMT: {a} took the high, {b} did not confirm",
-                       "note": (f"{a} traded above its prior-hour swing high "
-                                f"({_px(took_hi[0]['swing_hi'])}) inside the last 20 minutes "
-                                f"while {b} held below its own "
+                       "title": f"Bearish SMT: {a_s} took {anchor['hi_word']}, {b_s} did not confirm",
+                       "note": (f"{a_s} traded above its {anchor['hi_word']} "
+                                f"({_px(took_hi[0]['swing_hi'])}) during {anchor['scope']} "
+                                f"while {b_s} held below its own "
                                 f"({_px(held_hi[0]['swing_hi'])}). Buy-side liquidity was "
                                 "swept without agreement across the complexes, the classic "
                                 "bearish smart-money divergence. A reading, not a trade "
                                 "signal.")}
             elif took_lo and held_lo:
-                a = " / ".join(r["sym"] for r in took_lo)
-                b = " / ".join(r["sym"] for r in held_lo)
+                a_s = " / ".join(r["sym"] for r in took_lo)
+                b_s = " / ".join(r["sym"] for r in held_lo)
                 smt = {"state": "warn",
-                       "title": f"Bullish SMT: {a} swept the low, {b} held",
-                       "note": (f"{a} traded below its prior-hour swing low "
-                                f"({_px(took_lo[0]['swing_lo'])}) inside the last 20 minutes "
-                                f"while {b} held above its own "
+                       "title": f"Bullish SMT: {a_s} swept {anchor['lo_word']}, {b_s} held",
+                       "note": (f"{a_s} traded below its {anchor['lo_word']} "
+                                f"({_px(took_lo[0]['swing_lo'])}) during {anchor['scope']} "
+                                f"while {b_s} held above its own "
                                 f"({_px(held_lo[0]['swing_lo'])}). Sell-side liquidity was "
                                 "swept without agreement, the classic bullish smart-money "
                                 "divergence. A reading, not a trade signal.")}
             elif len(took_hi) == len(rows):
-                smt = {"state": "ok", "title": "Confirming: highs taken together",
-                       "note": ("Each complex has taken out its prior-hour swing high in "
+                smt = {"state": "ok",
+                       "title": f"Confirming: {anchor['hi_word']} taken together",
+                       "note": (f"Each complex has taken out {anchor['hi_word']} in "
                                 "agreement. Aligned expansion, no divergence.")}
             elif len(took_lo) == len(rows):
-                smt = {"state": "ok", "title": "Confirming: lows taken together",
-                       "note": ("Each complex has taken out its prior-hour swing low in "
+                smt = {"state": "ok",
+                       "title": f"Confirming: {anchor['lo_word']} taken together",
+                       "note": (f"Each complex has taken out {anchor['lo_word']} in "
                                 "agreement. Aligned weakness, no divergence.")}
             else:
                 lv = ", ".join(f"{r['sym']} {_px(r['swing_hi'])} / {_px(r['swing_lo'])}"
                                for r in rows)
-                smt = {"state": "ok", "title": "In range: no swing taken",
-                       "note": ("No complex has taken out its prior-hour swing high or "
-                                "low in the last 20 minutes, so there is no SMT divergence "
-                                f"to flag. Swing levels being watched: {lv}.")}
+                smt = {"state": "ok",
+                       "title": f"In range: {anchor['range_word']} holding",
+                       "note": (f"No complex has taken out {anchor['hi_word']} or "
+                                f"{anchor['lo_word']} during {anchor['scope']}, so there "
+                                f"is no SMT divergence to flag. Watching: {lv}.")}
+            if smt is not None:
+                smt["anchor"] = anchor["name"]
 
     # ---- verdict, computed honestly from the leg positions + direction ----
     valid = [l for l in legs if l["has_data"]]

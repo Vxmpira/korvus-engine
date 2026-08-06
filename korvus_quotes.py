@@ -552,6 +552,27 @@ def native_series(symbols, seconds=3600.0):
         return {}
 
 
+def native_minute_series(symbols, since_ts):
+    """1-minute close tape per CME root since `since_ts` (epoch), when the
+    licensed Databento feed is active; {} otherwise. Session-anchored SMT
+    swings read this. Cheap: a lock-guarded copy of the in-memory tape."""
+    if not native_futures():
+        return {}
+    try:
+        from korvus_databento import get_client
+    except Exception:
+        return {}
+    roots = [s for s in symbols if s in DATABENTO_FUT]
+    if not roots:
+        return {}
+    try:
+        client = get_client(DATABENTO_API_KEY)
+        client.start(sorted(DATABENTO_FUT))   # idempotent: stream starts once
+        return client.minute_series(roots, since_ts)
+    except Exception:
+        return {}
+
+
 # ---------------------------------------------------------------------------
 # Intraday series for the index tape charts.
 # The dedicated intraday-bar provider was retired. The tape now builds its
