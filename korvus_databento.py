@@ -272,15 +272,25 @@ class DatabentoMD:
                         out[k] = float(v)
                 return out
             sess_map = blob.get("settle_sess") or {}
-            expected = _last_completed_session_key(dt.datetime.now(dt.timezone.utc))
+            _now_utc = dt.datetime.now(dt.timezone.utc)
+            expected = _last_completed_session_key(_now_utc)
+            current  = _session_key(_now_utc)
+            # CME disseminates final settlement statistics at/after the 18:00 ET
+            # reopen, so a settle that BELONGS to the completed session can carry
+            # the NEXT session's stamp (its dissemination timestamp). Accept a
+            # stamp of the last completed OR the current session; both refer to
+            # the baseline for the session in progress. Only genuinely older
+            # stamps are stale. Strict equality here dropped a correct baseline
+            # at every boot and re-bought the statistics query to refetch it.
+            _valid = (expected, current)
             loaded = _clean(blob.get("settle"))
             for k in list(loaded.keys()):
                 stamp = sess_map.get(k)
                 if not isinstance(stamp, str):
                     print(f"  [db] cached settle for {k} has no session stamp: refetching baseline")
                     loaded.pop(k)
-                elif stamp != expected:
-                    print(f"  [db] cached settle for {k} is from {stamp}, expected {expected}: dropping stale baseline")
+                elif stamp not in _valid:
+                    print(f"  [db] cached settle for {k} is from {stamp}, expected {expected} or {current}: dropping stale baseline")
                     loaded.pop(k)
                 else:
                     self._settle_sess[k] = stamp
@@ -890,9 +900,13 @@ class DatabentoMD:
         if roots:
             # keep only roots we know are on this dataset
             self._roots = [r for r in roots if r in DATABENTO_ROOTS] or list(DATABENTO_ROOTS)
-        if self._running:
-            return
-        self._running = True
+        # The _running check-then-set must be atomic: two threads arriving
+        # together could otherwise both pass the check and spawn two stream
+        # threads inside one client (a second paid connection).
+        with self._lock:
+            if self._running:
+                return
+            self._running = True
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
@@ -995,10 +1009,20 @@ class DatabentoMD:
 _client: Optional[DatabentoMD] = None
 
 
+_client_lock = threading.Lock()
+
+
 def get_client(key: str = "") -> DatabentoMD:
+    """Process-wide singleton, double-check locked. Without the lock, the boot
+    warmer and the first HTTP request can race through `if _client is None`
+    in the same instant, each construct a client, and the loser's live stream
+    keeps running ORPHANED: an invisible second CME connection billing usage
+    forever. The boot log showed exactly that (every connect line doubled)."""
     global _client
     if _client is None:
-        _client = DatabentoMD(key or DATABENTO_API_KEY)
+        with _client_lock:
+            if _client is None:
+                _client = DatabentoMD(key or DATABENTO_API_KEY)
     return _client
 
 
