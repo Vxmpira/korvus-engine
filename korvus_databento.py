@@ -924,6 +924,29 @@ class DatabentoMD:
             except Exception:
                 pass
 
+    def status(self) -> dict:
+        """Operator telemetry for the admin console: is the licensed stream
+        live, at what bar granularity, how many roots are streaming, how many
+        settle baselines are primed, and how many seconds since the last tick.
+        Read-only and lock-guarded; safe to poll."""
+        now = time.time()
+        with self._lock:
+            roots_live = sorted(r for r, c in self._root_to_contract.items() if c)
+            settle_primed = sorted(k for k, v in self._settle.items() if v)
+            symbols = len(self._quotes)
+            last = self._last_recv
+        age = round(now - last, 1) if isinstance(last, (int, float)) else None
+        return {
+            "running": bool(self._running),
+            "schema": DATABENTO_SCHEMA,
+            "roots_live": roots_live,
+            "roots_count": len(roots_live),
+            "settle_primed": settle_primed,
+            "settle_count": len(settle_primed),
+            "symbols": symbols,
+            "last_tick_age_sec": age,
+        }
+
     def get(self, roots) -> dict:
         """Return {root: {price, chg_pct, high, low, open, prev_close}} for the
         requested roots, reading the latest snapshot (non-blocking)."""

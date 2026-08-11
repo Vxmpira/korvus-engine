@@ -26,7 +26,7 @@ import time
 import sqlite3
 import datetime as dt
 from functools import wraps
-from flask import Blueprint, abort, send_from_directory, jsonify
+from flask import Blueprint, abort, send_from_directory, jsonify, request
 from flask_login import current_user
 
 try:
@@ -204,4 +204,70 @@ def admin_stats():
         "env_file": _ENV_FILE or "(none found)",
         "cwd": os.getcwd(),
     }
+    # ---- live feed telemetry (Databento stream health) ---------------------
+    try:
+        from korvus_quotes import feed_status
+        out["feed"] = feed_status()
+    except Exception as e:
+        out["feed"] = {"error": str(e)}
+
     return jsonify(out)
+
+
+@korvus_admin.route("/api/admin/find-user")
+@admin_required
+def admin_find_user():
+    """Owner tool: look up accounts by username or email substring."""
+    q = (request.args.get("q") or "").strip()
+    if len(q) < 2:
+        return jsonify({"ok": True, "users": []})
+    try:
+        conn = _db()
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)")}
+        fields = ["username"]
+        for c in ("email", "tier", "created_at"):
+            if c in cols:
+                fields.append(c)
+        sel = ", ".join(fields)
+        like = f"%{q}%"
+        if "email" in cols:
+            where, params = "username LIKE ? OR email LIKE ?", (like, like)
+        else:
+            where, params = "username LIKE ?", (like,)
+        rows = conn.execute(
+            f"SELECT {sel} FROM users WHERE {where} ORDER BY username LIMIT 12",
+            params).fetchall()
+        return jsonify({"ok": True, "users": [dict(r) for r in rows]})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@korvus_admin.route("/api/admin/set-tier", methods=["POST"])
+@admin_required
+def admin_set_tier():
+    """Owner tool: promote/demote a single account between free and pro. Only
+    the tier column is touched; never deletes. Admin-gated and audited."""
+    data = request.get_json(silent=True) or {}
+    username = (data.get("username") or "").strip()
+    tier = (data.get("tier") or "").strip().lower()
+    if not username:
+        return jsonify({"ok": False, "error": "username required"}), 400
+    if tier not in ("free", "pro"):
+        return jsonify({"ok": False, "error": "tier must be free or pro"}), 400
+    try:
+        conn = _db()
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)")}
+        if "tier" not in cols:
+            return jsonify({"ok": False, "error": "users table has no tier column"}), 400
+        row = conn.execute("SELECT username, tier FROM users WHERE username = ?",
+                           (username,)).fetchone()
+        if not row:
+            return jsonify({"ok": False, "error": f"no user '{username}'"}), 404
+        old = row["tier"]
+        conn.execute("UPDATE users SET tier = ? WHERE username = ?", (tier, username))
+        conn.commit()
+        actor = getattr(current_user, "username", "?")
+        print(f"  [admin] {actor} set tier for {username}: {old} -> {tier}")
+        return jsonify({"ok": True, "username": username, "old": old, "new": tier})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500

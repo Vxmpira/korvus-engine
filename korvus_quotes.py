@@ -598,6 +598,28 @@ def native_minute_series(symbols, since_ts):
         return {}
 
 
+def feed_status():
+    """Feed telemetry for the admin console. When the licensed Databento feed
+    is active, returns its live status (running, schema, roots streaming, settle
+    primed, last-tick age); otherwise reports the configured proxy provider.
+    Read-only and safe to poll."""
+    try:
+        _fd = max(10, int(os.getenv("KORVUS_FREE_DELAY_MIN", "15") or 15))
+    except Exception:
+        _fd = 15
+    out = {"native": bool(native_futures()),
+           "provider": QUOTES_PROVIDER,
+           "free_delay_min": _fd}
+    if not native_futures():
+        return out
+    try:
+        from korvus_databento import get_client
+        out.update(get_client(DATABENTO_API_KEY).status())
+    except Exception as e:
+        out["error"] = str(e)
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Intraday series for the index tape charts.
 # The dedicated intraday-bar provider was retired. The tape now builds its
