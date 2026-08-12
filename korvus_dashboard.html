@@ -735,28 +735,63 @@
     header{gap:12px;padding:12px 16px;}
   }
 
+  /* mobile-only header controls: hamburger + slide-down menu. Hidden on
+     desktop, where every action lives directly in the header. */
+  .menubtn{display:none;align-items:center;justify-content:center;flex:none;
+    width:34px;height:30px;border:1px solid var(--line-soft);border-radius:10px;
+    background:transparent;color:var(--ink);cursor:pointer;padding:0;}
+  .menubtn svg{width:16px;height:16px;}
+  .menubtn .x{display:none;}
+  .menubtn.open .bars{display:none;}
+  .menubtn.open .x{display:block;}
+  .hbreak{display:none;}
+  .mobilemenu{display:none;}
+  .mobilemenu .mi{display:flex;align-items:center;gap:11px;padding:12px 13px;
+    border:1px solid var(--line-soft);border-radius:11px;text-decoration:none;
+    color:var(--ink);background:rgba(128,128,128,.08);
+    font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;}
+  .mobilemenu .mi svg{width:15px;height:15px;flex:none;opacity:.85;}
+  .mobilemenu .mi.owner{border-color:var(--crimson-line,rgba(255,45,143,.32));color:var(--crimson);}
+  .mobilemenu .mi:active{background:rgba(128,128,128,.16);}
+
   /* phones, clean, intentional two-row header (not a cramped single row) */
   @media (max-width: 640px){
-    header{flex-wrap:wrap;gap:10px;padding:12px 14px;align-items:center;}
-    .brand{flex:1 1 100%;}                  /* brand owns the top row */
+    /* Two deliberate rows. Row one: brand + theme + menu. Row two: session,
+       clock, live count. Every other action moves into the dropdown so the
+       header stops stacking pills four rows deep. */
+    header{flex-wrap:wrap;gap:10px 12px;padding:12px 14px;align-items:center;}
+    .brand{order:0;flex:1 1 auto;min-width:0;}
     .brand .mark{font-size:18px;}
     .brand .tagline{display:block;font-size:8px;letter-spacing:.16em;margin-top:4px;}
-    /* the spacer no longer pushes things around on mobile */
     .spacer{display:none;}
-    /* second row: a tidy, flush line of the key chips */
-    .discord,.sess,.clock,.logoutbtn,.members,.forexnav{order:2;}
-    .discord{display:inline-flex;}          /* ALWAYS visible, community link is crucial */
-    .forexnav{padding:5px 10px;font-size:10px;letter-spacing:.08em;}
-    .forexnav svg{width:13px;height:13px;}
-    .members{display:flex;}                 /* bring the live count back on phones too */
-    .sess,.clock{font-size:10px;}
+    .themetoggle{order:1;}
+    .menubtn{order:2;display:inline-flex;}
+    .hbreak{order:3;display:block;flex-basis:100%;height:0;}
+    .sess{order:4;font-size:10px;}
+    .clock{order:5;font-size:10px;}
     .clock small{font-size:8px;}
-    .logoutbtn{margin-left:auto;}           /* logout sits neatly at the right end */
+    .members{order:6;display:flex;margin-left:auto;}
+    /* everything else lives in the menu on phones; !important beats the
+       inline display the auth script sets on these buttons */
+    .heartbeat,.discord,.forexnav,.logoutbtn,.gopro,.ownerbtn{display:none !important;}
+    /* the dropdown itself: a full-width block under the header rows */
+    .mobilemenu{order:7;flex-basis:100%;flex-direction:column;gap:7px;
+      padding:10px 1px 3px;border-top:1px solid var(--line-soft);margin-top:4px;}
+    .mobilemenu.open{display:flex;}
 
-    /* ribbon: scroll horizontally, shrink items */
-    .fut{padding:9px 12px;gap:7px;}
+    /* ribbon: a real swipeable strip. Tiles keep their natural width and the
+       row scrolls with snap, instead of clipping at the viewport edge. */
+    .ribbon{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
+      scroll-snap-type:x proximity;}
+    .fut{flex:none;min-width:max-content;scroll-snap-align:start;padding:10px 14px;gap:7px;}
     .fut .sym{font-size:12px;}
     .fut .chg.big{font-size:13px;}
+    /* right-edge fade: the visual hint that more instruments sit off-screen */
+    .ribbonwrap::after{content:"";position:absolute;top:0;right:0;bottom:0;width:34px;
+      pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,0),rgba(0,0,0,.88));}
+    /* macro + session bands already scroll; natural-width items make the
+       swipe actually usable instead of crushing every factor to fit */
+    .mfac{flex:none;padding:8px 14px;}
 
     /* news cards: shrink rail + padding, keep readable */
     main{padding:10px;gap:12px;}
@@ -828,6 +863,11 @@
       <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.4M12 19v2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M2.6 12h2.4M19 12h2.4M4.6 19.4l1.7-1.7M17.7 6.3l1.7-1.7"/></svg>
       <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.2A7.6 7.6 0 0 1 9.8 4 7.6 7.6 0 1 0 20 14.2Z"/></svg>
     </button>
+    <button class="menubtn" id="menuBtn" type="button" title="Menu" aria-label="Open menu" aria-expanded="false">
+      <svg class="bars" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      <svg class="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <span class="hbreak" aria-hidden="true"></span>
     <div class="clock"><span id="clock">--:--:--</span><small>New York / ET</small></div>
     <a class="logoutbtn" href="/account" id="acctBtn" style="display:none;">Account</a>
     <a class="gopro" href="/upgrade" id="goProBtn" style="display:none;">⬆ Go Pro</a>
@@ -840,6 +880,31 @@
       Admin
     </a>
     <a class="logoutbtn" href="/logout" title="Log out" id="logoutBtn" style="display:none;">Log out</a>
+    <!-- phone dropdown: mirrors the header actions so nothing is lost when the
+         pills collapse. Owner and account items sync from the auth script. -->
+    <nav class="mobilemenu" id="mobileMenu" aria-label="Menu">
+      <a class="mi" href="https://discord.gg/ZXt7Hkq7fv" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.3 4.6A19 19 0 0 0 15.6 3l-.3.5a13 13 0 0 1 4 2 14 14 0 0 0-12.6 0 13 13 0 0 1 4-2L10.4 3a19 19 0 0 0-4.7 1.6C2.8 8.8 2 13 2.4 17.1a19 19 0 0 0 5.7 2.9l.5-.7a13 13 0 0 1-2-1l.4-.3a13.5 13.5 0 0 0 11.6 0l.4.3a13 13 0 0 1-2 1l.5.7a19 19 0 0 0 5.7-2.9C22 12.7 21.2 8.5 20.3 4.6ZM9 14.7c-.9 0-1.7-.8-1.7-1.9S8 11 9 11s1.7.8 1.7 1.9-.8 1.8-1.7 1.8Zm6 0c-.9 0-1.7-.8-1.7-1.9S14 11 15 11s1.7.8 1.7 1.9-.8 1.8-1.7 1.8Z"/></svg>
+        Eclipse-X Discord</a>
+      <a class="mi" href="/forex">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>
+        Forex News</a>
+      <a class="mi" href="/account" id="miAccount" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.2" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>
+        Account</a>
+      <a class="mi" href="/upgrade" id="miGoPro" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4.8 13.2H11L10 22l8.2-11.2H13z"/></svg>
+        Go Pro</a>
+      <a class="mi owner" href="/agent" id="miPromo" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.1 5.4L19.8 9l-4.4 3.6L16.8 19 12 15.7 7.2 19l1.4-6.4L4.2 9l5.7-.6z"/></svg>
+        Promo Studio</a>
+      <a class="mi owner" href="/admin" id="miAdmin" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M5.5 18.5l2.1-2.1M16.4 7.6l2.1-2.1"/></svg>
+        Admin Console</a>
+      <a class="mi" href="/logout" id="miLogout" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l5-5-5-5M15 12H3"/></svg>
+        Log out</a>
+    </nav>
   </header>
 
   <!-- FUTURES BOARD, more instruments -->
@@ -1692,9 +1757,38 @@ async function loadMe(){
       setTierLabel();
       setImportLock();
       setFeedBadge(_futuresStateET());
+      syncMobileMenu();
     }
   }catch(e){/* ignore */}
 }
+// Mirror the header buttons' auth-driven visibility into the phone dropdown.
+// The header buttons stay the single source of truth; the menu just reflects
+// their inline display so owner and tier gating never needs a second code path.
+function syncMobileMenu(){
+  var map = {acctBtn:'miAccount', goProBtn:'miGoPro', promoBtn:'miPromo',
+             adminBtn:'miAdmin', logoutBtn:'miLogout'};
+  Object.keys(map).forEach(function(src){
+    var a = document.getElementById(src), b = document.getElementById(map[src]);
+    if(a && b) b.style.display = (!a.style.display || a.style.display === 'none') ? 'none' : 'flex';
+  });
+}
+// Phone dropdown open/close. Closes on any link tap or a tap outside.
+(function(){
+  var b = document.getElementById('menuBtn'), m = document.getElementById('mobileMenu');
+  if(!b || !m) return;
+  function set(open){
+    m.classList.toggle('open', open);
+    b.classList.toggle('open', open);
+    b.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  b.addEventListener('click', function(e){ e.stopPropagation(); set(!m.classList.contains('open')); });
+  m.addEventListener('click', function(e){ if(e.target.closest('a')) set(false); });
+  document.addEventListener('click', function(e){
+    if(!m.classList.contains('open')) return;
+    if(m.contains(e.target) || b.contains(e.target)) return;
+    set(false);
+  });
+})();
 // Lock glyph shown on the Import control for free users (Pro-only feature).
 const LOCK_SVG = '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" '
   + 'xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
@@ -2083,9 +2177,18 @@ setInterval(loadContextBands, 30000);
     for(var j=0;j<levels.length && el.scrollWidth > el.clientWidth + 1;j++) el.classList.add(levels[j]);
   }
   function fitBands(){
-    fit(document.querySelector('.ribbon'), ['fit1','fit2','fit3']);
-    var mf=document.getElementById('macroFacs');
-    fit(mf ? mf.closest('.ctxband') : null, ['fitm1','fitm2']);
+    var rb = document.querySelector('.ribbon');
+    var mf = document.getElementById('macroFacs');
+    var band = mf ? mf.closest('.ctxband') : null;
+    // Phones scroll these rows instead of compressing them, so strip any fit
+    // classes and keep every tile at full detail.
+    if(window.matchMedia && window.matchMedia('(max-width: 640px)').matches){
+      if(rb) ['fit1','fit2','fit3'].forEach(function(c){ rb.classList.remove(c); });
+      if(band) ['fitm1','fitm2'].forEach(function(c){ band.classList.remove(c); });
+      return;
+    }
+    fit(rb, ['fit1','fit2','fit3']);
+    fit(band, ['fitm1','fitm2']);
   }
   var rz; window.addEventListener('resize', function(){ clearTimeout(rz); rz=setTimeout(fitBands,80); });
   if(window.MutationObserver){
