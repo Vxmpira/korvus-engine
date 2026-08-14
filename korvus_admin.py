@@ -22,6 +22,7 @@ are never read.
 """
 
 import os
+import json
 import time
 import sqlite3
 import datetime as dt
@@ -220,6 +221,57 @@ def admin_stats():
     except Exception as e:
         out["feed"] = {"error": str(e)}
 
+    # ---- news engine health (heartbeat file + scoring throughput) ----------
+    eng = {}
+    try:
+        hb_path = os.path.join(os.path.dirname(DB_PATH), "engine_status.json")
+        if os.path.exists(hb_path):
+            with open(hb_path) as f:
+                hb = json.load(f)
+            eng.update(hb)
+            try:
+                ts = dt.datetime.fromisoformat(hb.get("ts", ""))
+                now = dt.datetime.now(dt.timezone.utc)
+                if ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=dt.timezone.utc)
+                eng["heartbeat_age_sec"] = round((now - ts).total_seconds())
+            except Exception:
+                eng["heartbeat_age_sec"] = None
+        else:
+            eng["heartbeat_age_sec"] = None
+    except Exception as e:
+        eng["error"] = str(e)
+    try:
+        conn = _db()
+        now = dt.datetime.now(dt.timezone.utc)
+        h1 = (now - dt.timedelta(hours=1)).isoformat()
+        h24 = (now - dt.timedelta(hours=24)).isoformat()
+        eng["items_1h"] = conn.execute(
+            "SELECT COUNT(*) c FROM items WHERE created_at >= ?", (h1,)).fetchone()["c"]
+        eng["items_24h"] = conn.execute(
+            "SELECT COUNT(*) c FROM items WHERE created_at >= ?", (h24,)).fetchone()["c"]
+        eng["by_impact_24h"] = {r["impact"]: r["c"] for r in conn.execute(
+            "SELECT impact, COUNT(*) c FROM items "
+            "WHERE created_at >= ? AND noise = 0 AND impact IS NOT NULL "
+            "GROUP BY impact", (h24,))}
+        eng["noise_24h"] = conn.execute(
+            "SELECT COUNT(*) c FROM items WHERE created_at >= ? AND noise = 1",
+            (h24,)).fetchone()["c"]
+        last = conn.execute(
+            "SELECT created_at FROM items ORDER BY created_at DESC LIMIT 1").fetchone()
+        if last:
+            try:
+                ts = dt.datetime.fromisoformat(last["created_at"])
+                if ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=dt.timezone.utc)
+                eng["last_item_age_sec"] = round((now - ts).total_seconds())
+            except Exception:
+                eng["last_item_age_sec"] = None
+        conn.close()
+    except Exception as e:
+        eng.setdefault("error", str(e))
+    out["engine"] = eng
+
     return jsonify(out)
 
 
@@ -294,3 +346,88 @@ def admin_set_tier():
                 conn.close()
             except Exception:
                 pass
+
+
+@korvus_admin.route("/api/admin/stripe-status")
+@admin_required
+def admin_stripe_status():
+    """Owner tool: live Stripe subscription status for one member, fetched from
+    Stripe's API on demand (not from cached webhook state), plus a deep link to
+    the customer in the Stripe dashboard. Read-only against Stripe."""
+    username = (request.args.get("username") or "").strip()
+    if not username:
+        return jsonify({"ok": False, "error": "username required"}), 400
+    try:
+        import korvus_auth as auth
+        import korvus_billing as billing
+        user = auth.get_user_by_username(username)
+        if not user:
+            return jsonify({"ok": False, "error": f"no user '{username}'"}), 404
+        cid = (user.get("stripe_customer_id") or "").strip()
+        if not cid:
+            return jsonify({"ok": True, "linked": False, "username": username})
+        st = billing._stripe()
+        if st is None:
+            return jsonify({"ok": False, "error": "Stripe is not configured on this server"}), 500
+        test_mode = billing.STRIPE_SECRET_KEY.startswith("sk_test")
+        dash = ("https://dashboard.stripe.com/test/customers/" if test_mode
+                else "https://dashboard.stripe.com/customers/") + cid
+        subs = st.Subscription.list(customer=cid, status="all", limit=5).get("data", [])
+        if not subs:
+            return jsonify({"ok": True, "linked": True, "username": username,
+                            "customer_id": cid, "dashboard_url": dash,
+                            "subscription": None})
+        # prefer a live subscription; otherwise the most recently created one
+        rank = {"active": 0, "trialing": 1, "past_due": 2, "unpaid": 3}
+        subs.sort(key=lambda x: (rank.get(x.get("status"), 9), -(x.get("created") or 0)))
+        sub = subs[0]
+        price, amount, currency, interval = None, None, None, None
+        try:
+            price = sub["items"]["data"][0]["price"]
+            amount = (price.get("unit_amount") or 0) / 100.0
+            currency = (price.get("currency") or "usd").upper()
+            interval = ((price.get("recurring") or {}).get("interval") or "")
+        except Exception:
+            pass
+        cpe = sub.get("current_period_end")
+        return jsonify({"ok": True, "linked": True, "username": username,
+                        "customer_id": cid, "dashboard_url": dash,
+                        "subscription": {
+                            "status": sub.get("status"),
+                            "cancel_at_period_end": bool(sub.get("cancel_at_period_end")),
+                            "current_period_end": (
+                                dt.datetime.fromtimestamp(cpe, dt.timezone.utc).isoformat()
+                                if cpe else None),
+                            "amount": amount, "currency": currency,
+                            "interval": interval}})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@korvus_admin.route("/api/admin/send-reset", methods=["POST"])
+@admin_required
+def admin_send_reset():
+    """Owner tool: fire the existing password-reset email flow for a member who
+    is locked out. Reuses the exact token + SES path the public /forgot form
+    uses; nothing new touches passwords here."""
+    data = request.get_json(silent=True) or {}
+    username = (data.get("username") or "").strip()
+    if not username:
+        return jsonify({"ok": False, "error": "username required"}), 400
+    try:
+        import korvus_auth as auth
+        user = auth.get_user_by_username(username)
+        if not user:
+            return jsonify({"ok": False, "error": f"no user '{username}'"}), 404
+        email = (user.get("email") or "").strip()
+        if not email:
+            return jsonify({"ok": False, "error": f"'{username}' has no email on file"}), 400
+        token, em = auth.create_reset_token(email)
+        if not token:
+            return jsonify({"ok": False, "error": "could not issue a reset token"}), 500
+        auth.send_reset_email(em, token)
+        actor = getattr(current_user, "username", "?")
+        print(f"  [admin] {actor} sent password reset to {username} <{em}>")
+        return jsonify({"ok": True, "username": username, "email": em})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500

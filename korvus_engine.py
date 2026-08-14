@@ -129,6 +129,25 @@ SUBREDDITS = ["wallstreetbets", "stocks", "options", "futures", "Daytrading"]
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "korvus.db")
 
+# Heartbeat file the admin console reads for News Engine health. Written
+# atomically at the end of every pass (and on pass errors), so the web app can
+# tell a healthy engine from a stalled or crashing one without touching this
+# process. Lives next to korvus.db so both services agree on the path.
+STATUS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "engine_status.json")
+
+
+def _write_status(d: dict):
+    """Atomic, best-effort heartbeat write. Never allowed to break a pass."""
+    try:
+        d.setdefault("ts", dt.datetime.now(dt.timezone.utc).isoformat())
+        d.setdefault("poll_minutes", POLL_MINUTES)
+        tmp = STATUS_PATH + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(d, f)
+        os.replace(tmp, STATUS_PATH)
+    except Exception:
+        pass
+
 
 # ----------------------------------------------------------------------------
 # DATABASE  - one table, "items". Dead simple and easy to read from the UI.
@@ -685,8 +704,10 @@ def process_unscored(conn, client, limit: int = 40):
 # ----------------------------------------------------------------------------
 def run_once():
     print(f"\n=== KORVUS pass @ {dt.datetime.now().strftime('%I:%M:%S %p')} ===")
+    t0 = time.time()
     if not ANTHROPIC_API_KEY:
         print("  !! ANTHROPIC_API_KEY is missing - add it to .env. Aborting pass.")
+        _write_status({"ok": False, "last_error": "ANTHROPIC_API_KEY missing"})
         return
 
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -708,12 +729,24 @@ def run_once():
     print(f"  [store] {new_count} new item(s) saved (of {len(pulled)} pulled)")
 
     # 3) let Claude score anything unscored
+    backlog_before = conn.execute(
+        "SELECT COUNT(*) AS c FROM items WHERE processed = 0").fetchone()["c"]
     process_unscored(conn, client)
+    backlog_after = conn.execute(
+        "SELECT COUNT(*) AS c FROM items WHERE processed = 0").fetchone()["c"]
+    scored = max(0, backlog_before - backlog_after)
 
     # 4) quick tally
     total = conn.execute("SELECT COUNT(*) AS c FROM items").fetchone()["c"]
     print(f"  [db] korvus.db now holds {total} item(s)")
     conn.close()
+
+    # heartbeat for the admin console: this pass completed cleanly
+    _write_status({"ok": True, "pulled": len(pulled), "new": new_count,
+                   "scored": scored, "backlog": backlog_after,
+                   "total_items": total,
+                   "duration_sec": round(time.time() - t0, 1),
+                   "last_error": None})
 
     # forex Discord: daily agenda (once ~1 AM ET) + new actuals as they print,
     # wrapped so a Discord hiccup never breaks the news pass.
@@ -751,6 +784,7 @@ def main():
                 sys.exit(0)
             except Exception as e:
                 print(f"  !! pass error: {e}")
+                _write_status({"ok": False, "last_error": str(e)})
             time.sleep(POLL_MINUTES * 60)
     else:
         run_once()

@@ -213,7 +213,20 @@
   .urow .tbtn.free:hover{color:var(--ink);border-color:var(--line-3);}
   .urow .tbtn.pro:hover{filter:brightness(1.08);}
   .btn.ic{padding:8px 10px;}
-  @media(max-width:640px){ .urow{flex-wrap:wrap;} .urow .uem{flex-basis:100%;order:3;} }
+  .urow .tbtn.ghost{background:transparent;color:var(--ink-dim);}
+  .urow .tbtn.ghost:hover{color:var(--ink);border-color:var(--line-3);}
+  .udetail{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 14px;margin-top:-4px;
+    background:var(--surface-2);border:1px solid var(--line);border-top:none;
+    border-radius:0 0 9px 9px;font-size:12px;}
+  .udetail .dim{color:var(--ink-faint);}
+  .udetail .err{color:#ffb3d4;}
+  .udetail .slink{margin-left:auto;color:var(--crimson);text-decoration:none;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;}
+  .schip{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+    padding:4px 9px;border-radius:6px;border:1px solid var(--line-2);color:var(--ink-dim);}
+  .schip.live{color:var(--bull);border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.08);}
+  .schip.due{color:var(--warn);border-color:rgba(245,165,36,.4);background:rgba(245,165,36,.08);}
+  @media(max-width:640px){ .urow{flex-wrap:wrap;} .urow .uem{flex-basis:100%;order:3;} .udetail .slink{margin-left:0;} }
 </style>
 </head>
 <body>
@@ -326,7 +339,7 @@ function render(stats, online, health){
   html += '</div></section>';
 
   // FEED HEALTH
-  html += renderFeed(stats.feed||{}, st, health);
+  html += renderFeed(stats.feed||{}, st, stats.engine||{});
 
   // MEMBERS
   html += '<section id="members"><div class="shead"><h2>Members</h2><p>Paid operators and the newest accounts.</p></div><div class="grid2">';
@@ -359,7 +372,7 @@ function render(stats, online, health){
 }
 
 function fmetric(k,v,sub){ return '<div class="fm"><div class="fmk">'+esc(k)+'</div><div class="fmv tnum">'+esc(v)+'</div>'+(sub?'<div class="fms">'+esc(sub)+'</div>':'')+'</div>'; }
-function renderFeed(f, st, health){
+function renderFeed(f, st, eng){
   let k='info', title='Proxy feed', sub='ETF proxies via '+esc(f.provider||'-');
   if(f.native){
     const sch = f.schema==='ohlcv-1s' ? 'Second-by-second (1s bars)' : (f.schema==='ohlcv-1m' ? 'Once a minute (1m bars)' : (f.schema||'-'));
@@ -378,6 +391,7 @@ function renderFeed(f, st, health){
   h+=fmetric('Provider', f.provider||'-');
   h+=fmetric('Free delay', f.free_delay_min!=null?(f.free_delay_min+' min'):'-');
   h+='</div></div>';
+  h+=renderEngine(eng);
   h+='<div class="statgrid" style="margin-top:14px">';
   h+=srow("ok","server","online · up "+uptime(st.server_uptime_seconds));
   h+=srow(st.db_present?"ok":"bad","database",st.db_present?"present":"missing");
@@ -386,8 +400,37 @@ function renderFeed(f, st, health){
   h+=srow("info","quotes provider",st.quotes_provider);
   h+=srow("info","news provider",st.news_provider);
   h+=srow("info","email",st.email_provider);
-  if(health && health.last_update) h+=srow("info","engine last run", health.last_update);
   h+='</div></section>';
+  return h;
+}
+
+function ago(sec){
+  if(sec==null) return '-';
+  if(sec<90) return sec+'s ago';
+  if(sec<5400) return Math.round(sec/60)+'m ago';
+  return (sec/3600).toFixed(1)+'h ago';
+}
+function renderEngine(e){
+  const pm = e.poll_minutes || 5;
+  const age = e.heartbeat_age_sec;
+  let k='bad', title='No heartbeat', sub='engine down, or heartbeat not deployed yet';
+  if(e.error){ k='bad'; title='Error'; sub=esc(e.error); }
+  else if(age!=null && e.ok===false){ k='bad'; title='Pass failing'; sub=esc(e.last_error||'last pass errored'); }
+  else if(age!=null && age < pm*150){ k='ok'; title='Live'; sub='scoring pass every '+pm+' min'; }
+  else if(age!=null && age < pm*360){ k='warn'; title='Slow'; sub='last pass '+ago(age)+', expected every '+pm+' min'; }
+  else if(age!=null){ k='bad'; title='Stalled'; sub='last pass '+ago(age); }
+  const bi = e.by_impact_24h||{};
+  let h='<div class="card pad feed" style="margin-top:14px">';
+  h+='<div class="fstat '+k+'"><span class="fdot"></span><div><div class="ft">News Engine · '+esc(title)+'</div><div class="fsub">'+sub+'</div></div></div>';
+  h+='<div class="fmetrics">';
+  h+=fmetric('Last pass', ago(age), e.duration_sec!=null?('ran '+e.duration_sec+'s'):'');
+  h+=fmetric('Pulled · new', (e.pulled!=null?e.pulled:'-')+' / '+(e.new!=null?e.new:'-'), 'last pass');
+  h+=fmetric('Scored', e.scored!=null?e.scored:'-', 'last pass');
+  h+=fmetric('Backlog', e.backlog!=null?e.backlog:'-', 'awaiting scoring');
+  h+=fmetric('Items · 24h', e.items_24h!=null?e.items_24h:'-', 'H '+(bi.high||0)+' · M '+(bi.med||0)+' · L '+(bi.low||0));
+  h+=fmetric('Noise · 24h', e.noise_24h!=null?e.noise_24h:'-', 'filtered from feed');
+  h+=fmetric('Last item', ago(e.last_item_age_sec));
+  h+='</div></div>';
   return h;
 }
 
@@ -413,7 +456,11 @@ async function findUser(){
     if(!r.ok){ box.innerHTML='<div class="thint err">'+esc(r.error||'lookup failed')+'</div>'; return; }
     if(!r.users.length){ box.innerHTML='<div class="thint">No accounts match "'+esc(q)+'".</div>'; return; }
     box.innerHTML=r.users.map(userRow).join('');
-    box.querySelectorAll('.tbtn').forEach(b=>b.addEventListener('click',()=>setTier(b.dataset.u,b.dataset.t)));
+    box.querySelectorAll('.tbtn').forEach(b=>{
+      if(b.classList.contains('sbtn')) b.addEventListener('click',()=>stripeInfo(b));
+      else if(b.classList.contains('rbtn')) b.addEventListener('click',()=>sendReset(b.dataset.u));
+      else b.addEventListener('click',()=>setTier(b.dataset.u,b.dataset.t));
+    });
   }catch(e){ box.innerHTML='<div class="thint err">'+esc(e.message||e)+'</div>'; }
 }
 function userRow(m){
@@ -422,7 +469,49 @@ function userRow(m){
   return '<div class="urow"><span class="mono uname">'+esc(m.username)+'</span>'+
     '<span class="mono uem">'+esc(m.email||'')+'</span>'+
     '<span class="tier '+tier+'">'+esc(tier)+'</span>'+
+    '<button class="tbtn ghost sbtn" data-u="'+uAttr+'">Stripe</button>'+
+    '<button class="tbtn ghost rbtn" data-u="'+uAttr+'">Reset</button>'+
     '<button class="tbtn '+to+'" data-u="'+uAttr+'" data-t="'+to+'">Make '+(to==='pro'?'Pro':'Free')+'</button></div>';
+}
+async function stripeInfo(btn){
+  const row = btn.closest('.urow'); if(!row) return;
+  // toggle: a second click collapses the detail line
+  if(row.nextElementSibling && row.nextElementSibling.classList.contains('udetail')){
+    row.nextElementSibling.remove(); return;
+  }
+  const d = document.createElement('div');
+  d.className='udetail'; d.innerHTML='<span class="mono">Checking Stripe\u2026</span>';
+  row.after(d);
+  try{
+    const r = await fetch('/api/admin/stripe-status?username='+encodeURIComponent(btn.dataset.u),
+      {cache:'no-store',credentials:'same-origin'}).then(r=>r.json());
+    if(!r.ok){ d.innerHTML='<span class="mono err">'+esc(r.error||'lookup failed')+'</span>'; return; }
+    if(!r.linked){ d.innerHTML='<span class="mono dim">No Stripe customer linked, this member has never opened checkout.</span>'; return; }
+    let h='';
+    if(!r.subscription){
+      h+='<span class="schip none">no subscription</span>';
+      h+='<span class="mono dim">customer exists, never subscribed or fully expired</span>';
+    }else{
+      const sb=r.subscription, cls=(sb.status==='active'||sb.status==='trialing')?'live':(sb.status==='past_due'||sb.status==='unpaid')?'due':'off';
+      h+='<span class="schip '+cls+'">'+esc(sb.status)+(sb.cancel_at_period_end?' · cancels':'')+'</span>';
+      if(sb.amount!=null && sb.interval) h+='<span class="mono">'+esc('$'+sb.amount+' / '+sb.interval)+'</span>';
+      if(sb.current_period_end){
+        const dte=new Date(sb.current_period_end);
+        h+='<span class="mono dim">'+(sb.cancel_at_period_end||sb.status==='canceled'?'ends ':'renews ')+dte.toLocaleDateString()+'</span>';
+      }
+    }
+    h+='<a class="slink" href="'+esc(r.dashboard_url)+'" target="_blank" rel="noopener noreferrer">Open in Stripe \u27f6</a>';
+    d.innerHTML=h;
+  }catch(e){ d.innerHTML='<span class="mono err">'+esc(e.message||e)+'</span>'; }
+}
+async function sendReset(username){
+  if(!confirm('Email a password reset link to '+username+'?')) return;
+  try{
+    const r = await fetch('/api/admin/send-reset',{method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({username:username})}).then(r=>r.json());
+    if(!r.ok){ alert('Failed: '+(r.error||'unknown')); return; }
+    alert('Reset link sent to '+r.email);
+  }catch(e){ alert('Error: '+(e.message||e)); }
 }
 async function setTier(username, tier){
   if(!confirm('Set '+username+' to '+tier.toUpperCase()+'?')) return;
