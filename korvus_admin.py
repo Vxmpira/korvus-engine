@@ -106,6 +106,15 @@ def _db():
     return conn
 
 
+def _db_rw():
+    # write-capable, but mode=rw (not rwc) keeps the same guarantee as _db():
+    # if DB_PATH is wrong this fails loudly instead of creating an empty file.
+    # The busy timeout rides out a concurrent write from auth or the engine.
+    conn = sqlite3.connect(f"file:{DB_PATH}?mode=rw", uri=True, timeout=5)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
 @korvus_admin.route("/api/admin/stats")
 @admin_required
 def admin_stats():
@@ -221,6 +230,7 @@ def admin_find_user():
     q = (request.args.get("q") or "").strip()
     if len(q) < 2:
         return jsonify({"ok": True, "users": []})
+    conn = None
     try:
         conn = _db()
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)")}
@@ -240,6 +250,12 @@ def admin_find_user():
         return jsonify({"ok": True, "users": [dict(r) for r in rows]})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 
 @korvus_admin.route("/api/admin/set-tier", methods=["POST"])
@@ -254,8 +270,9 @@ def admin_set_tier():
         return jsonify({"ok": False, "error": "username required"}), 400
     if tier not in ("free", "pro"):
         return jsonify({"ok": False, "error": "tier must be free or pro"}), 400
+    conn = None
     try:
-        conn = _db()
+        conn = _db_rw()
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)")}
         if "tier" not in cols:
             return jsonify({"ok": False, "error": "users table has no tier column"}), 400
@@ -271,3 +288,9 @@ def admin_set_tier():
         return jsonify({"ok": True, "username": username, "old": old, "new": tier})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
