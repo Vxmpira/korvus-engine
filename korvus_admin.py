@@ -359,6 +359,32 @@ def admin_set_tier():
                 pass
 
 
+def _sv(obj, key, default=None):
+    """Version-proof Stripe field read. Stripe's Python library has shifted
+    between dict-like objects and typed attribute objects across major
+    versions, so this tries attribute access first, then dict-style get, then
+    item access, and never raises. Returns default for missing/None values."""
+    try:
+        v = getattr(obj, key)
+        if v is not None:
+            return v
+    except Exception:
+        pass
+    try:
+        v = obj.get(key)
+        if v is not None:
+            return v
+    except Exception:
+        pass
+    try:
+        v = obj[key]
+        if v is not None:
+            return v
+    except Exception:
+        pass
+    return default
+
+
 @korvus_admin.route("/api/admin/stripe-status")
 @admin_required
 def admin_stripe_status():
@@ -385,40 +411,45 @@ def admin_stripe_status():
                 else "https://dashboard.stripe.com/customers/") + cid
         invoices = []
         try:
-            for iv in st.Invoice.list(customer=cid, limit=5).get("data", []):
+            _inv = st.Invoice.list(customer=cid, limit=5)
+            for iv in (_sv(_inv, "data", []) or []):
+                _crt = _sv(iv, "created")
+                _amt = _sv(iv, "amount_paid") or _sv(iv, "amount_due") or 0
                 invoices.append({
-                    "created": (dt.datetime.fromtimestamp(iv.get("created"),
-                                dt.timezone.utc).isoformat()
-                                if iv.get("created") else None),
-                    "amount": (iv.get("amount_paid") if iv.get("amount_paid")
-                               else iv.get("amount_due") or 0) / 100.0,
-                    "status": iv.get("status")})
+                    "created": (dt.datetime.fromtimestamp(_crt, dt.timezone.utc).isoformat()
+                                if _crt else None),
+                    "amount": _amt / 100.0,
+                    "status": _sv(iv, "status")})
         except Exception:
             pass
-        subs = st.Subscription.list(customer=cid, status="all", limit=5).get("data", [])
+        _subresp = st.Subscription.list(customer=cid, status="all", limit=5)
+        subs = list(_sv(_subresp, "data", []) or [])
         if not subs:
             return jsonify({"ok": True, "linked": True, "username": username,
                             "customer_id": cid, "dashboard_url": dash,
                             "invoices": invoices, "subscription": None})
         # prefer a live subscription; otherwise the most recently created one
         rank = {"active": 0, "trialing": 1, "past_due": 2, "unpaid": 3}
-        subs.sort(key=lambda x: (rank.get(x.get("status"), 9), -(x.get("created") or 0)))
+        subs.sort(key=lambda x: (rank.get(_sv(x, "status"), 9),
+                                 -(_sv(x, "created", 0) or 0)))
         sub = subs[0]
-        price, amount, currency, interval = None, None, None, None
+        amount, currency, interval = None, None, None
         try:
-            price = sub["items"]["data"][0]["price"]
-            amount = (price.get("unit_amount") or 0) / 100.0
-            currency = (price.get("currency") or "usd").upper()
-            interval = ((price.get("recurring") or {}).get("interval") or "")
+            _idata = _sv(_sv(sub, "items"), "data", []) or []
+            price = _sv(_idata[0], "price") if _idata else None
+            if price is not None:
+                amount = (_sv(price, "unit_amount") or 0) / 100.0
+                currency = str(_sv(price, "currency") or "usd").upper()
+                interval = str(_sv(_sv(price, "recurring") or {}, "interval") or "")
         except Exception:
             pass
-        cpe = sub.get("current_period_end")
+        cpe = _sv(sub, "current_period_end")
         return jsonify({"ok": True, "linked": True, "username": username,
                         "customer_id": cid, "dashboard_url": dash,
                         "invoices": invoices,
                         "subscription": {
-                            "status": sub.get("status"),
-                            "cancel_at_period_end": bool(sub.get("cancel_at_period_end")),
+                            "status": _sv(sub, "status"),
+                            "cancel_at_period_end": bool(_sv(sub, "cancel_at_period_end")),
                             "current_period_end": (
                                 dt.datetime.fromtimestamp(cpe, dt.timezone.utc).isoformat()
                                 if cpe else None),
