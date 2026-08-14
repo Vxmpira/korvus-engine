@@ -311,6 +311,16 @@ def api_reset():
     return (jsonify({"ok": ok, "message": msg}), 200 if ok else 400)
 
 
+def _free_preview() -> bool:
+    """True while the owner's admin 'free-tier preview' switch is on for this
+    browser session. Every tier decision below treats the session as free, so
+    the owner sees exactly what free members see. Server-side only."""
+    try:
+        return bool(session.get("korvus_free_preview"))
+    except Exception:
+        return False
+
+
 @app.route("/api/me")
 def api_me():
     """Lets the dashboard / account page know who's logged in, their tier,
@@ -330,16 +340,17 @@ def api_me():
         return jsonify({"auth": True,
                         "username": u.get("username"),
                         "email": u.get("email"),
-                        "tier": u.get("tier"),
+                        "tier": ("free" if _free_preview() else u.get("tier")),
                         "verified": bool(u.get("email_verified")),
                         "subscription_status": u.get("subscription_status"),
                         "current_period_end": u.get("current_period_end"),
                         "alert_opt_in": int(u.get("alert_opt_in") if u.get("alert_opt_in") is not None else 1),
                         "is_owner": bool(TRADOVATE_OWNER and u.get("username") == TRADOVATE_OWNER),
                         "native_futures": _native_fut,
-                        "realtime": bool(_native_fut and (
+                        "realtime": bool(_native_fut and (not _free_preview()) and (
                             (u.get("tier") == "pro")
                             or (u.get("username") in ADMIN_USERNAMES))),
+                        "preview_free": _free_preview(),
                         "billing_enabled": billing.billing_enabled(),
                         "price_display": billing.price_display(),
                         "yearly_enabled": billing.yearly_enabled(),
@@ -545,7 +556,9 @@ def api_quotes():
 
     is_owner = (current_user.is_authenticated
                 and current_user.username in ADMIN_USERNAMES)
-    is_pro = current_user.is_authenticated and (current_user.tier == "pro" or is_owner)
+    is_pro = (current_user.is_authenticated
+              and (current_user.tier == "pro" or is_owner)
+              and not _free_preview())
     # free/logged-out -> force delayed feed regardless of the configured provider
     data = get_quotes(symbols, force_delayed=not is_pro)
     meta = data.pop("_meta", {})
@@ -576,7 +589,8 @@ def api_intraday():
     if not symbols:
         return jsonify({"_meta": {}})
 
-    is_pro = current_user.is_authenticated and current_user.tier == "pro"
+    is_pro = (current_user.is_authenticated and current_user.tier == "pro"
+              and not _free_preview())
     data = get_intraday(symbols, force_delayed=not is_pro)
     meta = data.pop("_meta", {}) or {}
     meta["tier"] = "pro" if is_pro else "free"
@@ -630,7 +644,9 @@ def api_smt():
 
     is_owner = (current_user.is_authenticated
                 and current_user.username in ADMIN_USERNAMES)
-    is_pro = current_user.is_authenticated and (current_user.tier == "pro" or is_owner)
+    is_pro = (current_user.is_authenticated
+              and (current_user.tier == "pro" or is_owner)
+              and not _free_preview())
     # Pro / owner on the live CME feed reads the REAL contracts (MNQ/MES/MYM),
     # which trade nearly 24h, so divergence is valid overnight too. Free / proxy
     # mode keeps the ETF proxies (QQQ/SPY/DIA), which only trade US regular hours.

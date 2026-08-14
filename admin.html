@@ -226,6 +226,32 @@
     padding:4px 9px;border-radius:6px;border:1px solid var(--line-2);color:var(--ink-dim);}
   .schip.live{color:var(--bull);border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.08);}
   .schip.due{color:var(--warn);border-color:rgba(245,165,36,.4);background:rgba(245,165,36,.08);}
+  .urow .uname{cursor:pointer;border-bottom:1px dashed transparent;transition:color .12s,border-color .12s;}
+  .urow .uname:hover{color:var(--crimson);border-bottom-color:var(--crimson-line);}
+  .mdrawer{display:flex;flex-direction:column;gap:12px;padding:14px;margin-top:-4px;
+    background:var(--surface-2);border:1px solid var(--line);border-top:none;
+    border-radius:0 0 9px 9px;font-size:12px;}
+  .mdrawer .dim{color:var(--ink-faint);} .mdrawer .err{color:#ffb3d4;}
+  .dsec{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-top:2px;}
+  .tl{display:flex;flex-direction:column;gap:6px;}
+  .tle{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .tlt{font-size:10.5px;color:var(--ink-faint);min-width:112px;}
+  .ek{font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;padding:2px 7px;border-radius:5px;border:1px solid var(--line-2);color:var(--ink-dim);}
+  .ek.tier{color:var(--crimson);border-color:var(--crimson-line);}
+  .ek.billing{color:var(--bull);border-color:rgba(52,211,153,.4);}
+  .ek.reset{color:var(--info);border-color:rgba(91,139,245,.4);}
+  .ek.signup{color:var(--warn);border-color:rgba(245,165,36,.4);}
+  .tld{color:var(--ink-dim);font-size:11.5px;}
+  .brow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .mdrawer .slink{align-self:flex-start;color:var(--crimson);text-decoration:none;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;margin-top:2px;}
+  .pvtoggle{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--line-2);
+    border-radius:9px;background:transparent;color:var(--ink-dim);padding:10px 16px;cursor:pointer;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;transition:all .15s;}
+  .pvtoggle .pvdot{width:9px;height:9px;border-radius:50%;background:var(--neutral);}
+  .pvtoggle.on{border-color:var(--crimson-line);color:var(--crimson);background:var(--crimson-soft);}
+  .pvtoggle.on .pvdot{background:var(--crimson);box-shadow:0 0 10px var(--crimson);}
+  .pvtoggle:hover{border-color:var(--line-3);}
   @media(max-width:640px){ .urow{flex-wrap:wrap;} .urow .uem{flex-basis:100%;order:3;} .udetail .slink{margin-left:0;} }
 </style>
 </head>
@@ -367,7 +393,7 @@ function render(stats, online, health){
   if(stats.revenue_error) html += '<div class="err" style="margin-top:8px">revenue: '+esc(stats.revenue_error)+'</div>';
 
   $("#root").innerHTML = html;
-  renderToolsOnce();
+  renderToolsOnce(stats);
   initSpy();
 }
 
@@ -435,17 +461,36 @@ function renderEngine(e){
 }
 
 let _toolsDone=false;
-function renderToolsOnce(){
+function renderToolsOnce(stats){
   if(_toolsDone) return; _toolsDone=true;
+  const pv = !!(stats && stats.preview_free);
   let h='<section id="tools"><div class="shead"><h2>Tools</h2><p>Owner utilities.</p></div>';
   h+='<div class="card pad tool"><div class="chead2"><h3>Member tier control</h3><p>Search an account and switch it between free and pro. For comps and manual payments.</p></div>';
   h+='<div class="tbar"><input id="tq" class="tin" placeholder="username or email" autocomplete="off" spellcheck="false"/><button class="tsearch" id="tgo">Search</button></div>';
   h+='<div id="tres" class="tres"><div class="thint">Search to begin.</div></div></div>';
+  h+='<div class="card pad tool"><div class="chead2"><h3>Free-tier preview</h3><p>See the terminal exactly as a free member does: delayed tape, free SMT, free labels. Applies to this browser session only; your owner access stays.</p></div>';
+  h+='<button class="pvtoggle'+(pv?' on':'')+'" id="pvBtn" type="button"><span class="pvdot"></span><span class="pvlab">'+(pv?'PREVIEW ON':'PREVIEW OFF')+'</span></button>';
+  h+='<div class="thint" id="pvHint">'+(pv?'Open the terminal in another tab to see it. Turn this off when done.':'')+'</div></div>';
   h+='<div class="card pad studio"><div><h3>Promo Studio</h3><p>Generate on-brand social posts from live market context.</p></div><a class="cta" href="/agent">Open Studio ⟶</a></div>';
   h+='</section>';
   $("#tools-root").innerHTML=h;
   $("#tgo").addEventListener('click', findUser);
   $("#tq").addEventListener('keydown', e=>{ if(e.key==='Enter') findUser(); });
+  const pb=$("#pvBtn"); if(pb) pb.addEventListener('click', togglePreview);
+}
+async function togglePreview(){
+  const b=$("#pvBtn"); if(!b) return;
+  const want=!b.classList.contains('on');
+  try{
+    const r=await fetch('/api/admin/preview',{method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({on:want})}).then(r=>r.json());
+    if(!r.ok){ alert('Failed: '+(r.error||'unknown')); return; }
+    const on=!!r.preview_free;
+    b.classList.toggle('on',on);
+    b.querySelector('.pvlab').textContent=on?'PREVIEW ON':'PREVIEW OFF';
+    const hint=$("#pvHint");
+    if(hint) hint.textContent=on?'Open the terminal in another tab to see it. Turn this off when done.':'';
+  }catch(e){ alert('Error: '+(e.message||e)); }
 }
 async function findUser(){
   const q=$("#tq").value.trim(), box=$("#tres");
@@ -461,27 +506,104 @@ async function findUser(){
       else if(b.classList.contains('rbtn')) b.addEventListener('click',()=>sendReset(b.dataset.u));
       else b.addEventListener('click',()=>setTier(b.dataset.u,b.dataset.t));
     });
+    box.querySelectorAll('.uname').forEach(el=>el.addEventListener('click',
+      ()=>memberDrawer(el.closest('.urow'), el.dataset.u)));
   }catch(e){ box.innerHTML='<div class="thint err">'+esc(e.message||e)+'</div>'; }
 }
 function userRow(m){
   const tier=(m.tier||'free').toLowerCase(), to=(tier==='pro'?'free':'pro');
   const uAttr=esc(m.username).replace(/"/g,'&quot;');
-  return '<div class="urow"><span class="mono uname">'+esc(m.username)+'</span>'+
+  return '<div class="urow"><span class="mono uname" data-u="'+uAttr+'" title="Open member drawer">'+esc(m.username)+'</span>'+
     '<span class="mono uem">'+esc(m.email||'')+'</span>'+
     '<span class="tier '+tier+'">'+esc(tier)+'</span>'+
     '<button class="tbtn ghost sbtn" data-u="'+uAttr+'">Stripe</button>'+
     '<button class="tbtn ghost rbtn" data-u="'+uAttr+'">Reset</button>'+
     '<button class="tbtn '+to+'" data-u="'+uAttr+'" data-t="'+to+'">Make '+(to==='pro'?'Pro':'Free')+'</button></div>';
 }
-async function stripeInfo(btn){
-  const row = btn.closest('.urow'); if(!row) return;
-  // toggle: a second click collapses the detail line
-  if(row.nextElementSibling && row.nextElementSibling.classList.contains('udetail')){
-    row.nextElementSibling.remove(); return;
+function rowSlot(row, kind){
+  // one expansion slot per member row: opening a different tool replaces the
+  // current panel, clicking the same tool again collapses it (returns null)
+  const ex = row.nextElementSibling;
+  if(ex && ex.classList.contains('urowext')){
+    const was = ex.dataset.kind; ex.remove();
+    if(was === kind) return null;
   }
   const d = document.createElement('div');
-  d.className='udetail'; d.innerHTML='<span class="mono">Checking Stripe\u2026</span>';
+  d.className = 'urowext ' + (kind === 'drawer' ? 'mdrawer' : 'udetail');
+  d.dataset.kind = kind;
   row.after(d);
+  return d;
+}
+function fdate(sv, withTime){
+  if(!sv) return '-';
+  const d = new Date(sv);
+  if(isNaN(d)) return esc(String(sv).slice(0,10));
+  return withTime
+    ? d.toLocaleDateString()+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
+    : d.toLocaleDateString();
+}
+async function memberDrawer(row, username){
+  if(!row) return;
+  const d = rowSlot(row, 'drawer'); if(!d) return;
+  d.innerHTML='<span class="mono dim">Loading '+esc(username)+'\u2026</span>';
+  try{
+    const r = await fetch('/api/admin/member?username='+encodeURIComponent(username),
+      {cache:'no-store',credentials:'same-origin'}).then(r=>r.json());
+    if(!r.ok){ d.innerHTML='<span class="mono err">'+esc(r.error||'lookup failed')+'</span>'; return; }
+    const p = r.profile||{}, ev = r.events||[];
+    let h='<div class="fmetrics">';
+    h+=fmetric('Joined', fdate(p.created_at));
+    h+=fmetric('Last login', p.last_login?fdate(p.last_login,true):'-', p.last_login?'':'tracked from today on');
+    h+=fmetric('Tier', (p.tier||'free').toUpperCase());
+    h+=fmetric('Verified', p.email_verified?'yes':'no');
+    h+=fmetric('Stripe', p.stripe_linked?'linked':'not linked', p.subscription_status||'');
+    h+='</div>';
+    h+='<div class="dsec">Timeline</div>';
+    if(!ev.length){
+      h+='<div class="thint">No events recorded yet. Tier changes, billing transitions, resets, and signups are logged from today forward.</div>';
+    }else{
+      h+='<div class="tl">'+ev.map(e=>
+        '<div class="tle"><span class="mono tlt">'+fdate(e.ts,true)+'</span>'+
+        '<span class="ek '+esc(e.kind)+'">'+esc(e.kind)+'</span>'+
+        '<span class="tld">'+esc(e.detail||'')+'</span></div>').join('')+'</div>';
+    }
+    h+='<div class="dsec">Billing</div><div class="dbill thint">Checking Stripe\u2026</div>';
+    d.innerHTML=h;
+    // live Stripe fill, lazily, so the drawer opens instantly
+    try{
+      const sr = await fetch('/api/admin/stripe-status?username='+encodeURIComponent(username),
+        {cache:'no-store',credentials:'same-origin'}).then(r=>r.json());
+      const bx = d.querySelector('.dbill'); if(!bx) return;
+      if(!sr.ok){ bx.innerHTML='<span class="err">'+esc(sr.error||'stripe error')+'</span>'; return; }
+      if(!sr.linked){ bx.textContent='No Stripe customer linked, this member has never opened checkout.'; return; }
+      let bh='';
+      if(sr.subscription){
+        const sb=sr.subscription;
+        const cls=(sb.status==='active'||sb.status==='trialing')?'live':(sb.status==='past_due'||sb.status==='unpaid')?'due':'off';
+        bh+='<div class="brow"><span class="schip '+cls+'">'+esc(sb.status)+(sb.cancel_at_period_end?' \u00b7 cancels':'')+'</span>';
+        if(sb.amount!=null && sb.interval) bh+='<span class="mono">'+esc('$'+sb.amount+' / '+sb.interval)+'</span>';
+        if(sb.current_period_end){
+          const dte=new Date(sb.current_period_end);
+          bh+='<span class="mono dim">'+((sb.cancel_at_period_end||sb.status==='canceled')?'ends ':'renews ')+dte.toLocaleDateString()+'</span>';
+        }
+        bh+='</div>';
+      }else{
+        bh+='<div class="brow"><span class="schip none">no subscription</span></div>';
+      }
+      (sr.invoices||[]).forEach(iv=>{
+        bh+='<div class="brow inv"><span class="mono tlt">'+fdate(iv.created)+'</span>'+
+            '<span class="mono">'+esc('$'+iv.amount)+'</span>'+
+            '<span class="mono dim">'+esc(iv.status||'')+'</span></div>';
+      });
+      bh+='<a class="slink" href="'+esc(sr.dashboard_url)+'" target="_blank" rel="noopener noreferrer">Open in Stripe \u27f6</a>';
+      bx.className='dbill'; bx.innerHTML=bh;
+    }catch(e){/* billing stays on its hint text */}
+  }catch(e){ d.innerHTML='<span class="mono err">'+esc(e.message||e)+'</span>'; }
+}
+async function stripeInfo(btn){
+  const row = btn.closest('.urow'); if(!row) return;
+  const d = rowSlot(row, 'stripe'); if(!d) return;
+  d.innerHTML='<span class="mono">Checking Stripe\u2026</span>';
   try{
     const r = await fetch('/api/admin/stripe-status?username='+encodeURIComponent(btn.dataset.u),
       {cache:'no-store',credentials:'same-origin'}).then(r=>r.json());

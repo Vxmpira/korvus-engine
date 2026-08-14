@@ -8,7 +8,7 @@
 
  DESIGN NOTES
  - Passwords are stored HASHED (werkzeug pbkdf2). The real password is never
-   stored and cannot be recovered — only checked. This is the correct, safe
+   stored and cannot be recovered - only checked. This is the correct, safe
    design: even with database access, nobody can read members' passwords.
  - Users self-register through the signup page. Nothing here creates accounts
    on anyone's behalf.
@@ -16,7 +16,7 @@
    configured (EMAIL_PROVIDER in .env), the "send" step is stubbed: the system
    works, accounts are created, but the verification link is logged to the
    server console instead of emailed. Flip EMAIL_PROVIDER to "ses" and add the
-   AWS creds to turn real sending on — no code change needed.
+   AWS creds to turn real sending on - no code change needed.
  - Tier is 'free' by default. Nobody becomes 'pro' here; that happens via the
    Stripe step (next phase). You can manually promote your own test account
    with: python korvus_auth.py promote <username>
@@ -72,11 +72,40 @@ def init_auth_db():
                      ("current_period_end", "TEXT"),
                      ("reset_token", "TEXT"),
                      ("reset_expires", "TEXT"),
-                     ("alert_opt_in", "INTEGER DEFAULT 1")):
+                     ("alert_opt_in", "INTEGER DEFAULT 1"),
+                     ("last_login", "TEXT")):
         if col not in existing:
             conn.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
+    # --- member timeline (admin console drawer). Append-only event log for
+    #     signups, tier changes, billing transitions, and reset emails. ---
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS member_events (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts       TEXT NOT NULL,
+            username TEXT NOT NULL,
+            kind     TEXT NOT NULL,
+            detail   TEXT
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_member_events_user "
+                 "ON member_events(username, ts)")
     conn.commit()
     conn.close()
+
+
+def log_member_event(username, kind, detail=""):
+    """Append one row to the member timeline. Best-effort by design: an event
+    that fails to record must never break signup, login, billing, or resets."""
+    try:
+        conn = get_db()
+        conn.execute(
+            "INSERT INTO member_events (ts, username, kind, detail) VALUES (?,?,?,?)",
+            (dt.datetime.now(dt.timezone.utc).isoformat(),
+             (username or "").strip(), kind, detail))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 
 # ----------------------------------------------------------------------------
@@ -114,6 +143,7 @@ def create_user(username, email, password):
     )
     conn.commit()
     conn.close()
+    log_member_event(username, "signup", "account created")
     return True, "Account created. Check your email to verify.", token
 
 
@@ -125,6 +155,15 @@ def verify_password(username, password):
                        ((username or "").strip(),)).fetchone()
     conn.close()
     if row and check_password_hash(row["password_hash"], password or ""):
+        # stamp last_login for the admin console's member drawer; best-effort
+        try:
+            c2 = get_db()
+            c2.execute("UPDATE users SET last_login = ? WHERE id = ?",
+                       (dt.datetime.now(dt.timezone.utc).isoformat(), row["id"]))
+            c2.commit()
+            c2.close()
+        except Exception:
+            pass
         return dict(row)
     return None
 
@@ -206,6 +245,8 @@ def apply_subscription(customer_id, status, subscription_id=None, current_period
         (tier, status, subscription_id, current_period_end, customer_id))
     conn.commit()
     conn.close()
+    log_member_event(user["username"], "billing",
+                     f"subscription {status} (tier {tier})")
     return user["username"]
 
 
@@ -257,7 +298,7 @@ def create_reset_token(email):
     either way so account existence isn't leaked."""
     email = (email or "").strip().lower()
     conn = get_db()
-    row = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+    row = conn.execute("SELECT id, username FROM users WHERE email = ?", (email,)).fetchone()
     if not row:
         conn.close(); return None, None
     token = secrets.token_urlsafe(32)
@@ -265,6 +306,7 @@ def create_reset_token(email):
     conn.execute("UPDATE users SET reset_token = ?, reset_expires = ? WHERE id = ?",
                  (token, expires, row["id"]))
     conn.commit(); conn.close()
+    log_member_event(row["username"], "reset", "password reset link issued")
     return token, email
 
 
@@ -320,7 +362,7 @@ def change_email(user_id, new_email):
     conn.execute("UPDATE users SET email = ?, email_verified = 0, verify_token = ? WHERE id = ?",
                  (new_email, token, user_id))
     conn.commit(); conn.close()
-    return True, "Email updated — check your new inbox to verify it.", token, new_email
+    return True, "Email updated - check your new inbox to verify it.", token, new_email
 
 
 def send_reset_email(email, token):
@@ -329,12 +371,12 @@ def send_reset_email(email, token):
     subject = "Reset your Korvus password"
     body = (f"We received a request to reset your Korvus password.\n\n"
             f"Set a new password here (valid for {RESET_TTL_MIN} minutes):\n{link}\n\n"
-            f"If you didn't request this, you can safely ignore this message — "
-            f"your password won't change.\n\n— BlackCrownVxJ.LLC")
+            f"If you didn't request this, you can safely ignore this message - "
+            f"your password won't change.\n\n- BlackCrownVxJ.LLC")
     if EMAIL_PROVIDER == "ses":
         return _send_ses(email, subject, body)
     print("\n" + "="*60)
-    print("  [email:stub] EMAIL_PROVIDER is off — not actually sending.")
+    print("  [email:stub] EMAIL_PROVIDER is off - not actually sending.")
     print(f"  To: {email}")
     print(f"  Reset link: {link}")
     print("="*60 + "\n")
@@ -342,7 +384,7 @@ def send_reset_email(email, token):
 
 
 # ----------------------------------------------------------------------------
-# ALERTS — email opted-in Pro members when the engine flags a high-impact event
+# ALERTS - email opted-in Pro members when the engine flags a high-impact event
 # ----------------------------------------------------------------------------
 def set_alert_opt_in(user_id, on):
     """Turn high-impact email alerts on/off for one user."""
@@ -369,7 +411,7 @@ def send_high_impact_alert(item):
     """Email a high-impact event to opted-in Pro members.
 
     `item` is a dict with headline / summary / impact_desc / direction /
-    instruments / url. Safe to call from the engine — it never raises and
+    instruments / url. Safe to call from the engine - it never raises and
     returns the number of recipients emailed. When EMAIL_PROVIDER is 'off'
     it logs to the console instead of sending (same stub behavior as the
     verification + reset emails)."""
@@ -425,14 +467,14 @@ def send_verification_email(email, token):
     body = (f"Welcome to Korvus.\n\n"
             f"Confirm your email to activate your account:\n{link}\n\n"
             f"If you didn't sign up, you can ignore this message.\n\n"
-            f"— BlackCrownVxJ.LLC")
+            f"- BlackCrownVxJ.LLC")
 
     if EMAIL_PROVIDER == "ses":
         return _send_ses(email, subject, body)
 
-    # stubbed mode — no provider yet
+    # stubbed mode - no provider yet
     print("\n" + "="*60)
-    print("  [email:stub] EMAIL_PROVIDER is off — not actually sending.")
+    print("  [email:stub] EMAIL_PROVIDER is off - not actually sending.")
     print(f"  To: {email}")
     print(f"  Verify link: {link}")
     print("="*60 + "\n")
@@ -459,7 +501,7 @@ def _send_ses(to_email, subject, body):
 
 
 # ----------------------------------------------------------------------------
-# CLI — init the table, or promote a test account to pro
+# CLI - init the table, or promote a test account to pro
 # ----------------------------------------------------------------------------
 if __name__ == "__main__":
     import sys

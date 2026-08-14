@@ -27,7 +27,7 @@ import time
 import sqlite3
 import datetime as dt
 from functools import wraps
-from flask import Blueprint, abort, send_from_directory, jsonify, request
+from flask import Blueprint, abort, send_from_directory, jsonify, request, session
 from flask_login import current_user
 
 try:
@@ -272,6 +272,12 @@ def admin_stats():
         eng.setdefault("error", str(e))
     out["engine"] = eng
 
+    # owner's free-tier preview switch state (per browser session)
+    try:
+        out["preview_free"] = bool(session.get("korvus_free_preview"))
+    except Exception:
+        out["preview_free"] = False
+
     return jsonify(out)
 
 
@@ -337,6 +343,11 @@ def admin_set_tier():
         conn.commit()
         actor = getattr(current_user, "username", "?")
         print(f"  [admin] {actor} set tier for {username}: {old} -> {tier}")
+        try:
+            import korvus_auth as auth
+            auth.log_member_event(username, "tier", f"{old} -> {tier} by {actor}")
+        except Exception:
+            pass
         return jsonify({"ok": True, "username": username, "old": old, "new": tier})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -372,11 +383,23 @@ def admin_stripe_status():
         test_mode = billing.STRIPE_SECRET_KEY.startswith("sk_test")
         dash = ("https://dashboard.stripe.com/test/customers/" if test_mode
                 else "https://dashboard.stripe.com/customers/") + cid
+        invoices = []
+        try:
+            for iv in st.Invoice.list(customer=cid, limit=5).get("data", []):
+                invoices.append({
+                    "created": (dt.datetime.fromtimestamp(iv.get("created"),
+                                dt.timezone.utc).isoformat()
+                                if iv.get("created") else None),
+                    "amount": (iv.get("amount_paid") if iv.get("amount_paid")
+                               else iv.get("amount_due") or 0) / 100.0,
+                    "status": iv.get("status")})
+        except Exception:
+            pass
         subs = st.Subscription.list(customer=cid, status="all", limit=5).get("data", [])
         if not subs:
             return jsonify({"ok": True, "linked": True, "username": username,
                             "customer_id": cid, "dashboard_url": dash,
-                            "subscription": None})
+                            "invoices": invoices, "subscription": None})
         # prefer a live subscription; otherwise the most recently created one
         rank = {"active": 0, "trialing": 1, "past_due": 2, "unpaid": 3}
         subs.sort(key=lambda x: (rank.get(x.get("status"), 9), -(x.get("created") or 0)))
@@ -392,6 +415,7 @@ def admin_stripe_status():
         cpe = sub.get("current_period_end")
         return jsonify({"ok": True, "linked": True, "username": username,
                         "customer_id": cid, "dashboard_url": dash,
+                        "invoices": invoices,
                         "subscription": {
                             "status": sub.get("status"),
                             "cancel_at_period_end": bool(sub.get("cancel_at_period_end")),
@@ -431,3 +455,64 @@ def admin_send_reset():
         return jsonify({"ok": True, "username": username, "email": em})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@korvus_admin.route("/api/admin/member")
+@admin_required
+def admin_member():
+    """Owner tool: one member's full story for the drawer. Profile fields from
+    the users table plus the recorded timeline (member_events). The timeline
+    accumulates from the day this shipped; older history simply is not there,
+    and the UI says so rather than inventing it."""
+    username = (request.args.get("username") or "").strip()
+    if not username:
+        return jsonify({"ok": False, "error": "username required"}), 400
+    try:
+        import korvus_auth as auth
+        user = auth.get_user_by_username(username)
+        if not user:
+            return jsonify({"ok": False, "error": f"no user '{username}'"}), 404
+        profile = {
+            "username": user.get("username"),
+            "email": user.get("email"),
+            "tier": user.get("tier"),
+            "created_at": user.get("created_at"),
+            "last_login": user.get("last_login"),
+            "email_verified": bool(user.get("email_verified")),
+            "stripe_linked": bool((user.get("stripe_customer_id") or "").strip()),
+            "subscription_status": user.get("subscription_status"),
+            "current_period_end": user.get("current_period_end"),
+        }
+        events = []
+        conn = None
+        try:
+            conn = _db()
+            events = [dict(r) for r in conn.execute(
+                "SELECT ts, kind, detail FROM member_events "
+                "WHERE username = ? ORDER BY ts DESC LIMIT 30", (username,))]
+        except Exception:
+            events = []
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+        return jsonify({"ok": True, "profile": profile, "events": events})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@korvus_admin.route("/api/admin/preview", methods=["POST"])
+@admin_required
+def admin_preview():
+    """Owner tool: flip the free-tier preview switch for this browser session.
+    While on, the server treats this session as free everywhere tiers matter,
+    so the terminal renders the genuine free experience. Nothing is stored on
+    the account; closing the session or toggling off restores normal service."""
+    data = request.get_json(silent=True) or {}
+    on = bool(data.get("on"))
+    session["korvus_free_preview"] = on
+    actor = getattr(current_user, "username", "?")
+    print(f"  [admin] {actor} free-tier preview {'ON' if on else 'OFF'}")
+    return jsonify({"ok": True, "preview_free": on})
