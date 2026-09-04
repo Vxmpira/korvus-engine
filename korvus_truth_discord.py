@@ -98,8 +98,28 @@ def _save_state(s):
         print(f"  [truth] could not save state: {e}")
 
 
+_A_TAG = re.compile(r'<a\s[^>]*?href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', re.I | re.S)
+
+
+def _anchor_repl(m):
+    """Truth Social (Mastodon fork) chops a link's visible text into
+    invisible/ellipsis spans, so stripping tags with spaces shreds the URL.
+    Anchors that display a URL collapse to their href, the one canonical
+    intact form, and Discord auto-links it. Hashtags and @mentions keep
+    their visible text instead of turning into ugly profile/tag URLs."""
+    href = (m.group(1) or "").replace("&amp;", "&")
+    inner = re.sub(r"<[^>]+>", "", m.group(2) or "")
+    flat = re.sub(r"\s+", "", inner).replace("&amp;", "&").rstrip(".\u2026")
+    if flat.startswith(("#", "@")):
+        return " " + inner + " "
+    if flat.lower().startswith(("http", "www.")) or (flat and flat.lower() in href.lower()):
+        return " " + href + " "
+    return " " + inner + " "
+
+
 def _clean(html):
-    t = re.sub(r"<[^>]+>", " ", html or "")
+    t = _A_TAG.sub(_anchor_repl, html or "")
+    t = re.sub(r"<[^>]+>", " ", t)
     t = (t.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
            .replace("&quot;", '"').replace("&#39;", "'").replace("&#039;", "'").replace("&nbsp;", " "))
     return re.sub(r"\s+", " ", t).strip()
@@ -164,7 +184,12 @@ def _relevant(text):
 def _build_embed(item, score=None):
     text = item["text"]
     if len(text) > 900:
-        text = text[:897] + "..."
+        cut = text[:897]
+        # never slice a word or URL in half at the cut, back up to whitespace
+        sp = cut.rfind(" ")
+        if sp > 600:
+            cut = cut[:sp]
+        text = cut.rstrip() + "..."
     lines = [text]
     color = PINK
     if score:
