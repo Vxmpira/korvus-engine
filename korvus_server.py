@@ -183,12 +183,47 @@ def api_ff_calendar():
         return jsonify({"error": str(e), "events": []})
 
 
+def _public_page(fname):
+    """Serve a public marketing page with the live Stripe display price injected
+    server-side. The page markup carries comment tokens instead of hardcoded
+    dollar amounts, so the price shown always mirrors STRIPE_PRICE_DISPLAY in
+    .env and can never drift out of date again. If no display price is
+    configured, every token degrades to honest copy with no number."""
+    with open(os.path.join(HERE, fname), encoding="utf-8") as f:
+        html = f.read()
+    pd  = billing.price_display()          # e.g. "$5.99"  (or "")
+    pdy = billing.price_display_yearly()   # e.g. "$49.99" (or "")
+    tokens = {
+        "<!--K_BADGE_PRICE-->": ("Free tier · Pro " + pd + "/mo") if pd else "Free tier · Pro membership",
+        "<!--K_PRICE_MO_OPT-->": (pd + "/mo, ") if pd else "",
+        "<!--K_PRICE_BIG-->":   (pd + "<span>/mo</span>") if pd else "Pro",
+        "<!--K_PRICE_CTA-->":   (", " + pd + "/mo") if pd else "",
+        "<!--K_PRICE_YEAR-->":  ("or " + pdy + "/yr billed annually") if pdy else "",
+        "<!--K_PRICE_INLINE-->": pd if pd else "the Pro price",
+    }
+    for k, v in tokens.items():
+        html = html.replace(k, v)
+    return html
+
+
 @app.route("/")
 def home():
     # logged-out visitors see the public landing page; members see the terminal
     if current_user.is_authenticated:
         return send_from_directory(HERE, "korvus_dashboard.html")
-    return send_from_directory(HERE, "korvus_landing.html")
+    return _public_page("korvus_landing.html")
+
+
+@app.route("/lodestone")
+def lodestone_page():
+    # public product page for the LodeStone TradingView indicator (Pro perk)
+    return _public_page("korvus_lodestone.html")
+
+
+@app.route("/lodestone-chart.png")
+def lodestone_chart():
+    # real NQ chart capture with LodeStone applied (marketing asset)
+    return send_from_directory(HERE, "lodestone_chart.png")
 
 
 @app.route("/favicon.ico")
@@ -345,6 +380,7 @@ def api_me():
                         "subscription_status": u.get("subscription_status"),
                         "current_period_end": u.get("current_period_end"),
                         "alert_opt_in": int(u.get("alert_opt_in") if u.get("alert_opt_in") is not None else 1),
+                        "tv_username": u.get("tv_username") or "",
                         "is_owner": bool(TRADOVATE_OWNER and u.get("username") == TRADOVATE_OWNER),
                         "native_futures": _native_fut,
                         "realtime": bool(_native_fut and (not _free_preview()) and (
@@ -395,6 +431,15 @@ def account_page():
 def account_username():
     data = request.get_json(silent=True) or {}
     ok, msg = auth.update_username(current_user.id, data.get("username"))
+    return (jsonify({"ok": ok, "message": msg}), 200 if ok else 400)
+
+
+@app.route("/api/account/tv-username", methods=["POST"])
+@login_required
+def account_tv_username():
+    """Save the member's exact TradingView username for LodeStone access grants."""
+    data = request.get_json(silent=True) or {}
+    ok, msg = auth.set_tv_username(current_user.id, data.get("tv_username"))
     return (jsonify({"ok": ok, "message": msg}), 200 if ok else 400)
 
 

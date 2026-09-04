@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LodeStone · ICT Liquidity Context for TradingView · Korvus by BlackCrownVxJ.LLC</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CjxyZWN0IHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgcng9IjE0IiBmaWxsPSIjMEEwQTBEIi8+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDExLDE1KSBzY2FsZSgxLjE2KSI+CjxwYXRoIGQ9Ik00IDI0IEw0IDkgTDEyIDE2IEwxOCA1IEwyNCAxNiBMMzIgOSBMMzIgMjQgWiIgZmlsbD0iI0ZGMkQ5NSIvPgo8cmVjdCB4PSI1IiB5PSIyNiIgd2lkdGg9IjI2IiBoZWlnaHQ9IjMiIGZpbGw9IiNGRjJEOTUiLz4KPC9nPgo8L3N2Zz4=">
+  <link rel="alternate icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="description" content="LodeStone is the Korvus TradingView indicator for intraday index futures: session levels, premium and discount, resting liquidity, SMT divergence, and restrained volume profile. Non-repainting, no signals, included with Korvus Pro." />
+<link rel="canonical" href="https://korvus.industries/lodestone" />
+<meta name="theme-color" content="#0a0a0d" />
+<meta name="robots" content="index,follow" />
+<meta name="author" content="BlackCrownVxJ.LLC" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Korvus" />
+<meta property="og:title" content="LodeStone · ICT Liquidity Context for TradingView" />
+<meta property="og:description" content="Session levels, premium and discount, resting liquidity, SMT divergence, and restrained volume profile in one non-repainting TradingView indicator. Included with Korvus Pro." />
+<meta property="og:url" content="https://korvus.industries/lodestone" />
+<meta property="og:image" content="https://korvus.industries/lodestone-chart.png" />
+<meta property="og:image:alt" content="LodeStone running on an NQ futures chart on TradingView" />
+<meta property="og:locale" content="en_US" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="LodeStone · ICT Liquidity Context for TradingView" />
+<meta name="twitter:description" content="Non-repainting session levels, liquidity, SMT divergence, and restrained volume profile for intraday index futures. Included with Korvus Pro." />
+<meta name="twitter:image" content="https://korvus.industries/lodestone-chart.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000000;
+    --bg-2:#040406;
+    --panel:#0c0d11;
+    --ink:#f6f8ff;
+    --ink-dim:#aab0c0;
+    --ink-faint:#646b7d;
+    --line:rgba(255,255,255,.09);
+    --line-bright:rgba(255,255,255,.18);
+    --gold:#ff2d8f;
+    --gold-deep:#d6146e;
+    --crimson:#ff2d8f;
+    --crimson-deep:#d6146e;
+    --crimson-bright:#ff5ba8;
+    --crimson-glow:rgba(255,45,143,.6);
+    --brand-yellow:#f5c542;
+    --up:#3ce594;
+    --down:#ff2e4d;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+    --body:'Hanken Grotesk',system-ui,sans-serif;
+    --disp:'Bricolage Grotesque',system-ui,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;overflow-x:clip;}
+  #candles{position:fixed;inset:0;z-index:0;pointer-events:none;}
+  .veil{position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:radial-gradient(120% 90% at 50% 0%,rgba(0,0,0,.25),rgba(0,0,0,.82) 70%,#000 100%);}
+  .container{max-width:1140px;margin:0 auto;padding:0 28px;position:relative;z-index:2;}
+  section{position:relative;z-index:2;padding:84px 0;}
+
+  /* ---- nav ---- */
+  nav{position:sticky;top:0;z-index:50;background:rgba(0,0,0,.72);backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--line);}
+  .nav-inner{display:flex;align-items:center;gap:14px;padding:16px 28px;max-width:1140px;margin:0 auto;}
+  .brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);}
+  .crown{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex:none;
+    background:rgba(255,45,143,.09);border:1px solid rgba(255,45,143,.3);}
+  .brand-name{font-family:var(--disp);font-weight:600;font-size:21px;letter-spacing:.01em;}
+  .nav-links{margin-left:auto;display:flex;align-items:center;gap:28px;}
+  .nav-links a{color:var(--ink-dim);text-decoration:none;font-size:14px;transition:color .2s;}
+  .nav-links a:hover{color:var(--ink);}
+  .btn{font-family:var(--body);font-weight:600;font-size:14px;padding:10px 20px;border-radius:8px;cursor:pointer;
+    text-decoration:none;display:inline-block;transition:all .2s;border:1px solid transparent;white-space:nowrap;}
+  .btn-ghost{border-color:var(--line-bright);color:var(--ink);background:transparent;}
+  .btn-ghost:hover{border-color:var(--gold);color:var(--gold);}
+  .btn-gold{background:var(--gold);color:#fff;font-weight:700;box-shadow:0 0 24px -6px var(--crimson-glow);}
+  .btn-gold:hover{background:var(--gold-deep);transform:translateY(-1px);}
+  @media(max-width:860px){
+    .nav-links a:not(.btn){display:none;}
+    .nav-links{gap:10px;}
+    .nav-links .btn{flex:none;padding:9px 16px;}
+  }
+
+  /* ---- hero ---- */
+  .hero{position:relative;z-index:2;text-align:center;padding:96px 0 30px;}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);margin-bottom:26px;}
+  .hero h1{font-family:var(--disp);font-weight:500;font-size:clamp(40px,6.4vw,78px);line-height:1.04;letter-spacing:-.02em;margin-bottom:20px;}
+  .hero h1 em{font-style:normal;color:var(--crimson);}
+  .hero .sub{max-width:680px;margin:0 auto 30px;color:var(--ink-dim);font-size:clamp(15px,1.6vw,18px);}
+  .hero-cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
+  .hero-cta .btn{padding:14px 30px;font-size:15px;}
+  .hero-badges{display:flex;gap:12px 22px;justify-content:center;flex-wrap:wrap;margin-top:34px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);}
+  .hero-badges span{display:inline-flex;align-items:center;gap:7px;}
+  .hero-badges i{width:5px;height:5px;border-radius:50%;background:var(--crimson);box-shadow:0 0 7px var(--crimson-glow);}
+
+  /* ---- chart shot ---- */
+  .shot-wrap{max-width:1140px;margin:44px auto 0;padding:0 28px;position:relative;z-index:2;}
+  .shot-wrap img{display:block;width:100%;height:auto;border-radius:14px;border:1px solid var(--line-bright);
+    box-shadow:0 40px 110px -34px rgba(0,0,0,.95),0 0 60px -22px var(--crimson-glow);}
+  .shot-cap{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--ink-faint);margin-top:14px;text-align:center;}
+
+  /* ---- shared section headings ---- */
+  .sec-label{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:16px;}
+  .sec-title{font-family:var(--disp);font-weight:500;font-size:clamp(28px,4vw,44px);line-height:1.1;letter-spacing:-.015em;margin-bottom:18px;}
+  .sec-intro{color:var(--ink-dim);max-width:640px;font-size:17px;}
+
+  /* ---- modules grid ---- */
+  .mods{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:40px;}
+  .mod{background:linear-gradient(180deg,rgba(18,20,26,.6),rgba(10,12,16,.5));border:1px solid var(--line);
+    border-radius:14px;padding:26px 24px;backdrop-filter:blur(10px);transition:border-color .25s,transform .25s;}
+  .mod:hover{border-color:rgba(255,45,143,.4);transform:translateY(-2px);}
+  .mod .num{font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--crimson);margin-bottom:12px;}
+  .mod h3{font-family:var(--disp);font-weight:500;font-size:19px;margin-bottom:9px;letter-spacing:-.01em;}
+  .mod p{font-size:14px;line-height:1.6;color:var(--ink-dim);}
+  @media(max-width:960px){.mods{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:600px){.mods{grid-template-columns:1fr;}}
+
+  /* ---- discipline ---- */
+  #discipline{background:rgba(10,12,16,.4);backdrop-filter:blur(6px);border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+  .disc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:38px;}
+  .disc{border-left:2px solid var(--crimson);padding-left:18px;}
+  .disc h3{font-family:var(--disp);font-weight:500;font-size:19px;margin-bottom:8px;}
+  .disc p{font-size:14.5px;line-height:1.6;color:var(--ink-dim);}
+  @media(max-width:860px){.disc-grid{grid-template-columns:1fr;}}
+
+  /* ---- access steps ---- */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:40px;counter-reset:step;}
+  .step{background:linear-gradient(180deg,rgba(18,20,26,.6),rgba(10,12,16,.5));border:1px solid var(--line);
+    border-radius:14px;padding:26px 24px;position:relative;}
+  .step .k{font-family:var(--mono);font-size:26px;color:var(--crimson);margin-bottom:12px;}
+  .step h3{font-family:var(--disp);font-weight:500;font-size:18px;margin-bottom:8px;}
+  .step p{font-size:14px;line-height:1.6;color:var(--ink-dim);}
+  .step a{color:var(--crimson);text-decoration:none;}
+  @media(max-width:860px){.steps{grid-template-columns:1fr;}}
+
+  /* ---- pricing block ---- */
+  .pricebox{max-width:520px;margin:40px auto 0;background:linear-gradient(180deg,rgba(18,20,26,.7),rgba(10,12,16,.55));
+    border:1px solid rgba(255,45,143,.35);border-radius:16px;padding:36px 32px;text-align:center;
+    box-shadow:0 0 60px -24px var(--crimson-glow);}
+  .pricebox .tag{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--crimson);margin-bottom:12px;}
+  .pricebox h3{font-family:var(--disp);font-weight:500;font-size:26px;margin-bottom:8px;}
+  .pricebox .price{font-family:var(--disp);font-weight:500;font-size:46px;letter-spacing:-.02em;margin:14px 0 2px;}
+  .pricebox .price span{font-size:18px;color:var(--ink-faint);}
+  .pricebox .pnote{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:4px;}
+  .pricebox ul{list-style:none;margin:20px 0 24px;padding:0;text-align:left;display:grid;gap:9px;}
+  .pricebox ul li{font-size:14px;color:var(--ink-dim);padding-left:22px;position:relative;}
+  .pricebox ul li::before{content:"✓";position:absolute;left:0;color:var(--up);font-weight:700;}
+  .pricebox .btn{width:100%;padding:14px 0;font-size:15px;}
+  .pricebox .fine{font-family:var(--mono);font-size:10px;color:var(--ink-faint);margin-top:14px;line-height:1.6;}
+  .pricebox .fine a{color:var(--ink-faint);text-decoration:underline;}
+
+  /* ---- FAQ ---- */
+  .faq{max-width:760px;margin:40px auto 0;display:grid;gap:12px;}
+  .qa{background:linear-gradient(180deg,rgba(18,20,26,.55),rgba(10,12,16,.45));border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .qa summary{cursor:pointer;list-style:none;padding:18px 22px;font-weight:600;font-size:15px;display:flex;align-items:center;gap:12px;}
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::before{content:"+";font-family:var(--mono);color:var(--crimson);font-size:17px;flex:none;transition:transform .2s;}
+  .qa[open] summary::before{transform:rotate(45deg);}
+  .qa .a{padding:0 22px 20px 51px;font-size:14.5px;line-height:1.65;color:var(--ink-dim);}
+  .qa .a a{color:var(--crimson);text-decoration:none;}
+
+  /* ---- disclaimer + footer ---- */
+  .disclaim{position:relative;z-index:2;border-top:1px solid var(--line);padding:34px 0;background:rgba(0,0,0,.55);}
+  .disclaim p{font-size:12px;line-height:1.7;color:var(--ink-faint);max-width:980px;}
+  .disclaim a{color:var(--gold-deep);}
+  footer{position:relative;z-index:2;border-top:1px solid var(--line);padding:30px 0 40px;background:rgba(0,0,0,.7);}
+  .foot-inner{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+  .foot-links{margin-left:auto;display:flex;gap:22px;flex-wrap:wrap;}
+  .foot-links a{color:var(--ink-faint);text-decoration:none;font-size:13px;}
+  .foot-links a:hover{color:var(--ink);}
+  .foot-llc{width:100%;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--ink-faint);margin-top:8px;}
+  .foot-llc b{color:var(--brand-yellow);font-weight:500;}
+  @media(prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important;}}
+</style>
+</head>
+<body>
+  <canvas id="candles"></canvas>
+  <div class="veil"></div>
+
+  <nav>
+    <div class="nav-inner">
+      <a class="brand" href="/">
+        <span class="crown">
+          <svg viewBox="0 0 36 33" width="18" height="18" fill="none" stroke="#ff2d8f" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
+        </span>
+        <span class="brand-name">Korvus</span>
+      </a>
+      <div class="nav-links">
+        <a href="#modules">Modules</a>
+        <a href="#access">How access works</a>
+        <a href="#faq">FAQ</a>
+        <a href="/legal">Legal</a>
+        <a href="/login" class="btn btn-ghost" id="navLogin">Log in</a>
+        <a href="/signup" class="btn btn-gold" id="navCta">Sign up</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="container">
+      <div class="eyebrow">A Korvus trading tool · by BlackCrownVxJ.LLC</div>
+      <h1>Lode<em>Stone</em>.</h1>
+      <p class="sub">An ICT liquidity context indicator for intraday index futures, built for TradingView.
+        LodeStone marks the levels that matter, keeps the chart clean while it does it,
+        and never once tells you what to do. Included with the Korvus Operator (Pro) membership.</p>
+      <div class="hero-cta">
+        <a href="/signup" class="btn btn-gold" id="heroCta">Get LodeStone with Pro</a>
+        <a href="#modules" class="btn btn-ghost">See the modules</a>
+      </div>
+      <div class="hero-badges">
+        <span><i></i> Non-repainting</span>
+        <span><i></i> Confirmed bars only</span>
+        <span><i></i> No signals, no arrows</span>
+        <span><i></i> Self-cleaning levels</span>
+        <span><i></i> Labels never overlap</span>
+      </div>
+    </div>
+    <div class="shot-wrap">
+      <img src="/lodestone-chart.png" alt="LodeStone running on an NQ futures chart on TradingView: stacked session level labels at the right cutoff, premium and discount shading with equilibrium, value area lines, and SMT divergence marks at the swings" />
+      <div class="shot-cap">LodeStone on NQ (CME), 1-hour chart on TradingView · real market data, real capture</div>
+    </div>
+  </header>
+
+  <section id="modules">
+    <div class="container">
+      <div class="sec-label">Five modules, one registry</div>
+      <div class="sec-title">Everything you keep five indicators around for,<br>in one disciplined tool.</div>
+      <p class="sec-intro">Every module is individually toggleable, and every level it draws lives in one shared
+        registry that cleans itself: swept levels fade to quiet stubs or remove themselves, and old levels age out.</p>
+      <div class="mods">
+        <div class="mod">
+          <div class="num">01 · Session levels</div>
+          <h3>Session highs and lows</h3>
+          <p>Completed Asia, London, NY AM and NY PM highs and lows, plus prior day and prior week. Each level runs to a
+            fixed cutoff past the live bar with its name at the line, so you always know which pool you are looking at.</p>
+        </div>
+        <div class="mod">
+          <div class="num">02 · Premium / Discount</div>
+          <h3>The dealing range</h3>
+          <p>A range built from confirmed swing points, a completed session, or the prior day, with a faint equilibrium
+            line and subtle zone shading. One glance tells you which half of the range you are paying in.</p>
+        </div>
+        <div class="mod">
+          <div class="num">03 · Resting liquidity</div>
+          <h3>Relative equal highs and lows</h3>
+          <p>Equal swings within a tick tolerance are marked as resting liquidity. Extra equal swings reinforce the
+            existing line instead of stacking duplicates, and the registry cleans them like everything else.</p>
+        </div>
+        <div class="mod">
+          <div class="num">04 · SMT divergence</div>
+          <h3>Cracks between correlated pairs</h3>
+          <p>Your chart's swings compared against a correlated symbol, with automatic NQ and ES pairing and a manual
+            override. Bearish when your chart makes a higher high the pair refuses; bullish on the mirror. Stamped
+            only when the swing confirms.</p>
+        </div>
+        <div class="mod">
+          <div class="num">05 · Volume profile</div>
+          <h3>Restrained by design</h3>
+          <p>No histogram, ever. Profiles are computed internally and only the finished levels print: naked POCs that
+            delete themselves the first time price trades at them, or POC with value area high and low.</p>
+        </div>
+        <div class="mod">
+          <div class="num">+ · The label engine</div>
+          <h3>Labels that cannot overlap</h3>
+          <p>Names sit at a shared right cutoff on subtle backdrop chips. Levels that sit close together merge into one
+            stacked chip whose rows run top to bottom in the same order as the lines beside it, each row carrying its
+            exact price. A combined chip reads as a map of its lines.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="discipline">
+    <div class="container">
+      <div class="sec-label">The discipline</div>
+      <div class="sec-title">What LodeStone refuses to do<br>is the reason to run it.</div>
+      <div class="disc-grid">
+        <div class="disc">
+          <h3>It never repaints.</h3>
+          <p>Every level, swing, and profile updates on confirmed bars only. Nothing prints and then quietly un-prints
+            after the fact. What you screenshot is what happened.</p>
+        </div>
+        <div class="disc">
+          <h3>It never signals.</h3>
+          <p>No arrows, no buy and sell stamps, no scores. LodeStone draws context and leaves the decision where it
+            belongs: with you and your model. If you want a tool that trades for you, this is not it.</p>
+        </div>
+        <div class="disc">
+          <h3>It never clutters.</h3>
+          <p>Swept levels fade or remove themselves, only the most recent levels of each type are kept, and the label
+            engine guarantees readable names at any zoom. The chart stays a chart.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="access">
+    <div class="container">
+      <div class="sec-label">How access works</div>
+      <div class="sec-title">Three steps, one membership.</div>
+      <p class="sec-intro">LodeStone is distributed through TradingView's invite-only script system, which keeps the
+        source closed and ties access to your exact TradingView username.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="k">1</div>
+          <h3>Go Pro on Korvus</h3>
+          <p>LodeStone is included with the Operator (Pro) membership at no extra cost, alongside real-time data during
+            market hours, high-impact alerts, and the full terminal.</p>
+        </div>
+        <div class="step">
+          <div class="k">2</div>
+          <h3>Add your TradingView username</h3>
+          <p>On your <a href="/account">account page</a>, save your exact TradingView username. Spelling and
+            capitalization matter, because access is granted to that name and nothing else.</p>
+        </div>
+        <div class="step">
+          <div class="k">3</div>
+          <h3>We grant access</h3>
+          <p>Access is granted manually through TradingView's invite-only system, normally within 24 hours. LodeStone
+            then appears in your Indicators panel under the Invite-only scripts tab.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing">
+    <div class="container" style="text-align:center;">
+      <div class="sec-label" style="text-align:center;">Pricing</div>
+      <div class="sec-title">Included with Operator (Pro).<br>Not sold separately.</div>
+      <div class="pricebox">
+        <div class="tag">Korvus Pro</div>
+        <h3>Operator</h3>
+        <div class="price"><!--K_PRICE_BIG--></div>
+        <div class="pnote">auto-renews monthly · cancel anytime</div>
+        <div class="pnote"><!--K_PRICE_YEAR--></div>
+        <ul>
+          <li>LodeStone TradingView indicator, this page's tool</li>
+          <li>Real-time quotes on the live panels during US market hours</li>
+          <li>Live SMT divergence during market hours</li>
+          <li>Personal watchlist imports</li>
+          <li>High-impact email alerts</li>
+          <li>The full 24/7 scored news terminal</li>
+        </ul>
+        <a href="/signup" class="btn btn-gold" id="priceCta">Go Pro<!--K_PRICE_CTA--></a>
+        <div class="fine">
+          Secure checkout by Stripe. LodeStone access is part of the membership and is revoked if the membership ends.
+          Your TradingView account itself is never touched.<br>
+          <a href="/legal#tos">Terms</a> · <a href="/legal#privacy">Privacy</a> · <a href="/legal#risk">Risk Disclosure</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" style="padding-top:0;">
+    <div class="container">
+      <div class="sec-label" style="text-align:center;">Questions</div>
+      <div class="sec-title" style="text-align:center;">Straight answers.</div>
+      <div class="faq">
+        <details class="qa">
+          <summary>Do I need a paid TradingView plan?</summary>
+          <div class="a">No. Invite-only script access is granted by the author to your username, and a free TradingView
+            account can run LodeStone once access is granted. A paid TradingView plan changes nothing about how
+            LodeStone works.</div>
+        </details>
+        <details class="qa">
+          <summary>I chart on another platform. Is LodeStone useless to me?</summary>
+          <div class="a">LodeStone runs only on TradingView, because it is built in Pine Script. If you execute on
+            another platform, a free TradingView account takes a couple of minutes to create and many futures traders
+            chart there while executing elsewhere. And if you skip the indicator entirely, everything else in your Pro
+            membership works exactly the same.</div>
+        </details>
+        <details class="qa">
+          <summary>Does it repaint?</summary>
+          <div class="a">No. Swings, levels, and profiles are used only after bar confirmation, so nothing is drawn and
+            then removed when the bar closes differently. This costs a few bars of patience and buys you a chart you
+            can trust.</div>
+        </details>
+        <details class="qa">
+          <summary>Will it tell me when to buy or sell?</summary>
+          <div class="a">No, deliberately. LodeStone is context and decision support: it shows you where the levels,
+            liquidity, and divergences are. Your entry model, your risk, and your decisions stay yours. We do not sell
+            signals and we do not promise profits.</div>
+        </details>
+        <details class="qa">
+          <summary>What happens if I cancel Pro?</summary>
+          <div class="a">LodeStone access is part of the membership, so it is revoked when the membership ends. Your
+            TradingView account, charts, and layouts are untouched; the indicator simply stops being available to your
+            username. Rejoin Pro and access is granted again.</div>
+        </details>
+        <details class="qa">
+          <summary>Can I see or copy the source code?</summary>
+          <div class="a">No. Invite-only scripts are closed source on TradingView: the platform runs the script and you
+            see the drawings, never the code. That protection is exactly why we distribute it this way.</div>
+        </details>
+        <details class="qa">
+          <summary>How fast is access granted?</summary>
+          <div class="a">Grants are done manually by a human, normally within 24 hours of saving your TradingView
+            username on your account page. You will find LodeStone under Indicators, in the Invite-only scripts tab.</div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <div class="disclaim">
+    <div class="container">
+      <p><b style="color:var(--ink-dim);">Important:</b> LodeStone and Korvus are informational and educational tools,
+        not financial, investment, legal, or tax advice, and not a recommendation to buy or sell any security, futures
+        contract, or other instrument. Trading futures and leveraged products involves substantial risk of loss and is
+        not suitable for everyone. You alone are responsible for your own trading decisions and outcomes. LodeStone
+        draws analytical context on charts you supply inside TradingView; it does not generate trade signals and no
+        performance is promised or implied. TradingView is a platform owned by TradingView, Inc., which is not
+        affiliated with and does not endorse Korvus or BlackCrownVxJ.LLC. See our
+        <a href="/legal#risk">Risk Disclosure</a> for full terms.</p>
+    </div>
+  </div>
+
+  <footer>
+    <div class="container foot-inner">
+      <a class="brand" href="/">
+        <span class="crown">
+          <svg viewBox="0 0 36 33" width="16" height="16" fill="none" stroke="#ff2d8f" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
+        </span>
+        <span class="brand-name" style="font-size:17px;">Korvus</span>
+      </a>
+      <div class="foot-links">
+        <a href="/">Terminal</a>
+        <a href="/legal#tos">Terms</a>
+        <a href="/legal#privacy">Privacy</a>
+        <a href="/legal#risk">Risk Disclosure</a>
+        <a href="/login">Log in</a>
+      </div>
+      <div class="foot-llc">Built and operated by <b>BlackCrownVxJ.LLC</b> · korvus.industries</div>
+    </div>
+  </footer>
+
+<script>
+  // ---- auth-aware CTAs: anonymous -> signup, free member -> upgrade, Pro -> account page ----
+  (async function(){
+    try{
+      const me = await (await fetch('/api/me',{cache:'no-store'})).json();
+      const hero = document.getElementById('heroCta');
+      const price = document.getElementById('priceCta');
+      const navL = document.getElementById('navLogin');
+      const navC = document.getElementById('navCta');
+      if(me && me.auth){
+        navL.style.display = 'none';
+        navC.textContent = 'Terminal'; navC.href = '/terminal';
+        if(me.tier === 'pro'){
+          hero.textContent = 'Add your TradingView username'; hero.href = '/account';
+          price.textContent = 'You have Pro. Add your username'; price.href = '/account';
+        } else {
+          hero.href = '/upgrade';
+          price.href = '/upgrade';
+        }
+      }
+    }catch(e){ /* anonymous defaults already point at /signup */ }
+  })();
+
+  // ---- ambient candlestick field (shared visual language with the terminal) ----
+  (function(){
+    const cv=document.getElementById('candles'),ctx=cv.getContext('2d');
+    const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let W,H,candles=[],offset=0,price,momentum=0,runLeft=0,trendDir=1;
+    const BULL='#f6f8ff',BEAR='#ff2d8f',CW=9,GAP=8,STEP=CW+GAP;
+    function nextCandle(){
+      const vol=H*0.022;
+      if(runLeft<=0){trendDir=Math.random()<0.5?-1:1;runLeft=4+Math.floor(Math.random()*9);}
+      runLeft--; momentum=momentum*0.7+trendDir*vol*0.9+(Math.random()-0.5)*vol*1.1;
+      const open=price; let close=price+momentum;
+      const top=H*0.10,bot=H*0.92;
+      if(close<top){close=top+Math.random()*vol;momentum=Math.abs(momentum)*0.5;trendDir=1;}
+      if(close>bot){close=bot-Math.random()*vol;momentum=-Math.abs(momentum)*0.5;trendDir=-1;}
+      const hi=Math.max(open,close)+Math.random()*vol*0.8, lo=Math.min(open,close)-Math.random()*vol*0.8;
+      price=close; return {o:open,c:close,h:hi,l:lo,bull:close<=open};
+    }
+    function seed(){candles=[];price=H*0.4;momentum=0;runLeft=0;const need=Math.ceil(W/STEP)+4;for(let i=0;i<need;i++)candles.push(nextCandle());offset=0;}
+    function resize(){W=cv.width=innerWidth;H=cv.height=innerHeight;seed();draw(true);}
+    function draw(once){
+      ctx.clearRect(0,0,W,H);
+      if(!once){offset+=0.35;
+        if(offset>=STEP){offset-=STEP;candles.shift();candles.push(nextCandle());}}
+      ctx.beginPath();
+      candles.forEach((c,i)=>{const x=i*STEP-offset+CW/2;i===0?ctx.moveTo(x,c.c):ctx.lineTo(x,c.c);});
+      ctx.strokeStyle='rgba(255,45,143,.10)';ctx.lineWidth=1.5;ctx.stroke();
+      candles.forEach((c,i)=>{
+        const x=i*STEP-offset+CW/2;if(x<-CW||x>W+CW)return;
+        const up=c.bull,color=up?BULL:BEAR;
+        ctx.globalAlpha=up?0.10:0.14;ctx.strokeStyle=color;ctx.lineWidth=1.2;
+        ctx.beginPath();ctx.moveTo(x,c.h);ctx.lineTo(x,c.l);ctx.stroke();
+        const top=Math.min(c.o,c.c),h=Math.max(2,Math.abs(c.c-c.o));
+        if(up){ctx.globalAlpha=0.07;ctx.fillStyle=color;ctx.fillRect(x-CW/2,top,CW,h);ctx.globalAlpha=0.15;ctx.strokeStyle=color;ctx.lineWidth=1;ctx.strokeRect(x-CW/2,top,CW,h);}
+        else{ctx.globalAlpha=0.15;ctx.fillStyle=color;ctx.fillRect(x-CW/2,top,CW,h);}
+      });
+      ctx.globalAlpha=1;
+      if(!REDUCE) requestAnimationFrame(()=>draw(false));
+    }
+    addEventListener('resize',resize);resize();
+    if(!REDUCE) requestAnimationFrame(()=>draw(false));
+  })();
+</script>
+</body>
+</html>

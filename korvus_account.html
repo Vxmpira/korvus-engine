@@ -204,9 +204,23 @@
       </div>
     </div>
 
+    <!-- LodeStone -->
+    <div class="card" style="--d:.25s">
+      <div class="eyebrow">04, LodeStone</div>
+      <h2>LodeStone on TradingView</h2>
+      <p class="desc">LodeStone is the Korvus chart indicator for TradingView, included with the Operator (Pro) membership.
+        Access is granted through TradingView's invite-only system to the exact username below, so spelling and
+        capitalization matter. A free TradingView account works. <a href="/lodestone" style="color:var(--crimson);text-decoration:none;">Learn about LodeStone</a>.</p>
+      <label for="tvuser">TradingView username</label>
+      <input id="tvuser" type="text" autocomplete="off" spellcheck="false" placeholder="Your exact TradingView username" />
+      <button class="btn" id="saveTv">Save TradingView username</button>
+      <div class="msg" id="tvMsg"></div>
+      <div class="anote" id="tvNote" style="margin-top:10px;"></div>
+    </div>
+
     <!-- Support -->
     <div class="card" style="--d:.29s">
-      <div class="eyebrow">04, Support</div>
+      <div class="eyebrow">05, Support</div>
       <h2>Contact Korvus</h2>
       <p class="desc">Questions about your account, billing, or the platform? Here's how to reach the team behind Korvus.</p>
       <div class="contact">
@@ -267,7 +281,7 @@ async function load(){
     sb.className = 'sb ' + b.cls; sb.textContent = b.text;
     dPlan.textContent   = 'Operator (Pro)';
     dStatus.textContent = b.label;
-    dPrice.textContent  = ME.price_display || '$3.99/mo';
+    dPrice.textContent  = ME.price_display ? (ME.price_display + '/mo') : 'see Stripe portal';
     dRenews.textContent = ME.current_period_end ? fmtDate(ME.current_period_end) : '-';
     billBtn.textContent = 'Manage billing'; billBtn.dataset.action = 'portal'; billBtn.disabled = false;
   } else {
@@ -280,6 +294,17 @@ async function load(){
     dRenews.textContent = '-';
     if(ME.billing_enabled){ billBtn.textContent='Go Pro'; billBtn.dataset.action='upgrade'; billBtn.disabled=false; }
     else { billBtn.textContent='Memberships open soon'; billBtn.disabled=true; }
+  }
+
+  // ---- LodeStone / TradingView username ----
+  document.getElementById('tvuser').value = ME.tv_username || '';
+  const tn = document.getElementById('tvNote');
+  if(isPro){
+    tn.textContent = ME.tv_username
+      ? 'Access is granted to this exact username, usually within 24 hours of saving it.'
+      : 'Add your username and LodeStone access is granted to it, usually within 24 hours.';
+  } else {
+    tn.textContent = 'LodeStone comes with Operator (Pro). Save your username now and access is granted after you upgrade.';
   }
 
   // ---- high-impact email alerts toggle ----
@@ -317,6 +342,13 @@ document.getElementById('savePw').onclick = async () => {
   const {ok, data} = await post('/api/account/password', {current: cur, new: a});
   setMsg('pwMsg', ok?'ok':'err', data.message || (ok?'Changed.':'Could not change.'));
   if(ok){ document.getElementById('curpw').value=''; document.getElementById('newpw').value=''; document.getElementById('newpw2').value=''; }
+};
+
+document.getElementById('saveTv').onclick = async () => {
+  const v = document.getElementById('tvuser').value.trim();
+  const {ok, data} = await post('/api/account/tv-username', {tv_username: v});
+  setMsg('tvMsg', ok?'ok':'err', data.message || (ok?'Saved.':'Could not save.'));
+  if(ok) load();
 };
 
 document.getElementById('saveEmail').onclick = async () => {

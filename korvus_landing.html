@@ -452,6 +452,23 @@
   @media(max-width:860px){.showcase-strip{grid-template-columns:repeat(2,1fr);gap:20px 26px;}}
   @media(max-width:520px){.showcase-strip{grid-template-columns:1fr;gap:16px;}}
 
+  /* ===== LodeStone teaser ===== */
+  .lode-grid{display:grid;grid-template-columns:1fr 1.15fr;gap:44px;align-items:center;margin-top:34px;}
+  .lode-list{list-style:none;margin:22px 0 0;padding:0;display:grid;gap:11px;}
+  .lode-list li{font-size:14.5px;line-height:1.5;color:var(--ink-dim);padding-left:18px;position:relative;}
+  .lode-list li::before{content:"";position:absolute;left:0;top:9px;width:7px;height:7px;border-radius:2px;
+    background:var(--crimson);box-shadow:0 0 8px var(--crimson-glow);}
+  .lode-list b{color:var(--ink);font-weight:700;}
+  .lode-honest{margin-top:20px;font-size:14.5px;line-height:1.6;color:var(--ink-dim);border-left:2px solid var(--crimson);
+    padding:2px 0 2px 14px;}
+  .lode-cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px;}
+  .lode-shot{margin:0;}
+  .lode-shot img{display:block;width:100%;height:auto;border-radius:12px;border:1px solid var(--line-bright);
+    box-shadow:0 30px 80px -30px rgba(0,0,0,.9),0 0 40px -18px var(--crimson-glow);}
+  .lode-shot figcaption{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-faint);margin-top:12px;text-align:center;}
+  @media(max-width:960px){.lode-grid{grid-template-columns:1fr;gap:34px;}.lode-shot{order:-1;}}
+
   /* reveal for showcase pieces */
   .js .showcase-cap,.js .showcase-strip .pt{opacity:0;transform:translateY(22px);
     transition:opacity .8s cubic-bezier(.22,.61,.36,1),transform .8s cubic-bezier(.22,.61,.36,1);}
@@ -532,6 +549,7 @@
       </div>
       <div class="nav-links">
         <a href="#how">How it works</a>
+        <a href="/lodestone">LodeStone</a>
         <a href="#pricing">Pricing</a>
         <a href="/legal">Legal</a>
         <a href="/login" class="btn btn-ghost">Log in</a>
@@ -558,7 +576,8 @@
         <span><i></i> SMT divergence</span>
         <span><i></i> Macro &amp; session context</span>
         <span><i></i> Live market TV</span>
-        <span><i></i> Free tier · Pro $3.99/mo</span>
+        <span><i></i> LodeStone on TradingView</span>
+        <span><i></i> <!--K_BADGE_PRICE--></span>
       </div>
     </div>
 
@@ -797,10 +816,41 @@
             <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Your watchlist and settings, saved to your account</b> and synced across devices.</span></li>
             <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Email only when it matters.</b> No marketing blasts; unsubscribe in one click.</span></li>
             <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Your data stays yours.</b> Leave or delete your account anytime.</span></li>
-            <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Pro is optional</b>, $3.99/mo, cancel anytime, no lock-in.</span></li>
+            <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Pro is optional</b>, <!--K_PRICE_MO_OPT-->cancel anytime, no lock-in.</span></li>
             <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.4l2.7 2.7L16 9.4"/></svg><span class="t"><b>Automated analysis, not advice.</b> A machine reads and scores the news; it informs your decision and never makes it.</span></li>
           </ul>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="lodestone" style="background:rgba(10,12,16,.4);backdrop-filter:blur(6px);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
+    <div class="container">
+      <div class="sec-label">LodeStone · included with Pro</div>
+      <div class="sec-title">The terminal reads the news.<br>LodeStone reads your chart.</div>
+      <div class="lode-grid">
+        <div class="lode-copy">
+          <p class="sec-intro" style="max-width:none;">LodeStone is our TradingView indicator for intraday index futures:
+            an ICT liquidity context tool that marks the levels that matter and keeps the chart clean while it does it.
+            It is included with the Operator (Pro) membership at no extra cost.</p>
+          <ul class="lode-list">
+            <li><b>Session levels.</b> Completed Asia, London, NY AM and NY PM highs and lows, plus prior day and prior week.</li>
+            <li><b>Premium / Discount.</b> A dealing range with equilibrium, so you know which half of the range you are paying in.</li>
+            <li><b>Resting liquidity.</b> Relative equal highs and lows, reinforced instead of duplicated.</li>
+            <li><b>SMT divergence.</b> Your chart's swings against a correlated symbol, with automatic NQ and ES pairing.</li>
+            <li><b>Restrained volume profile.</b> Naked POCs and value area levels. No histogram, ever.</li>
+          </ul>
+          <p class="lode-honest">Everything prints on confirmed bars only, so nothing repaints. And it will never draw an arrow
+            or tell you to buy or sell. Context and decision support, deliberately.</p>
+          <div class="lode-cta">
+            <a href="/lodestone" class="btn btn-gold">Explore LodeStone</a>
+            <a href="#pricing" class="btn btn-ghost">See Pro pricing</a>
+          </div>
+        </div>
+        <figure class="lode-shot">
+          <img src="/lodestone-chart.png" alt="LodeStone running on an NQ futures chart on TradingView, showing stacked session level labels, equilibrium, value area lines, and SMT divergence marks" loading="lazy" />
+          <figcaption>LodeStone on NQ (CME), 1-hour chart on TradingView. Real market data, real capture.</figcaption>
+        </figure>
       </div>
     </div>
   </section>
@@ -809,7 +859,7 @@
     <div class="container" style="text-align:center;">
       <div class="sec-label">Pricing</div>
       <div class="sec-title">Start free. Upgrade for real-time data.</div>
-      <p class="sec-intro" style="margin:0 auto;">Both tiers run on the same 24/7 news analysis engine. Pro adds real-time quotes and live SMT divergence during US market hours, personal watchlist imports, and email alerts on high-impact items.</p>
+      <p class="sec-intro" style="margin:0 auto;">Both tiers run on the same 24/7 news analysis engine. Pro adds real-time quotes and live SMT divergence during US market hours, personal watchlist imports, email alerts on high-impact items, and the LodeStone TradingView indicator.</p>
       <div class="pricing-wrap">
         <div class="plan">
           <div class="plan-tag">Free</div>
@@ -833,20 +883,22 @@
           <span class="badge-best">Recommended</span>
           <div class="plan-tag">Pro</div>
           <h3>Operator</h3>
-          <div class="price">$3.99<span>/mo</span></div>
+          <div class="price"><!--K_PRICE_BIG--></div>
           <div class="price-note">auto-renews monthly · cancel anytime</div>
+          <div class="price-note" style="margin-top:2px;"><!--K_PRICE_YEAR--></div>
           <ul>
             <li><span class="ck">✓</span> Everything in Observer</li>
             <li><span class="ck">✓</span> <b style="color:var(--ink)">Real-time quotes</b> on the live panels</li>
             <li><span class="ck">✓</span> Live SMT divergence during market hours</li>
             <li><span class="ck">✓</span> Personal watchlist imports</li>
             <li><span class="ck">✓</span> High-impact email alerts</li>
+            <li><span class="ck">✓</span> <b style="color:var(--ink)">LodeStone</b> TradingView indicator <a href="/lodestone" style="color:var(--crimson);text-decoration:none;">(what is it?)</a></li>
             <li><span class="ck">✓</span> Eclipse-X community access</li>
           </ul>
           <div style="font-family:var(--mono);font-size:10px;color:var(--ink-faint);text-align:center;margin:-2px 0 12px;line-height:1.5;">
             Live price panels stream during US market hours (9:30 AM to 4:00 PM ET). Outside those hours they show a clear CLOSED state while the 24/7 scored news feed and high-impact alerts keep running.
           </div>
-          <a href="/signup" class="btn btn-gold">Go Pro, $3.99/mo</a>
+          <a href="/signup" class="btn btn-gold">Go Pro<!--K_PRICE_CTA--></a>
           <div style="font-family:var(--mono);font-size:10px;color:var(--ink-faint);text-align:center;margin-top:12px;line-height:1.5;">
             Secure checkout by Stripe. Subscription auto-renews monthly until cancelled; cancel anytime from your account.<br>
             <a href="/legal#tos" style="color:var(--ink-faint);text-decoration:underline;">Terms</a> ·
@@ -873,6 +925,7 @@
         <div><div class="brand-name" style="font-size:17px;">Korvus</div></div>
       </div>
       <div class="foot-links">
+        <a href="/lodestone">LodeStone</a>
         <a href="/legal#tos">Terms</a>
         <a href="/legal#privacy">Privacy</a>
         <a href="/legal#risk">Risk Disclosure</a>

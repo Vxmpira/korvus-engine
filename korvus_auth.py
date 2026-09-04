@@ -23,6 +23,7 @@
 ==============================================================================
 """
 import os
+import re
 import sqlite3
 import secrets
 import datetime as dt
@@ -73,7 +74,8 @@ def init_auth_db():
                      ("reset_token", "TEXT"),
                      ("reset_expires", "TEXT"),
                      ("alert_opt_in", "INTEGER DEFAULT 1"),
-                     ("last_login", "TEXT")):
+                     ("last_login", "TEXT"),
+                     ("tv_username", "TEXT")):
         if col not in existing:
             conn.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
     # --- member timeline (admin console drawer). Append-only event log for
@@ -266,6 +268,26 @@ def update_username(user_id, new_username):
     conn.execute("UPDATE users SET username = ? WHERE id = ?", (new_username, user_id))
     conn.commit(); conn.close()
     return True, "Username updated."
+
+
+def set_tv_username(user_id, name):
+    """Store the member's exact TradingView username, used to grant LodeStone
+    invite-only access. Empty input clears the field. Returns (ok, message)."""
+    name = (name or "").strip().lstrip("@").strip()
+    conn = get_db()
+    if name == "":
+        conn.execute("UPDATE users SET tv_username = NULL WHERE id = ?", (user_id,))
+        conn.commit(); conn.close()
+        return True, "TradingView username cleared."
+    if not re.fullmatch(r"[A-Za-z0-9_.\-]{2,32}", name):
+        conn.close()
+        return False, "That does not look like a valid TradingView username (letters, numbers, dot, dash, underscore)."
+    conn.execute("UPDATE users SET tv_username = ? WHERE id = ?", (name, user_id))
+    row = conn.execute("SELECT username FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.commit(); conn.close()
+    if row:
+        log_member_event(row["username"], "tv_username", "set to " + name)
+    return True, "Saved. LodeStone access is granted to this exact TradingView username."
 
 
 def change_password(user_id, current_pw, new_pw):
