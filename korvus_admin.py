@@ -22,6 +22,7 @@ are never read.
 """
 
 import os
+import re
 import json
 import time
 import sqlite3
@@ -170,13 +171,34 @@ def admin_stats():
                 "ORDER BY created_at DESC LIMIT 12").fetchall()
             out["recent_signups"] = [dict(r) for r in rows]
 
+        # ---- LodeStone access roster: everyone with a TradingView username
+        #      saved, plus anyone still flagged granted (so revokes are never
+        #      lost when a member clears their name). Grant/revoke on
+        #      TradingView is manual; the flag here is the owner's ledger. ---
+        if "tv_username" in cols:
+            has_flag = "lodestone_granted" in cols
+            sel = "username, email, tier, tv_username"
+            if "subscription_status" in cols:
+                sel += ", subscription_status"
+            sel += ", lodestone_granted" if has_flag else ", 0 AS lodestone_granted"
+            where = "(tv_username IS NOT NULL AND tv_username != '')"
+            if has_flag:
+                where += " OR lodestone_granted = 1"
+            rows = conn.execute(
+                f"SELECT {sel} FROM users WHERE {where} "
+                "ORDER BY (tier='pro') DESC, username COLLATE NOCASE").fetchall()
+            out["lodestone"] = [dict(r) for r in rows]
+
         conn.close()
     except Exception as e:
         out["users_error"] = str(e)
 
     # ---- revenue (clearly an estimate) -------------------------------------
     try:
-        price = float(os.getenv("PRO_PRICE_MONTHLY", "3.99"))
+        # Single source of truth: the same Stripe display price the site shows.
+        # Falls back to PRO_PRICE_MONTHLY, then 0 (never a stale hardcode).
+        raw = os.getenv("STRIPE_PRICE_DISPLAY") or os.getenv("PRO_PRICE_MONTHLY") or "0"
+        price = float(re.sub(r"[^0-9.]", "", raw) or 0)
         paying = None
         basis = "pro-tier member count"
         if out.get("subscriptions", {}).get("active") is not None:
@@ -203,6 +225,7 @@ def admin_stats():
         "quotes_provider":  os.getenv("QUOTES_PROVIDER") or "(unset)",
         "news_provider":    os.getenv("NEWS_PROVIDER") or "(unset)",
         "email_provider":   os.getenv("EMAIL_PROVIDER") or "off",
+        "discord_notify":   bool(os.getenv("DISCORD_WEBHOOK_URL")),
         "db_present":       os.path.exists(DB_PATH),
         "server_uptime_seconds": int(time.time() - _STARTED),
     }
@@ -293,7 +316,7 @@ def admin_find_user():
         conn = _db()
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)")}
         fields = ["username"]
-        for c in ("email", "tier", "created_at"):
+        for c in ("email", "tier", "created_at", "tv_username"):
             if c in cols:
                 fields.append(c)
         sel = ", ".join(fields)
@@ -349,6 +372,52 @@ def admin_set_tier():
         except Exception:
             pass
         return jsonify({"ok": True, "username": username, "old": old, "new": tier})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+@korvus_admin.route("/api/admin/lodestone-granted", methods=["POST"])
+@admin_required
+def admin_lodestone_granted():
+    """Owner ledger: record that LodeStone access was granted or revoked on
+    TradingView for this member. Does not touch TradingView itself; the grant
+    and revoke are manual there. Admin-gated and audited."""
+    data = request.get_json(silent=True) or {}
+    username = (data.get("username") or "").strip()
+    granted = data.get("granted")
+    if not username:
+        return jsonify({"ok": False, "error": "username required"}), 400
+    if not isinstance(granted, bool):
+        return jsonify({"ok": False, "error": "granted must be true or false"}), 400
+    conn = None
+    try:
+        conn = _db_rw()
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)")}
+        if "lodestone_granted" not in cols:
+            return jsonify({"ok": False, "error": "users table has no lodestone_granted "
+                            "column; restart the server so the migration runs"}), 400
+        row = conn.execute("SELECT username, lodestone_granted FROM users WHERE username = ?",
+                           (username,)).fetchone()
+        if not row:
+            return jsonify({"ok": False, "error": f"no user '{username}'"}), 404
+        conn.execute("UPDATE users SET lodestone_granted = ? WHERE username = ?",
+                     (1 if granted else 0, username))
+        conn.commit()
+        actor = getattr(current_user, "username", "?")
+        word = "granted" if granted else "revoked"
+        print(f"  [admin] {actor} marked LodeStone {word} for {username}")
+        try:
+            import korvus_auth as auth
+            auth.log_member_event(username, "lodestone", f"marked {word} by {actor}")
+        except Exception:
+            pass
+        return jsonify({"ok": True, "username": username, "granted": granted})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
     finally:

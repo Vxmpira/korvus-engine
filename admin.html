@@ -226,6 +226,16 @@
     padding:4px 9px;border-radius:6px;border:1px solid var(--line-2);color:var(--ink-dim);}
   .schip.live{color:var(--bull);border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.08);}
   .schip.due{color:var(--warn);border-color:rgba(245,165,36,.4);background:rgba(245,165,36,.08);}
+  .lscounts{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px;}
+  .lschip{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+    border:1px solid var(--line-bright);border-radius:6px;padding:3px 8px;color:var(--ink-dim);}
+  .lschip.grant,.lschip.revoke{color:var(--crimson);border-color:rgba(255,45,143,.45);background:rgba(255,45,143,.08);}
+  .lschip.insync{color:var(--bull);border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.08);}
+  .lschip.wait{color:var(--ink-faint);}
+  .lscopy{font-family:var(--mono);font-size:inherit;color:var(--ink);background:none;border:none;cursor:pointer;
+    padding:0;border-bottom:1px dashed var(--line-bright);}
+  .lscopy:hover{border-bottom-color:var(--crimson);color:var(--crimson);}
+  .lsnone{color:var(--ink-faint);font-style:italic;}
   .urow .uname{cursor:pointer;border-bottom:1px dashed transparent;transition:color .12s,border-color .12s;}
   .urow .uname:hover{color:var(--crimson);border-bottom-color:var(--crimson-line);}
   .mdrawer{display:flex;flex-direction:column;gap:12px;padding:14px;margin-top:-4px;
@@ -387,7 +397,9 @@ function render(stats, online, health){
         '<td class="mono">'+esc((m.created_at||"").slice(0,10))+'</td></tr>'; });
     html += '</tbody></table>';
   } else { html += '<div class="empty">No signups yet.</div>'; }
-  html += '</div></div></section>';
+  html += '</div></div>';
+  html += renderLodestone(stats.lodestone);
+  html += '</section>';
 
   if(stats.users_error)   html += '<div class="err" style="margin-top:8px">users query: '+esc(stats.users_error)+'</div>';
   if(stats.revenue_error) html += '<div class="err" style="margin-top:8px">revenue: '+esc(stats.revenue_error)+'</div>';
@@ -396,6 +408,68 @@ function render(stats, online, health){
   renderToolsOnce(stats);
   initSpy();
 }
+
+function lodeState(m){
+  // The ledger logic: tier says who SHOULD have access, the flag says who DOES.
+  const pro = (m.tier||'').toLowerCase()==='pro', g = !!m.lodestone_granted;
+  if(pro && !g)  return {cls:'grant',  label:'grant needed',  act:'Mark granted', to:true};
+  if(pro && g)   return {cls:'insync', label:'granted',       act:'Mark revoked', to:false};
+  if(!pro && g)  return {cls:'revoke', label:'revoke needed', act:'Mark revoked', to:false};
+  return {cls:'wait', label:'waiting on upgrade', act:null, to:null};
+}
+function renderLodestone(rows){
+  let h='<div class="card" style="margin-top:14px"><div class="chead"><h3>LodeStone access</h3>'+
+    '<p>Who should have the indicator on TradingView. Grants and revokes happen there by hand; mark each row here as you do them.</p></div>';
+  if(!rows || !rows.length){
+    h+='<div class="empty">No members have saved a TradingView username yet.</div></div>';
+    return h;
+  }
+  let grant=0, revoke=0, sync=0;
+  rows.forEach(m=>{ const s=lodeState(m); if(s.cls==='grant')grant++; else if(s.cls==='revoke')revoke++; else if(s.cls==='insync')sync++; });
+  h+='<div class="lscounts">'+
+    (grant ?'<span class="lschip grant">'+grant+' to grant</span>':'')+
+    (revoke?'<span class="lschip revoke">'+revoke+' to revoke</span>':'')+
+    '<span class="lschip insync">'+sync+' in sync</span></div>';
+  h+='<table><thead><tr><th>TV username</th><th>Member</th><th>Tier</th><th>Status</th><th></th></tr></thead><tbody>';
+  rows.forEach(m=>{
+    const s=lodeState(m), t=(m.tier||'free').toLowerCase();
+    const uAttr=esc(m.username).replace(/"/g,'&quot;');
+    const tv=m.tv_username?esc(m.tv_username):'<span class="lsnone">(cleared)</span>';
+    h+='<tr><td class="mono">'+(m.tv_username
+        ?'<button class="lscopy" data-tv="'+esc(m.tv_username).replace(/"/g,'&quot;')+'" title="Copy for TradingView Manage Access">'+tv+'</button>'
+        :tv)+'</td>'+
+      '<td class="mono name">'+esc(m.username)+'</td>'+
+      '<td><span class="tier '+(t==='pro'?'pro':'free')+'">'+esc(t)+'</span></td>'+
+      '<td><span class="lschip '+s.cls+'">'+s.label+'</span></td>'+
+      '<td style="text-align:right">'+(s.act
+        ?'<button class="tbtn ghost lsact" data-u="'+uAttr+'" data-g="'+s.to+'">'+s.act+'</button>':'')+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  return h;
+}
+// Delegated once so bindings survive every re-render of #root.
+document.addEventListener('click', async function(e){
+  const copy=e.target.closest('.lscopy');
+  if(copy){
+    const tv=copy.dataset.tv, old=copy.textContent;
+    try{ await navigator.clipboard.writeText(tv); }
+    catch(_){ const ta=document.createElement('textarea'); ta.value=tv; document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); }catch(__){} ta.remove(); }
+    copy.textContent='copied'; setTimeout(()=>{ copy.textContent=old; }, 900);
+    return;
+  }
+  const act=e.target.closest('.lsact');
+  if(act){
+    act.disabled=true; act.textContent='Saving\u2026';
+    try{
+      const r=await fetch('/api/admin/lodestone-granted',{method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({username:act.dataset.u, granted:act.dataset.g==='true'})}).then(r=>r.json());
+      if(!r.ok){ alert('Failed: '+(r.error||'unknown')); act.disabled=false; return; }
+      load();
+    }catch(err){ alert('Error: '+(err.message||err)); act.disabled=false; }
+  }
+});
 
 function fmetric(k,v,sub){ return '<div class="fm"><div class="fmk">'+esc(k)+'</div><div class="fmv tnum">'+esc(v)+'</div>'+(sub?'<div class="fms">'+esc(sub)+'</div>':'')+'</div>'; }
 function renderFeed(f, st, eng){
@@ -426,6 +500,7 @@ function renderFeed(f, st, eng){
   h+=srow("info","quotes provider",st.quotes_provider);
   h+=srow("info","news provider",st.news_provider);
   h+=srow("info","email",st.email_provider);
+  h+=srow(st.discord_notify?"ok":"bad","discord notify",st.discord_notify?"webhook set":"not set");
   h+='</div></section>';
   return h;
 }

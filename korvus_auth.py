@@ -75,7 +75,8 @@ def init_auth_db():
                      ("reset_expires", "TEXT"),
                      ("alert_opt_in", "INTEGER DEFAULT 1"),
                      ("last_login", "TEXT"),
-                     ("tv_username", "TEXT")):
+                     ("tv_username", "TEXT"),
+                     ("lodestone_granted", "INTEGER DEFAULT 0")):
         if col not in existing:
             conn.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
     # --- member timeline (admin console drawer). Append-only event log for
