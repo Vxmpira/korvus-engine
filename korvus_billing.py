@@ -4,7 +4,7 @@
  KORVUS BILLING  ·  Stripe subscriptions   (by BlackCrownVxJ.LLC)
 ==============================================================================
  Turns the free/pro tier into a real paid membership using Stripe Checkout.
- Checkout is STRIPE-HOSTED — members enter their card on Stripe's page, not
+ Checkout is STRIPE-HOSTED: members enter their card on Stripe's page, not
  ours, so raw card data never touches this server (keeps us out of PCI scope).
 
    /upgrade  --"Go Pro"-->  /api/billing/checkout  -->  Stripe Checkout page
@@ -15,7 +15,7 @@
                                                               v
                                           auth.apply_subscription() -> tier=pro
 
- SETUP (all via .env — no code change, same pattern as the quotes providers):
+ SETUP (all via .env, no code change, same pattern as the quotes providers):
    pip install stripe
    STRIPE_SECRET_KEY=sk_live_...        (sk_test_... while testing)
    STRIPE_PRICE_ID=price_...            a RECURRING price on your Pro product
@@ -31,7 +31,7 @@
       -> copy the signing secret into STRIPE_WEBHOOK_SECRET
 
  IMPORTANT: secrets live ONLY in .env on the server. Nothing is hardcoded here,
- and this module never sees or stores a card number — Stripe handles all of it.
+ and this module never sees or stores a card number; Stripe handles all of it.
  Until STRIPE_SECRET_KEY + STRIPE_PRICE_ID are set (and `stripe` is installed),
  billing is simply "disabled" and the upgrade page shows a graceful notice.
 ==============================================================================
@@ -40,6 +40,7 @@ import os
 import datetime as dt
 from dotenv import load_dotenv
 import korvus_auth as auth
+import korvus_notify as notify
 
 load_dotenv()
 
@@ -59,7 +60,7 @@ def _stripe():
     try:
         import stripe
     except Exception:
-        print("  [billing] the 'stripe' package isn't installed — run: pip install stripe")
+        print("  [billing] the 'stripe' package isn't installed. Run: pip install stripe")
         return None
     stripe.api_key = STRIPE_SECRET_KEY
     return stripe
@@ -154,7 +155,7 @@ def _iso(ts):
 
 def handle_webhook(payload: bytes, sig_header: str):
     """Verify + process a Stripe webhook. Returns (http_status, message).
-    The signature check is mandatory — unsigned / forged events are rejected."""
+    The signature check is mandatory: unsigned / forged events are rejected."""
     stripe = _stripe()
     if not stripe:
         return 503, "billing disabled"
@@ -168,6 +169,21 @@ def handle_webhook(payload: bytes, sig_header: str):
 
     typ = event["type"]
     obj = event["data"]["object"]
+
+    def _notify_transition(res):
+        """Ping Discord only when the tier actually changed. Overlapping Stripe
+        events (checkout.session.completed + customer.subscription.created for
+        the same purchase) are naturally deduplicated: whichever lands first
+        flips the tier, the second sees no transition and stays silent."""
+        if not res:
+            return
+        if res["old_tier"] != "pro" and res["new_tier"] == "pro":
+            notify.member_went_pro(res["username"], res["email"],
+                                   res["tv_username"], res["status"])
+        elif res["old_tier"] == "pro" and res["new_tier"] != "pro":
+            notify.member_pro_ended(res["username"], res["email"],
+                                    res["tv_username"], res["status"])
+
     try:
         if typ == "checkout.session.completed":
             customer = obj.get("customer")
@@ -175,8 +191,9 @@ def handle_webhook(payload: bytes, sig_header: str):
             sub_id   = obj.get("subscription")
             if username and customer:
                 auth.set_stripe_customer(username, customer)   # link on first purchase
-            updated = auth.apply_subscription(customer, "active", sub_id, None)
-            print(f"  [billing] checkout completed -> pro: {updated or username}")
+            res = auth.apply_subscription(customer, "active", sub_id, None)
+            _notify_transition(res)
+            print(f"  [billing] checkout completed -> pro: {(res or {}).get('username') or username}")
         elif typ in ("customer.subscription.created",
                      "customer.subscription.updated",
                      "customer.subscription.deleted"):
@@ -184,7 +201,7 @@ def handle_webhook(payload: bytes, sig_header: str):
             status   = "canceled" if typ.endswith("deleted") else obj.get("status")
             sub_id   = obj.get("id")
             # Newer Stripe API versions moved current_period_end off the
-            # subscription object onto its line items — fall back to the item.
+            # subscription object onto its line items, so fall back to the item.
             cpe_ts = obj.get("current_period_end")
             if cpe_ts is None:
                 try:
@@ -192,8 +209,9 @@ def handle_webhook(payload: bytes, sig_header: str):
                 except (KeyError, IndexError, TypeError):
                     cpe_ts = None
             cpe      = _iso(cpe_ts)
-            updated  = auth.apply_subscription(customer, status, sub_id, cpe)
-            print(f"  [billing] {typ} -> {status} for {updated or customer}")
+            res      = auth.apply_subscription(customer, status, sub_id, cpe)
+            _notify_transition(res)
+            print(f"  [billing] {typ} -> {status} for {(res or {}).get('username') or customer}")
     except Exception as e:
         # log, but still 200 so Stripe doesn't retry forever on an internal hiccup
         print(f"  [billing] webhook handling error: {e}")

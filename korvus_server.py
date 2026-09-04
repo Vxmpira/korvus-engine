@@ -28,6 +28,7 @@ from flask_login import (LoginManager, UserMixin, login_user, logout_user,
                          login_required, current_user)
 import korvus_auth as auth
 import korvus_billing as billing
+import korvus_notify as notify
 
 # Owner/admin gate - comma-separated usernames in .env (e.g. ADMIN_USERNAMES=vxj).
 # Empty by default, which means nobody is an admin until you set it.
@@ -437,9 +438,19 @@ def account_username():
 @app.route("/api/account/tv-username", methods=["POST"])
 @login_required
 def account_tv_username():
-    """Save the member's exact TradingView username for LodeStone access grants."""
+    """Save the member's exact TradingView username for LodeStone access grants.
+    When a PRO member sets, changes, or clears it, ping Discord so the owner
+    can grant or revoke on TradingView. Free-tier saves stay silent; their
+    grant notification fires from the billing webhook when they upgrade."""
     data = request.get_json(silent=True) or {}
+    before = auth.get_user_by_id(current_user.id) or {}
+    old_tv = (before.get("tv_username") or "").strip()
     ok, msg = auth.set_tv_username(current_user.id, data.get("tv_username"))
+    if ok and before.get("tier") == "pro":
+        after = auth.get_user_by_id(current_user.id) or {}
+        new_tv = (after.get("tv_username") or "").strip()
+        if new_tv != old_tv and (new_tv or old_tv):
+            notify.tv_username_changed(before.get("username"), old_tv, new_tv)
     return (jsonify({"ok": ok, "message": msg}), 200 if ok else 400)
 
 

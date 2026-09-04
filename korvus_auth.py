@@ -235,11 +235,15 @@ PRO_STATUSES = {"active", "trialing"}
 def apply_subscription(customer_id, status, subscription_id=None, current_period_end=None):
     """Sync a user's tier + subscription fields from a Stripe event, matched by
     stripe_customer_id. Tier becomes 'pro' while active/trialing, else 'free'.
-    Returns the affected username, or None if no user matched that customer."""
+    Returns a transition dict for the affected user, or None if no user matched:
+      {username, email, tv_username, old_tier, new_tier, status}
+    The old/new tier pair lets the billing layer notify only on real
+    transitions, which also deduplicates Stripe's overlapping events."""
     user = get_user_by_customer_id(customer_id)
     if not user:
         return None
     tier = "pro" if (status in PRO_STATUSES) else "free"
+    old_tier = user.get("tier") or "free"
     conn = get_db()
     conn.execute(
         "UPDATE users SET tier = ?, subscription_status = ?, stripe_subscription_id = ?, "
@@ -249,7 +253,12 @@ def apply_subscription(customer_id, status, subscription_id=None, current_period
     conn.close()
     log_member_event(user["username"], "billing",
                      f"subscription {status} (tier {tier})")
-    return user["username"]
+    return {"username": user["username"],
+            "email": user.get("email"),
+            "tv_username": user.get("tv_username"),
+            "old_tier": old_tier,
+            "new_tier": tier,
+            "status": status}
 
 
 # ----------------------------------------------------------------------------
