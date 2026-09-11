@@ -166,6 +166,49 @@ def api_health():
     return jsonify({"db": exists, "total": total, "scored": scored, "last_update": last})
 
 
+@app.route("/api/feed/floor")
+def api_feed_floor():
+    """Server-to-server feed for BlackCrown Intelligence Room 05 (The Floor).
+
+    Auth is a shared key (FLOOR_FEED_KEY in .env), not a login session, so the
+    Crown box can pull this on a cron without a browser cookie. Returns the
+    freshest scored items in a compact shape that Crown caches on disk and
+    injects into every Floor prompt as live market context.
+    """
+    import hmac
+    want = os.getenv("FLOOR_FEED_KEY", "")
+    got = request.headers.get("X-Floor-Key", "") or request.args.get("key", "")
+    if not want or not hmac.compare_digest(want, got):
+        return jsonify({"error": "forbidden"}), 403
+    if not os.path.exists(DB_PATH):
+        return jsonify({"error": "korvus.db not found", "items": []}), 503
+
+    conn = db()
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
+    noise_clause = "AND COALESCE(noise,0)=0" if "noise" in cols else ""
+    rows = conn.execute(
+        f"""SELECT * FROM items WHERE processed=1 {noise_clause}
+            ORDER BY CASE COALESCE(impact,'low')
+                       WHEN 'high' THEN 0 WHEN 'med' THEN 1 ELSE 2 END,
+                     created_at DESC
+            LIMIT 30"""
+    ).fetchall()
+    conn.close()
+
+    items = []
+    for r in rows:
+        items.append({
+            "t":        to_et(r["created_at"]),
+            "impact":   r["impact"] or "low",
+            "dir":      r["direction"] or "neut",
+            "conf":     r["confidence"] or 0,
+            "inst":     json.loads(r["instruments"] or "[]"),
+            "headline": r["headline"] or "",
+            "summary":  (r["summary"] or "")[:280],
+        })
+    return jsonify({"items": items, "count": len(items)})
+
+
 @app.route("/api/ff-calendar")
 def api_ff_calendar():
     """This-week economic calendar for the Forex / Gov News page.
