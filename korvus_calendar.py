@@ -41,6 +41,7 @@
 import os
 import re
 import json
+import math
 import time
 import datetime as dt
 
@@ -393,6 +394,22 @@ def _canon(t: str) -> str:
     has_nonfarm = ("nonfarm" in n) or ("non" in n and "farm" in n) or ("nfp" in n.split())
     if has_nonfarm and "private" not in n:
         return "adp employment change" if "adp" in n else "nonfarm payrolls"
+    # GDP is the other big naming split: Forex Factory prints "Final GDP q/q"
+    # while FMP calls the same release "GDP Growth Rate QoQ" (with Advance /
+    # Prelim / Final vintages). After normalization those share only {gdp, qoq}
+    # (2 of up to 5 tokens -> 0.4 overlap, below the 0.6 fallback bar) so the
+    # actual never attaches. Collapse every GDP-headline spelling to one key,
+    # keyed on the period, while keeping the "GDP Price Index / Deflator" sibling
+    # on its OWN key so the two never swap values. Advance/Prelim/Final are weeks
+    # apart, so the same-occurrence date window keeps those vintages separate.
+    toks = set(n.split())
+    if "gdp" in toks:
+        period = ("qoq" if "qoq" in toks else
+                  "yoy" if "yoy" in toks else
+                  "mom" if "mom" in toks else "")
+        if period:
+            is_price = ("price" in toks) or ("deflator" in toks)
+            return f"gdp price index {period}" if is_price else f"gdp {period}"
     return _strip_noise(n)
 
 def _ts(s):
@@ -438,42 +455,132 @@ def _unit(s):
 def _ref_unit(forecast, previous):
     return _unit(forecast) or _unit(previous)
 
-def _actual_compatible(a, forecast, previous):
-    """True if actual `a` sits in a believable range vs the event's own
-    forecast/previous. Catches an index value (336) attached to a % event (2.9)."""
-    refs = [r for r in (_num(forecast), _num(previous)) if r is not None]
-    if not refs:
-        return True                       # nothing to compare against, trust it
-    for r in refs:
-        if abs(r) < 1e-9:
-            if abs(a) <= 5:               # reference ~0 and actual small -> fine
-                return True
-            continue
-        if 0.1 <= abs(a) / abs(r) <= 10:  # within 10x of a reference -> believable
-            return True
-    return False
+# Multiplier each unit suffix stands for, so values from the two feeds can be
+# compared on the SAME scale. Forex Factory writes "220K"; FMP may send the same
+# figure as "220000" (full), "220" (in thousands), or "220K". Comparing the bare
+# numbers (220000 vs 220) is what garbled the column and rejected good actuals.
+_MULT = {"%": 1.0, "K": 1e3, "M": 1e6, "B": 1e9, "": 1.0}
+
+def _num_scaled(s):
+    """Numeric value of a string scaled by its own unit: '220K'->220000,
+    '7.74M'->7740000, '0.3%'->0.3. None if there's no number."""
+    n = _num(s)
+    if n is None:
+        return None
+    return n * _MULT.get(_unit(s), 1.0)
+
+def _best_scale(fa, ref_scaled, u):
+    """Reconcile FMP giving a figure in full ('220000') vs abbreviated in FF's
+    unit ('220'). ONLY a K/M/B event allows the 1000/1e6/1e9 reading; '%' and
+    plain numbers are never rescaled, so a wrong-series value (an index 336 on a
+    2.9% event) can't be shrunk to look compatible - it stays 336 and is rejected
+    by the magnitude check."""
+    mult = _MULT.get(u, 1.0)
+    if ref_scaled is None or fa is None or abs(fa) < 1e-12 or mult == 1.0:
+        return 1.0
+    target = math.log10(abs(ref_scaled)) if abs(ref_scaled) > 1e-12 else 0.0
+    return min({1.0, mult}, key=lambda s: abs(math.log10(abs(fa * s)) - target))
+
+def _actual_scaled(act, forecast, previous):
+    """FMP actual expressed on the FF reference's true scale, plus that reference.
+    Returns (scaled_actual, ref_scaled) or (None, ref_scaled)."""
+    fa = _num(act)
+    ref = _num_scaled(forecast)
+    if ref is None:
+        ref = _num_scaled(previous)
+    if fa is None:
+        return None, ref
+    return fa * _best_scale(fa, ref, _ref_unit(forecast, previous)), ref
 
 def _fmt_actual(act, forecast, previous):
-    """Display-ready actual matching the event's units, or None to reject
-    (wrong series / nonsense magnitude)."""
-    a = _num(act)
-    if a is None:
+    """Display-ready actual in Forex Factory's own unit, or None to reject (wrong
+    series / nonsense magnitude). The number is scaled to FF's reference first, so
+    an FMP '197000' against FF's '199K' renders as '197K', not '197000K'."""
+    scaled, ref = _actual_scaled(act, forecast, previous)
+    if scaled is None:
         return None
-    if not _actual_compatible(a, forecast, previous):
+    # magnitude sanity vs FF's own forecast/previous (now both on the same scale):
+    # an index level (336) attached to a % event (2.9) is still rejected.
+    if ref is not None and abs(ref) > 1e-9 and not (0.1 <= abs(scaled) / abs(ref) <= 10):
         return None
-    m = _NUM_RE.search(str(act).strip().replace(",", ""))
-    raw = m.group() if m else str(act).strip()
-    if "." in raw:                        # trim trailing zeros: 0.50->0.5, 229.0->229
-        raw = raw.rstrip("0").rstrip(".")
     u = _ref_unit(forecast, previous)
-    if u and not raw.upper().endswith(("%", "K", "M", "B")):
-        raw += u
-    return raw
+    disp = scaled / _MULT.get(u, 1.0)     # back into the display unit (K/M/B/%)
+    txt = f"{disp:.4f}".rstrip("0").rstrip(".")
+    if txt in ("", "-", "-0"):
+        txt = "0"
+    return txt + (u if u in ("%", "K", "M", "B") else "")
+
+
+# --- cross-feed confirmation ------------------------------------------------
+# Forex Factory is the source of truth for WHAT an event is and its forecast /
+# previous. Before trusting FMP's released number, confirm FMP is really on the
+# same release by checking its forecast/previous against FF's (unit-aware). A
+# clash means FMP matched a different series - reject it so a wrong number never
+# lands on a correct FF row.
+def _vals_agree(ff_val, fmp_val, tol=0.05) -> bool:
+    fref = _num_scaled(ff_val)
+    fm   = _num(fmp_val)
+    if fref is None or fm is None:
+        return False
+    if abs(fref) < 1e-9 and abs(fm) < 1e-9:
+        return True
+    scaled = fm * _best_scale(fm, fref, _unit(ff_val))
+    if (fref < 0) != (scaled < 0) and not (abs(fref) < 1e-9 and abs(scaled) < 1e-9):
+        return False                      # sign disagreement -> not the same value
+    return abs(abs(scaled) - abs(fref)) / max(abs(fref), 1e-9) <= tol
+
+def _corroborate(ff_e, fmp_row) -> str:
+    """'confirm' if a FF/FMP forecast-or-previous pair agrees (same release),
+    'contradict' if a settled previous value clashes, else 'unknown'."""
+    f_prev, m_prev = ff_e.get("previous"), fmp_row.get("previous")
+    f_fc,   m_fc   = ff_e.get("forecast"), fmp_row.get("forecast")
+    prev_pair = _num(f_prev) is not None and _num(m_prev) is not None
+    fc_pair   = _num(f_fc)   is not None and _num(m_fc)   is not None
+    agree_prev = prev_pair and _vals_agree(f_prev, m_prev)
+    agree_fc   = fc_pair   and _vals_agree(f_fc,   m_fc)
+    if agree_prev or agree_fc:
+        return "confirm"
+    if prev_pair and not agree_prev:      # a known historical number disagrees
+        return "contradict"
+    return "unknown"
 
 
 def _has_actual(c):
     a = c.get("actual") if c else None
     return a not in (None, "")
+
+
+# --- future-event safeguard -------------------------------------------------
+# An economic release has NO actual until it prints. If a row shows an actual on
+# an event whose scheduled time is still ahead of us, that number was carried
+# over from a PRIOR occurrence of the same release (a stale title match, or a
+# week-boundary mismatch between the FF "this week" feed and FMP's Mon-Sun
+# window). Suppress it. This is a reality check applied to every provider's
+# output on every serve, so no matching logic can ever surface an actual for an
+# event that has not happened yet.
+_FUTURE_GRACE = dt.timedelta(minutes=2)   # tolerate tiny clock skew at release
+
+def _is_future(date_str) -> bool:
+    t = _ts(date_str)
+    if not t:
+        return False                      # undated / all-day -> never suppress
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=dt.timezone.utc)
+    return t > (dt.datetime.now(dt.timezone.utc) + _FUTURE_GRACE)
+
+def _scrub_future_actuals(events) -> list:
+    """Blank the actual on any event still in the future. Idempotent, and cheap
+    enough to run on every serve (fresh fetch AND cached), so a number never
+    lingers past nothing and a stale cache can't leak one."""
+    n = 0
+    for e in events or []:
+        if _has_actual(e) and _is_future(e.get("date")):
+            e["actual"] = ""
+            n += 1
+    if n:
+        print(f"  [calendar] scrubbed {n} future-dated actual(s) - not released yet")
+    return events
+
 
 def _pick(cands, ref_date):
     cands = [c for c in cands if c]            # drop any None from the fallback
@@ -497,13 +604,23 @@ def _index_rows(rows):
         idx.setdefault((_canon(e.get("title")), (e.get("country") or "").upper()), []).append(e)
     return idx
 
+# A matched provider actual must belong to the SAME release occurrence as the FF
+# event, not a prior week's or month's print of the same series. Both feeds date
+# a release on its real day, and the soonest a release repeats is weekly, so a
+# window comfortably under 7 days cleanly rejects a stale carry-over while still
+# tolerating a timezone/rounding gap on the genuine match.
+_MATCH_WINDOW_S = 3 * 24 * 60 * 60        # 3 days
+
 def _lookup_actual(e, rows, idx):
     """Display-ready actual for FF event `e` from one provider, or None. Tries an
     exact (canon, ccy) hit first, then a token-overlap fallback within the same
     currency. Identical matcher for every provider, so FMP and Trading Economics
     behave the same."""
     ccy   = (e.get("country") or "").upper()
+    # An exact (canon, ccy) hit is high confidence. A loose token hit is not, so
+    # it is only allowed through when the numbers confirm it (below).
     cands = idx.get((_canon(e.get("title")), ccy))
+    exact = bool(cands)
     if not cands:
         etoks = set(_strip_noise(_norm_title(e.get("title"))).split())
         best, best_ov = None, 0.0
@@ -516,14 +633,32 @@ def _lookup_actual(e, rows, idx):
             ov = len(etoks & ftoks) / len(etoks | ftoks)
             if ov > best_ov:
                 best_ov, best = ov, fe
-        cands = [best] if (best and best_ov >= 0.6) else None
+        # Looser bar than before (0.6 -> 0.34): a near-name now gets a chance,
+        # because the forecast/previous cross-check below is the real gate - a
+        # similar name alone can never inject a value.
+        cands = [best] if (best and best_ov >= 0.34) else None
     if not cands:
         return None
     m = _pick(cands, e.get("date"))
     if not m:
         return None
+    # Same-occurrence guard: reject a matched row whose date sits too far from the
+    # FF event's - that's a previous print of the same series, not this release.
+    ref, md = _ts(e.get("date")), _ts(m.get("date"))
+    if ref and md and abs((md - ref).total_seconds()) > _MATCH_WINDOW_S:
+        return None
     act = m.get("actual")
     if act in (None, ""):
+        return None
+    # Cross-feed confirmation. FF's forecast/previous are authoritative; check
+    # FMP's against them before trusting FMP's number.
+    #   contradict -> FMP is on a different series: reject (keeps wrong data out).
+    #   loose name  -> require a positive confirm.
+    #   exact name  -> accept even when we simply can't corroborate.
+    status = _corroborate(e, m)
+    if status == "contradict":
+        return None
+    if status != "confirm" and not exact:
         return None
     return _fmt_actual(act, e.get("forecast"), e.get("previous"))   # None if nonsense
 
@@ -570,7 +705,10 @@ def get_calendar(force_refresh: bool = False) -> list:
     returns the last good cache (or [] if we never had one)."""
     now = time.time()
     if (not force_refresh) and _cache["data"] and (now - _cache["ts"] < _cache["ttl"]):
-        return _cache["data"]
+        # Re-scrub on serve: as real time advances a cached row can age toward its
+        # release, and (defensively) a disk cache written by an older build may
+        # still carry a future actual. Idempotent - a real, past actual stays.
+        return _scrub_future_actuals(_cache["data"])
 
     provider = CALENDAR_PROVIDER
     if provider == "auto":
@@ -605,12 +743,14 @@ def get_calendar(force_refresh: bool = False) -> list:
         data = []
 
     if data:
+        data = _scrub_future_actuals(data)  # never cache or serve an actual for
+                                            # an event that hasn't printed yet
         _cache.update({"data": data, "ts": now, "ttl": ttl, "provider": provider})
         _save_disk_cache()                  # survive restarts with last-good data
         return data
 
     # fetch failed - serve whatever we had before rather than nothing
-    return _cache["data"]
+    return _scrub_future_actuals(_cache["data"])
 
 
 # On import, seed the in-memory cache from disk so the very first request after a
