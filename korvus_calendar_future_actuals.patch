@@ -1,0 +1,98 @@
+diff --git a/korvus_calendar.py b/korvus_calendar.py
+index e7ed9ca..8aba1e2 100644
+--- a/korvus_calendar.py
++++ b/korvus_calendar.py
+@@ -475,6 +475,39 @@ def _has_actual(c):
+     a = c.get("actual") if c else None
+     return a not in (None, "")
+ 
++
++# --- future-event safeguard -------------------------------------------------
++# An economic release has NO actual until it prints. If a row shows an actual on
++# an event whose scheduled time is still ahead of us, that number was carried
++# over from a PRIOR occurrence of the same release (a stale title match, or a
++# week-boundary mismatch between the FF "this week" feed and FMP's Mon-Sun
++# window). Suppress it. This is a reality check applied to every provider's
++# output on every serve, so no matching logic can ever surface an actual for an
++# event that has not happened yet.
++_FUTURE_GRACE = dt.timedelta(minutes=2)   # tolerate tiny clock skew at release
++
++def _is_future(date_str) -> bool:
++    t = _ts(date_str)
++    if not t:
++        return False                      # undated / all-day -> never suppress
++    if t.tzinfo is None:
++        t = t.replace(tzinfo=dt.timezone.utc)
++    return t > (dt.datetime.now(dt.timezone.utc) + _FUTURE_GRACE)
++
++def _scrub_future_actuals(events) -> list:
++    """Blank the actual on any event still in the future. Idempotent, and cheap
++    enough to run on every serve (fresh fetch AND cached), so a number never
++    lingers past nothing and a stale cache can't leak one."""
++    n = 0
++    for e in events or []:
++        if _has_actual(e) and _is_future(e.get("date")):
++            e["actual"] = ""
++            n += 1
++    if n:
++        print(f"  [calendar] scrubbed {n} future-dated actual(s) - not released yet")
++    return events
++
++
+ def _pick(cands, ref_date):
+     cands = [c for c in cands if c]            # drop any None from the fallback
+     if not cands:
+@@ -497,6 +530,13 @@ def _index_rows(rows):
+         idx.setdefault((_canon(e.get("title")), (e.get("country") or "").upper()), []).append(e)
+     return idx
+ 
++# A matched provider actual must belong to the SAME release occurrence as the FF
++# event, not a prior week's or month's print of the same series. Both feeds date
++# a release on its real day, and the soonest a release repeats is weekly, so a
++# window comfortably under 7 days cleanly rejects a stale carry-over while still
++# tolerating a timezone/rounding gap on the genuine match.
++_MATCH_WINDOW_S = 3 * 24 * 60 * 60        # 3 days
++
+ def _lookup_actual(e, rows, idx):
+     """Display-ready actual for FF event `e` from one provider, or None. Tries an
+     exact (canon, ccy) hit first, then a token-overlap fallback within the same
+@@ -522,6 +562,11 @@ def _lookup_actual(e, rows, idx):
+     m = _pick(cands, e.get("date"))
+     if not m:
+         return None
++    # Same-occurrence guard: reject a matched row whose date sits too far from the
++    # FF event's - that's a previous print of the same series, not this release.
++    ref, md = _ts(e.get("date")), _ts(m.get("date"))
++    if ref and md and abs((md - ref).total_seconds()) > _MATCH_WINDOW_S:
++        return None
+     act = m.get("actual")
+     if act in (None, ""):
+         return None
+@@ -570,7 +615,10 @@ def get_calendar(force_refresh: bool = False) -> list:
+     returns the last good cache (or [] if we never had one)."""
+     now = time.time()
+     if (not force_refresh) and _cache["data"] and (now - _cache["ts"] < _cache["ttl"]):
+-        return _cache["data"]
++        # Re-scrub on serve: as real time advances a cached row can age toward its
++        # release, and (defensively) a disk cache written by an older build may
++        # still carry a future actual. Idempotent - a real, past actual stays.
++        return _scrub_future_actuals(_cache["data"])
+ 
+     provider = CALENDAR_PROVIDER
+     if provider == "auto":
+@@ -605,12 +653,14 @@ def get_calendar(force_refresh: bool = False) -> list:
+         data = []
+ 
+     if data:
++        data = _scrub_future_actuals(data)  # never cache or serve an actual for
++                                            # an event that hasn't printed yet
+         _cache.update({"data": data, "ts": now, "ttl": ttl, "provider": provider})
+         _save_disk_cache()                  # survive restarts with last-good data
+         return data
+ 
+     # fetch failed - serve whatever we had before rather than nothing
+-    return _cache["data"]
++    return _scrub_future_actuals(_cache["data"])
+ 
+ 
+ # On import, seed the in-memory cache from disk so the very first request after a
