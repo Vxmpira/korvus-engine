@@ -350,6 +350,16 @@ _TITLE_ALIASES = {
     "natural gas storage":              "eia natural gas stocks change",
     "core durable goods orders mom":    "durable goods orders ex transp mom",
     "crude oil inventories":            "eia crude oil stocks change",
+    # FF uses "UoM" / "CB" vendor labels; FMP names the same releases "Michigan"
+    # / plain. The forecast/previous cross-check still guards these, so a wrong
+    # counterpart would be rejected rather than filled.
+    "cb leading index mom":             "leading index mom",
+    "uom consumer sentiment":           "michigan consumer sentiment",
+    "prelim uom consumer sentiment":    "michigan consumer sentiment",
+    "revised uom consumer sentiment":   "michigan consumer sentiment",
+    "uom inflation expectations":          "michigan 1 year inflation expectations",
+    "prelim uom inflation expectations":   "michigan 1 year inflation expectations",
+    "revised uom inflation expectations":  "michigan 1 year inflation expectations",
 }
 
 def _norm_title(t: str) -> str:
@@ -499,9 +509,13 @@ def _fmt_actual(act, forecast, previous):
     scaled, ref = _actual_scaled(act, forecast, previous)
     if scaled is None:
         return None
-    # magnitude sanity vs FF's own forecast/previous (now both on the same scale):
-    # an index level (336) attached to a % event (2.9) is still rejected.
-    if ref is not None and abs(ref) > 1e-9 and not (0.1 <= abs(scaled) / abs(ref) <= 10):
+    # magnitude backstop vs FF's forecast/previous (both on the same scale now).
+    # Wide band because the forecast/previous cross-check is the real identity
+    # gate; this only catches a gross scale/series error (an index 336 on a 2.9%
+    # event -> ratio ~115). A zero or near-zero actual is a valid reading, not a
+    # scale error, so it is exempt - that was eating legitimate 0% prints.
+    if (ref is not None and abs(ref) > 1e-9 and abs(scaled) > 1e-9
+            and not (0.02 <= abs(scaled) / abs(ref) <= 50)):
         return None
     u = _ref_unit(forecast, previous)
     disp = scaled / _MULT.get(u, 1.0)     # back into the display unit (K/M/B/%)
@@ -804,18 +818,33 @@ if __name__ == "__main__":
         for e in sorted(fmp_usd, key=lambda x: x.get("date", "")):
             print(f"  {e.get('date','')[:16]:18} act={str(e.get('actual') or '-'):>8}  "
                   f"{e.get('title','')[:38]:40} -> {_canon(e.get('title'))}")
-        idx = {}
-        for e in fmp_usd:
-            idx.setdefault(_canon(e.get("title")), []).append(e)
-        print(f"\nFF USD events: {len(ff_usd)}  (✓ = an FMP actual matched its canon)")
+        # Resolve each FF event exactly the way the live page does: FF's own
+        # actual first, then the FMP (and TE) lookup with its fuzzy fallback and
+        # forecast/previous cross-check. So a ✓ here means the page really fills
+        # it, not merely that a canon key happens to collide.
+        te  = _cached("te", _tradingeconomics, TTL_TE) or []
+        fmp_idx, te_idx = _index_rows(fmp), _index_rows(te)
+        print(f"\nFF USD events: {len(ff_usd)}  (✓ = the page fills it; src in brackets)")
+        miss = []
         for e in sorted(ff_usd, key=lambda x: x.get("date", "")):
-            ck = _canon(e.get("title"))
-            hit = any((c.get("actual") not in (None, "")) for c in idx.get(ck, []))
-            mark = "✓" if ck in idx else ("·" if not hit else "✓")
-            print(f"  {mark} {e.get('date','')[:16]:18} {e.get('title','')[:38]:40} -> {ck}")
-        miss = [e for e in ff_usd if _canon(e.get("title")) not in idx]
+            if _has_actual(e):
+                val, src = e.get("actual"), "FF"
+            else:
+                val = _lookup_actual(e, fmp, fmp_idx); src = "FMP"
+                if val is None:
+                    val = _lookup_actual(e, te, te_idx); src = "TE"
+            future = _is_future(e.get("date"))
+            if val is not None and not future:
+                print(f"  ✓ {e.get('date','')[:16]:18} {e.get('title','')[:34]:36} "
+                      f"= {str(val):>8} [{src}]")
+            else:
+                tag = "future, not out yet" if future else "no match / not confirmed"
+                print(f"  · {e.get('date','')[:16]:18} {e.get('title','')[:34]:36} "
+                      f"-> {_canon(e.get('title')):28} ({tag})")
+                if not future:
+                    miss.append(e)
         if miss:
-            print(f"\nUnmatched FF USD events ({len(miss)}) - no FMP row shares their canon:")
+            print(f"\nStill blank ({len(miss)}) - paste these if you want them chased:")
             for e in miss:
                 print(f"  {e.get('title','')}  -> {_canon(e.get('title'))}")
         sys.exit(0)
