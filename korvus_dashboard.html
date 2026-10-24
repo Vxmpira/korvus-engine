@@ -2125,38 +2125,60 @@ setInterval(loadContextBands, 30000);
 <script>
 /* Live candlestick backdrop: scrolls slowly, generates randomized candles, and
    recolors per theme (white/pink on dark, ink/pink on light). Sits behind the
-   frosted glass so it blurs into a moody backdrop and reads sharper in the gaps. */
+   frosted glass so it blurs into a moody backdrop and reads sharper in the gaps.
+   Performance: the strip is rasterized ONCE as a seamless loop, then glided by a
+   compositor-driven Web Animation. No per-frame JS, no per-second repaints, so
+   heavy live-data DOM updates (news feed, ribbon, bands) can never stall it. */
 (function(){
   var cv=document.getElementById('chartscape');
   if(!cv||!cv.getContext) return;
   var ctx=cv.getContext('2d');
-  var dpr=Math.min(window.devicePixelRatio||1,2);
-  var CW=16, GAP=5, SLOT=CW+GAP, SPEED=0.35, BUF=SLOT*3;
-  var W=0,H=0,CWID=0, candles=[], shift=0, trend=0.5, tvel=0;
+  var dpr=Math.min(window.devicePixelRatio||1,1.5);
+  var CW=16, GAP=5, SLOT=CW+GAP, SPEED=21;   // px per second (matches old 0.35px/frame at 60fps)
+  var LOOP=64;                               // candles per seamless cycle
   var reduce=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var anim=null, lastW=0, lastH=0;
   function theme(){
     var light=document.documentElement.getAttribute('data-theme')==='light';
     return light
       ? {bull:'#0e0b16', bear:'#c9146a', body:0.88}
       : {bull:'#f4f6ff', bear:'#ff2d8f', body:0.95};
   }
-  function nextC(prev){
-    tvel+=(Math.random()-0.5)*0.02; tvel*=0.9; trend+=tvel;
-    trend=Math.max(0.22,Math.min(0.78,trend));
-    var o=prev?prev.c:trend;
-    var c=o+(trend-o)*0.32+(Math.random()-0.5)*0.24;
-    c=Math.max(0.06,Math.min(0.95,c));
-    return {o:o,c:c,h:Math.max(o,c)+Math.random()*0.06,l:Math.min(o,c)-Math.random()*0.06};
+  // Random walk of LOOP candles whose tail eases back into its head, so the
+  // strip tiles with no visible seam as the animation wraps.
+  function buildLoop(){
+    var trend=0.5, tvel=0, arr=[], o=0.5, i;
+    for(i=0;i<LOOP;i++){
+      tvel+=(Math.random()-0.5)*0.02; tvel*=0.9; trend+=tvel;
+      trend=Math.max(0.22,Math.min(0.78,trend));
+      var c=o+(trend-o)*0.32+(Math.random()-0.5)*0.24;
+      c=Math.max(0.06,Math.min(0.95,c));
+      arr.push({o:o,c:c,h:0,l:0}); o=c;
+    }
+    var M=10, target=arr[0].o;
+    for(i=0;i<M;i++){
+      var k=LOOP-M+i;
+      arr[k].o=arr[k-1].c;
+      arr[k].c=arr[k].o+(target-arr[k].o)*((i+1)/M);
+    }
+    for(i=0;i<LOOP;i++){
+      var cd=arr[i];
+      cd.h=Math.max(cd.o,cd.c)+Math.random()*0.06;
+      cd.l=Math.min(cd.o,cd.c)-Math.random()*0.06;
+    }
+    return arr;
   }
-  function fill(){ var need=Math.ceil(CWID/SLOT)+3; while(candles.length<need) candles.push(nextC(candles[candles.length-1])); }
-  // draw every candle once, crisp, at whole-pixel positions (re-run only when the strip shifts one slot)
+  var candles=buildLoop();
+  // Draw the loop, repeated, across the whole strip. Runs only on setup and
+  // theme flips, never per frame.
   function render(){
+    var W=lastW, H=lastH, CWID=W+LOOP*SLOT;
     var t=theme(); ctx.clearRect(0,0,CWID,H);
-    var surface=Math.round(H*0.80), top=H*0.20, bot=surface;
+    var top=H*0.20, bot=Math.round(H*0.80);
     function yy(l){ return Math.round(bot-(bot-top)*Math.max(0,Math.min(1.05,l))); }
-    for(var i=0;i<candles.length;i++){
-      var x=i*SLOT; if(x>CWID+CW) break;
-      var cd=candles[i], up=cd.c>=cd.o, col=up?t.bull:t.bear;
+    var count=Math.ceil(CWID/SLOT)+1;
+    for(var i=0;i<count;i++){
+      var x=i*SLOT, cd=candles[i%LOOP], up=cd.c>=cd.o, col=up?t.bull:t.bear;
       var yt=yy(Math.max(cd.o,cd.c)), yb=yy(Math.min(cd.o,cd.c)), h=Math.max(2,yb-yt);
       var yh=yy(cd.h), yl=yy(cd.l), cx=x+CW/2;
       ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=2; ctx.globalAlpha=t.body;
@@ -2165,24 +2187,41 @@ setInterval(loadContextBands, 30000);
     }
     ctx.globalAlpha=1;
   }
-  function place(){ cv.style.transform='translate3d('+(-(BUF+shift))+'px,0,0)'; }
-  function resize(){
-    W=window.innerWidth; H=window.innerHeight; CWID=W+BUF*2;
-    cv.width=CWID*dpr; cv.height=H*dpr;
-    cv.style.width=CWID+'px'; cv.style.height=H+'px';
+  function setup(){
+    lastW=window.innerWidth; lastH=window.innerHeight;
+    var CYC=LOOP*SLOT, CWID=lastW+CYC;
+    cv.width=Math.round(CWID*dpr); cv.height=Math.round(lastH*dpr);
+    cv.style.width=CWID+'px'; cv.style.height=lastH+'px';
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    fill(); render(); place();
+    render();
+    if(anim){ anim.cancel(); anim=null; }
+    if(reduce || !cv.animate){ cv.style.transform='translate3d(0,0,0)'; return; }
+    // One full cycle per iteration; the compositor keeps this running even when
+    // the main thread is busy rebuilding live data.
+    anim=cv.animate(
+      [{transform:'translate3d(0,0,0)'},{transform:'translate3d('+(-CYC)+'px,0,0)'}],
+      {duration:(CYC/SPEED)*1000, iterations:Infinity}
+    );
   }
-  // glide the whole crisp strip with a GPU transform: smooth, sub-pixel, never re-rasterized
-  function tick(){
-    shift+=SPEED;
-    if(shift>=SLOT){ shift-=SLOT; candles.shift(); candles.push(nextC(candles[candles.length-1])); render(); }
-    place();
-    requestAnimationFrame(tick);
+  // Debounce resize so layout churn from live updates never forces mid-frame
+  // rebuilds; only a real viewport change re-rasterizes the strip.
+  var rt=null;
+  window.addEventListener('resize',function(){
+    if(window.innerWidth===lastW && window.innerHeight===lastH) return;
+    if(rt) clearTimeout(rt);
+    rt=setTimeout(setup,200);
+  });
+  // Theme flips repaint the strip once in place; the glide never stops.
+  if(window.MutationObserver){
+    new MutationObserver(render).observe(document.documentElement,
+      {attributes:true,attributeFilter:['data-theme']});
   }
-  window.addEventListener('resize',resize);
-  resize();
-  if(!reduce){ requestAnimationFrame(tick); }
+  // Pause offscreen to save battery; resume exactly where it left off.
+  document.addEventListener('visibilitychange',function(){
+    if(!anim) return;
+    if(document.hidden) anim.pause(); else anim.play();
+  });
+  setup();
 })();
 </script>
 <script>
