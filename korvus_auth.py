@@ -425,6 +425,57 @@ def change_email(user_id, new_email):
     return True, "Email updated - check your new inbox to verify it.", token, new_email
 
 
+def _email_html(preheader, heading, intro_lines, button_label, button_url, after_note):
+    """Branded transactional email shell: table-based layout, all styles
+    inline, so it renders in Outlook, Gmail, and Apple Mail. Dark card on a
+    black canvas with the Korvus pink, a bulletproof button, and the raw link
+    repeated as text for clients that strip buttons. The plain-text part is
+    always sent alongside this (see _send_ses), which is also what keeps
+    spam filters happier than an HTML-only blast."""
+    intro_html = "".join(
+        f'<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#aab0c0;">{p}</p>'
+        for p in intro_lines)
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="color-scheme" content="dark"/>
+<meta name="supported-color-schemes" content="dark"/>
+<title>{heading}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#000000;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">{preheader}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#000000" style="background-color:#000000;">
+    <tr><td align="center" style="padding:36px 16px;">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px;max-width:100%;">
+        <tr><td align="center" style="padding:0 0 22px;">
+          <span style="font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:bold;letter-spacing:4px;color:#f6f8ff;">KORVUS</span>
+          <div style="height:3px;width:46px;background-color:#ff2d8f;margin:10px auto 0;"></div>
+        </td></tr>
+        <tr><td bgcolor="#0c0d11" style="background-color:#0c0d11;border:1px solid #23252e;border-radius:14px;padding:34px 32px;font-family:Arial,Helvetica,sans-serif;">
+          <h1 style="margin:0 0 18px;font-size:21px;line-height:1.3;color:#f6f8ff;font-weight:bold;">{heading}</h1>
+          {intro_html}
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:26px auto 26px;">
+            <tr><td bgcolor="#ff2d8f" style="background-color:#ff2d8f;border-radius:9px;">
+              <a href="{button_url}" style="display:inline-block;padding:14px 34px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#0a0d12;text-decoration:none;">{button_label}</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 6px;font-size:12px;line-height:1.6;color:#646b7d;">If the button doesn't work, copy and paste this link into your browser:</p>
+          <p style="margin:0 0 18px;font-size:12px;line-height:1.6;word-break:break-all;"><a href="{button_url}" style="color:#ff5ba8;text-decoration:underline;">{button_url}</a></p>
+          <p style="margin:0;font-size:12.5px;line-height:1.6;color:#646b7d;">{after_note}</p>
+        </td></tr>
+        <tr><td align="center" style="padding:22px 10px 0;font-family:Arial,Helvetica,sans-serif;">
+          <p style="margin:0 0 4px;font-size:11.5px;line-height:1.6;color:#646b7d;">Korvus &middot; 24/7 market intelligence for index futures traders</p>
+          <p style="margin:0;font-size:11.5px;line-height:1.6;color:#646b7d;">BlackCrownVxJ.LLC &middot; <a href="{SITE_URL}" style="color:#9aa0b0;text-decoration:underline;">korvus.industries</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+
 def send_reset_email(email, token):
     """Sends the password-reset link (SES, or console stub until a provider is set)."""
     link = f"{SITE_URL}/reset?token={token}"
@@ -433,8 +484,20 @@ def send_reset_email(email, token):
             f"Set a new password here (valid for {RESET_TTL_MIN} minutes):\n{link}\n\n"
             f"If you didn't request this, you can safely ignore this message - "
             f"your password won't change.\n\n- BlackCrownVxJ.LLC")
+    html = _email_html(
+        preheader="Set a new Korvus password. This link is valid for "
+                  f"{RESET_TTL_MIN} minutes.",
+        heading="Reset your password",
+        intro_lines=[
+            "We received a request to reset your Korvus password.",
+            f"The link below is valid for {RESET_TTL_MIN} minutes.",
+        ],
+        button_label="Set a new password",
+        button_url=link,
+        after_note="If you didn't request this, you can safely ignore this "
+                   "message. Your password won't change.")
     if EMAIL_PROVIDER == "ses":
-        return _send_ses(email, subject, body)
+        return _send_ses(email, subject, body, html)
     print("\n" + "="*60)
     print("  [email:stub] EMAIL_PROVIDER is off - not actually sending.")
     print(f"  To: {email}")
@@ -528,9 +591,20 @@ def send_verification_email(email, token):
             f"Confirm your email to activate your account:\n{link}\n\n"
             f"If you didn't sign up, you can ignore this message.\n\n"
             f"- BlackCrownVxJ.LLC")
+    html = _email_html(
+        preheader="Confirm your email to activate your Korvus account.",
+        heading="Welcome to Korvus",
+        intro_lines=[
+            "You're one click away from the terminal.",
+            "Confirm your email to activate your account, then log in.",
+        ],
+        button_label="Verify my email",
+        button_url=link,
+        after_note="If you didn't sign up for Korvus, you can safely ignore "
+                   "this message and no account will be activated.")
 
     if EMAIL_PROVIDER == "ses":
-        return _send_ses(email, subject, body)
+        return _send_ses(email, subject, body, html)
 
     # stubbed mode - no provider yet
     print("\n" + "="*60)
@@ -541,17 +615,26 @@ def send_verification_email(email, token):
     return True
 
 
-def _send_ses(to_email, subject, body):
-    """AWS SES sender. Requires boto3 + SES set up (domain verified, out of sandbox)."""
+def _send_ses(to_email, subject, body, html=None):
+    """AWS SES sender. Requires boto3 + SES set up (domain verified, out of
+    sandbox). Always sends the plain-text part; when `html` is given the
+    message goes out multipart (text + HTML), which renders branded in mail
+    clients while keeping a clean text fallback for filters and plain
+    readers. The From header carries a display name so inboxes show
+    'Korvus' instead of the bare address."""
     try:
         import boto3
         client = boto3.client("ses", region_name=AWS_REGION)
+        source = EMAIL_FROM if "<" in EMAIL_FROM else f"Korvus <{EMAIL_FROM}>"
+        msg_body = {"Text": {"Data": body, "Charset": "UTF-8"}}
+        if html:
+            msg_body["Html"] = {"Data": html, "Charset": "UTF-8"}
         client.send_email(
-            Source=EMAIL_FROM,
+            Source=source,
             Destination={"ToAddresses": [to_email]},
             Message={
-                "Subject": {"Data": subject},
-                "Body": {"Text": {"Data": body}},
+                "Subject": {"Data": subject, "Charset": "UTF-8"},
+                "Body": msg_body,
             },
         )
         return True
