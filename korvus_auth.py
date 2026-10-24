@@ -40,6 +40,27 @@ EMAIL_FROM     = os.getenv("EMAIL_FROM", "noreply@korvus.industries")
 SITE_URL       = os.getenv("SITE_URL", "https://korvus.industries")
 AWS_REGION     = os.getenv("AWS_SES_REGION", "us-east-2")
 
+# ----------------------------------------------------------------------------
+# SIGNUP HARDENING - email domains that are never allowed to register.
+# These are throwaway / form-testing services used almost exclusively by bots.
+# Extend without a code change via BLOCKED_EMAIL_DOMAINS in .env
+# (comma-separated, e.g. BLOCKED_EMAIL_DOMAINS=spamco.xyz,junkmail.top).
+# ----------------------------------------------------------------------------
+BLOCKED_EMAIL_DOMAINS = {
+    "formtests.info", "mailinator.com", "guerrillamail.com", "sharklasers.com",
+    "10minutemail.com", "temp-mail.org", "tempmail.com", "tempmail.dev",
+    "yopmail.com", "trashmail.com", "getnada.com", "dispostable.com",
+    "maildrop.cc", "mintemail.com", "throwawaymail.com", "fakeinbox.com",
+    "mailnesia.com", "emailondeck.com", "mohmal.com", "tmpmail.net",
+}
+BLOCKED_EMAIL_DOMAINS |= {
+    d.strip().lower() for d in os.getenv("BLOCKED_EMAIL_DOMAINS", "").split(",")
+    if d.strip()
+}
+
+USERNAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.@+\-]{2,31}$")
+EMAIL_RE    = re.compile(r"^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$")
+
 
 # ----------------------------------------------------------------------------
 # DATABASE
@@ -125,10 +146,17 @@ def create_user(username, email, password):
     email = (email or "").strip().lower()
     if len(username) < 3:
         return False, "Username must be at least 3 characters.", None
+    if not USERNAME_RE.fullmatch(username):
+        return False, ("Usernames are 3-32 characters: letters, numbers, "
+                       "dot, dash, underscore."), None
     if len(password or "") < 8:
         return False, "Password must be at least 8 characters.", None
-    if "@" not in email or "." not in email:
+    if not EMAIL_RE.fullmatch(email):
         return False, "Please enter a valid email address.", None
+    domain = email.rsplit("@", 1)[-1]
+    if domain in BLOCKED_EMAIL_DOMAINS:
+        return False, ("That email provider isn't accepted. Please use a "
+                       "regular personal or work email address."), None
 
     conn = get_db()
     # case-sensitive uniqueness checks (exact match)

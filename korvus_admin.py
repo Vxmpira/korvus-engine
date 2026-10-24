@@ -166,8 +166,11 @@ def admin_stats():
             out["pro_members"] = [dict(r) for r in rows]
 
         if "created_at" in cols and "email" in cols:
+            sel = "username, email, tier, created_at"
+            if "email_verified" in cols:
+                sel += ", email_verified"
             rows = conn.execute(
-                "SELECT username, email, tier, created_at FROM users "
+                f"SELECT {sel} FROM users "
                 "ORDER BY created_at DESC LIMIT 12").fetchall()
             out["recent_signups"] = [dict(r) for r in rows]
 
@@ -418,6 +421,133 @@ def admin_lodestone_granted():
         except Exception:
             pass
         return jsonify({"ok": True, "username": username, "granted": granted})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+@korvus_admin.route("/api/admin/delete-user", methods=["POST"])
+@admin_required
+def admin_delete_user():
+    """Owner tool: permanently delete one account (bot / spam cleanup).
+    Safety rails:
+      * `confirm` must repeat the exact username (no accidental clicks)
+      * admin accounts can never be deleted
+      * pro or Stripe-linked accounts require `force: true` (the UI asks twice)
+    The deletion is audited to member_events, which survives the user row."""
+    data = request.get_json(silent=True) or {}
+    username = (data.get("username") or "").strip()
+    confirm = (data.get("confirm") or "").strip()
+    force = bool(data.get("force"))
+    if not username:
+        return jsonify({"ok": False, "error": "username required"}), 400
+    if confirm != username:
+        return jsonify({"ok": False, "error": "confirm must repeat the exact "
+                        "username (case-sensitive)"}), 400
+    if username.lower() in ADMIN_USERS:
+        return jsonify({"ok": False, "error": "refusing to delete an admin account"}), 403
+    conn = None
+    try:
+        conn = _db_rw()
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)")}
+        row = conn.execute("SELECT * FROM users WHERE username = ?",
+                           (username,)).fetchone()
+        if not row:
+            return jsonify({"ok": False, "error": f"no user '{username}'"}), 404
+        tier = (row["tier"] if "tier" in cols else "free") or "free"
+        stripe_cid = (row["stripe_customer_id"]
+                      if "stripe_customer_id" in cols else None) or ""
+        if not force and (tier == "pro" or stripe_cid.strip()):
+            why = []
+            if tier == "pro":
+                why.append("pro tier")
+            if stripe_cid.strip():
+                why.append("a linked Stripe customer")
+            return jsonify({"ok": False, "needs_force": True,
+                            "error": f"'{username}' has " + " and ".join(why) +
+                            ". Confirm again to delete anyway. Any live Stripe "
+                            "subscription must be canceled in Stripe separately."}), 409
+        email = (row["email"] if "email" in cols else "") or ""
+        conn.execute("DELETE FROM users WHERE id = ?", (row["id"],))
+        conn.commit()
+        actor = getattr(current_user, "username", "?")
+        print(f"  [admin] {actor} DELETED account {username} <{email}> (tier {tier})")
+        try:
+            import korvus_auth as auth
+            auth.log_member_event(username, "deleted",
+                                  f"account deleted by {actor} (was {tier}, {email})")
+        except Exception:
+            pass
+        return jsonify({"ok": True, "username": username, "email": email})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+@korvus_admin.route("/api/admin/purge-unverified", methods=["POST"])
+@admin_required
+def admin_purge_unverified():
+    """Owner tool: bulk-remove unverified accounts older than N days - the
+    classic bot-wave cleanup. Always excludes admins, pro members, and anyone
+    with a Stripe customer. `dry_run: true` (the default) only RETURNS the
+    list so the console can show exactly who would go before anything is
+    deleted; a second call with `dry_run: false` performs the deletion."""
+    data = request.get_json(silent=True) or {}
+    try:
+        days = max(1, int(data.get("days", 7)))
+    except Exception:
+        days = 7
+    dry_run = data.get("dry_run", True)
+    dry_run = bool(dry_run) if isinstance(dry_run, bool) else str(dry_run).lower() != "false"
+    cutoff = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=days)).isoformat()
+    conn = None
+    try:
+        conn = _db_rw()
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)")}
+        if "email_verified" not in cols or "created_at" not in cols:
+            return jsonify({"ok": False, "error": "users table is missing "
+                            "email_verified/created_at columns"}), 400
+        where = "email_verified = 0 AND created_at <= ?"
+        if "tier" in cols:
+            where += " AND COALESCE(tier,'free') != 'pro'"
+        if "stripe_customer_id" in cols:
+            where += " AND COALESCE(stripe_customer_id,'') = ''"
+        rows = conn.execute(
+            f"SELECT id, username, email, created_at FROM users WHERE {where} "
+            "ORDER BY created_at DESC", (cutoff,)).fetchall()
+        victims = [dict(r) for r in rows
+                   if (r["username"] or "").strip().lower() not in ADMIN_USERS]
+        listing = [{"username": v["username"], "email": v["email"],
+                    "created_at": v["created_at"]} for v in victims]
+        if dry_run:
+            return jsonify({"ok": True, "dry_run": True, "days": days,
+                            "count": len(listing), "accounts": listing})
+        actor = getattr(current_user, "username", "?")
+        for v in victims:
+            conn.execute("DELETE FROM users WHERE id = ?", (v["id"],))
+        conn.commit()
+        print(f"  [admin] {actor} purged {len(victims)} unverified account(s) "
+              f"older than {days}d")
+        try:
+            import korvus_auth as auth
+            for v in victims:
+                auth.log_member_event(v["username"], "deleted",
+                                      f"purged unverified (> {days}d) by {actor} "
+                                      f"({v['email']})")
+        except Exception:
+            pass
+        return jsonify({"ok": True, "dry_run": False, "days": days,
+                        "count": len(listing), "accounts": listing})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
     finally:

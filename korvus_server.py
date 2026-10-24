@@ -21,8 +21,10 @@
 """
 import os
 import json
+import time
 import sqlite3
 import datetime as dt
+from urllib.parse import quote as _urlquote
 from flask import Flask, jsonify, send_from_directory, request, redirect, session
 from flask_login import (LoginManager, UserMixin, login_user, logout_user,
                          login_required, current_user)
@@ -314,11 +316,90 @@ def _render(page, message_html=""):
     return html.replace("<!--MESSAGE-->", message_html)
 
 
+# ----------------------------------------------------------------------------
+# SIGNUP / RESEND ABUSE GUARDS
+# A tiny in-memory rate limiter (this deployment runs a single gunicorn
+# worker, so process memory is the shared state). Keys are pruned on use.
+# ----------------------------------------------------------------------------
+_rl_hits = {}
+
+def _rate_ok(key, limit, window_sec):
+    """True if `key` has fewer than `limit` hits inside `window_sec`.
+    Records the hit when allowed."""
+    now = time.time()
+    hits = [t for t in _rl_hits.get(key, []) if now - t < window_sec]
+    if len(hits) >= limit:
+        _rl_hits[key] = hits
+        return False
+    hits.append(now)
+    _rl_hits[key] = hits
+    # opportunistic prune so the dict never grows without bound
+    if len(_rl_hits) > 5000:
+        for k in [k for k, v in _rl_hits.items() if not v or now - v[-1] > 86400]:
+            _rl_hits.pop(k, None)
+    return True
+
+
+def _client_ip():
+    """Real client IP behind nginx (first X-Forwarded-For entry), else remote_addr."""
+    xf = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+    return xf or (request.remote_addr or "unknown")
+
+
+# Admins never get locked out by the email-verification gate, even if their
+# own account predates verification enforcement.
+def _admin_login_exempt(username):
+    uname = (username or "").strip()
+    if uname in ADMIN_USERNAMES:
+        return True
+    try:
+        from korvus_admin import ADMIN_USERS as _hardcoded_admins
+        return uname.lower() in _hardcoded_admins
+    except Exception:
+        return False
+
+
+def _signup_bot_check():
+    """Server-side bot screens for the signup form. Returns None when the
+    submission looks human, else an error string to show (or '' to silently
+    swallow a honeypot hit). Screens:
+      1. honeypot  - a visually hidden field no person ever fills
+      2. time gate - a JS-stamped field; the form must be open >= 3 seconds
+      3. rate limit - max 5 signups per IP per hour
+    """
+    # 1) honeypot: bots auto-fill every input. Pretend success, create nothing.
+    if (request.form.get("hp_field") or "").strip():
+        print(f"  [signup] honeypot tripped from {_client_ip()}")
+        return ""
+    # 2) time gate: the page stamps form_ts (ms since epoch) via JS on load.
+    #    Missing stamp = no JS (scripted client). Instant submit = bot.
+    ts_raw = (request.form.get("form_ts") or "").strip()
+    try:
+        age_sec = (time.time() * 1000 - float(ts_raw)) / 1000.0
+    except Exception:
+        age_sec = None
+    if age_sec is None or age_sec < 3 or age_sec > 21600:
+        print(f"  [signup] time-gate failed from {_client_ip()} (age={age_sec})")
+        return "Something went wrong submitting the form. Please try again."
+    # 3) per-IP rate limit
+    if not _rate_ok("signup:" + _client_ip(), 5, 3600):
+        print(f"  [signup] rate limit hit from {_client_ip()}")
+        return "Too many signups from this network. Please try again later."
+    return None
+
+
 @app.route("/signup", methods=["GET", "POST"])
 def signup_page():
     if current_user.is_authenticated:
         return redirect("/")
     if request.method == "POST":
+        bot_err = _signup_bot_check()
+        if bot_err == "":
+            # honeypot hit: feign success so the bot moves on; no account exists
+            return _render("korvus_signup.html",
+                '<div class="msg ok">Account created. Check your email to verify.</div>')
+        if bot_err:
+            return _render("korvus_signup.html", f'<div class="msg err">{bot_err}</div>')
         ok, msg, token = auth.create_user(
             request.form.get("username"),
             request.form.get("email"),
@@ -328,7 +409,7 @@ def signup_page():
             auth.send_verification_email(request.form.get("email"), token)
             return _render("korvus_signup.html",
                 f'<div class="msg ok">{msg} We sent a verification link to your email. '
-                f'You can <a href="/login" style="color:#9fe9bd;text-decoration:underline">log in</a> now.</div>')
+                f'Click it, then <a href="/login" style="color:#9fe9bd;text-decoration:underline">log in</a>.</div>')
         return _render("korvus_signup.html", f'<div class="msg err">{msg}</div>')
     return _render("korvus_signup.html")
 
@@ -340,6 +421,16 @@ def login_page():
     if request.method == "POST":
         row = auth.verify_password(request.form.get("username"), request.form.get("password"))
         if row:
+            # Email verification gate: credentials are right, but the mailbox
+            # hasn't been confirmed yet. Blocks throwaway/bot accounts from
+            # ever reaching the terminal. Admins are exempt (never locked out).
+            if not row.get("email_verified") and not _admin_login_exempt(row.get("username")):
+                u_link = _urlquote(row.get("username") or "")
+                return _render("korvus_login.html",
+                    '<div class="msg err">Please verify your email before logging in. '
+                    'We sent a link to the address you signed up with. '
+                    f'<a href="/resend-verification?u={u_link}" '
+                    'style="color:#ffb3af;text-decoration:underline">Resend the link</a></div>')
             login_user(KorvusUser(row), remember=True)
             return redirect("/")
         return _render("korvus_login.html",
@@ -351,6 +442,34 @@ def login_page():
 def logout():
     logout_user()
     return redirect("/")
+
+
+@app.route("/resend-verification")
+def resend_verification_public():
+    """Public resend path for members blocked at login by the verification
+    gate. Looks up the account by username, reissues the token, and emails it.
+    Rate limited per IP and per account; the response is generic either way so
+    account existence is never leaked."""
+    uname = (request.args.get("u") or "").strip()
+    generic = ('<div class="msg ok">If that account needs verifying, a fresh '
+               'link is on its way to its email address.</div>')
+    if not uname:
+        return _render("korvus_login.html", generic)
+    if not _rate_ok("resend-ip:" + _client_ip(), 5, 3600) or \
+       not _rate_ok("resend-user:" + uname.lower(), 1, 300):
+        return _render("korvus_login.html",
+            '<div class="msg err">Please wait a few minutes before requesting '
+            'another verification email.</div>')
+    try:
+        user = auth.get_user_by_username(uname)
+        if user and not user.get("email_verified"):
+            token, email = auth.resend_verification(user.get("email"))
+            if token:
+                auth.send_verification_email(email, token)
+                print(f"  [verify] resend for {uname} from {_client_ip()}")
+    except Exception as e:
+        print(f"  [verify] resend failed for {uname}: {e}")
+    return _render("korvus_login.html", generic)
 
 
 @app.route("/verify")

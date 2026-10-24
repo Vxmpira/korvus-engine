@@ -52,6 +52,8 @@
   .msg.ok{background:rgba(70,209,127,.1);border:1px solid rgba(70,209,127,.3);color:#9fe9bd;}
   .legal{text-align:center;font-size:11.5px;color:var(--ink-faint);margin-top:18px;line-height:1.5;}
   .legal a{color:var(--gold-deep);text-decoration:none;}
+  /* bot trap: visually removed, but present in the DOM so scripted signups fill it */
+  .hp-wrap{position:absolute;left:-9999px;top:-9999px;height:1px;width:1px;overflow:hidden;}
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CjxyZWN0IHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgcng9IjE0IiBmaWxsPSIjMEEwQTBEIi8+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDExLDE1KSBzY2FsZSgxLjE2KSI+CjxwYXRoIGQ9Ik00IDI0IEw0IDkgTDEyIDE2IEwxOCA1IEwyNCAxNiBMMzIgOSBMMzIgMjQgWiIgZmlsbD0iI0ZGMkQ5NSIvPgo8cmVjdCB4PSI1IiB5PSIyNiIgd2lkdGg9IjI2IiBoZWlnaHQ9IjMiIGZpbGw9IiNGRjJEOTUiLz4KPC9nPgo8L3N2Zz4=">
@@ -79,11 +81,17 @@
       <input id="username" name="username" type="text" autocomplete="username" required minlength="3" placeholder="how you'll log in" />
       <label for="email">Email</label>
       <input id="email" name="email" type="email" autocomplete="email" required placeholder="for receipts &amp; news alerts" />
-      <div class="hint">We'll send a verification link here.</div>
+      <div class="hint">We'll send a verification link here. You must verify before logging in.</div>
       <label for="password">Password</label>
       <input id="password" name="password" type="password" autocomplete="new-password" required minlength="8" placeholder="at least 8 characters" />
+      <div class="hp-wrap" aria-hidden="true">
+        <label for="hp_field">Leave this field empty</label>
+        <input id="hp_field" name="hp_field" type="text" tabindex="-1" autocomplete="off" />
+      </div>
+      <input type="hidden" name="form_ts" id="form_ts" value="" />
       <button class="btn" type="submit">Create account</button>
     </form>
+    <script>document.getElementById('form_ts').value = Date.now();</script>
 
     <p class="alt">Already have an account? <a href="/login">Log in</a></p>
     <p class="legal">By creating an account you agree to our

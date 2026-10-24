@@ -215,6 +215,20 @@
   .btn.ic{padding:8px 10px;}
   .urow .tbtn.ghost{background:transparent;color:var(--ink-dim);}
   .urow .tbtn.ghost:hover{color:var(--ink);border-color:var(--line-3);}
+  .urow .tbtn.danger{background:transparent;color:#ff5d57;border-color:rgba(255,93,87,.35);}
+  .urow .tbtn.danger:hover{color:#ffb3af;background:rgba(255,93,87,.12);border-color:rgba(255,93,87,.6);}
+  .vchip{font-family:var(--mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:4px;}
+  .vchip.ok{color:#9fe9bd;border:1px solid rgba(70,209,127,.35);}
+  .vchip.no{color:#ffb3af;border:1px solid rgba(255,93,87,.35);}
+  .rsdel{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:5px 9px;border-radius:6px;cursor:pointer;font-weight:600;background:transparent;color:#ff5d57;border:1px solid rgba(255,93,87,.3);transition:background .15s,border-color .15s;}
+  .rsdel:hover{color:#ffb3af;background:rgba(255,93,87,.12);border-color:rgba(255,93,87,.55);}
+  .plist{margin-top:12px;display:flex;flex-direction:column;gap:6px;max-height:280px;overflow:auto;}
+  .prow{display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;font-family:var(--mono);font-size:12px;}
+  .prow .pu{color:var(--ink);font-weight:600;min-width:120px;}
+  .prow .pe{color:var(--ink-dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .prow .pd{color:var(--ink-faint);}
+  .pbtn-danger{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#ffb3af;background:rgba(255,93,87,.14);border:1px solid rgba(255,93,87,.4);border-radius:8px;padding:11px 18px;cursor:pointer;font-weight:600;transition:background .15s;}
+  .pbtn-danger:hover{background:rgba(255,93,87,.24);}
   .udetail{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 14px;margin-top:-4px;
     background:var(--surface-2);border:1px solid var(--line);border-top:none;
     border-radius:0 0 9px 9px;font-size:12px;}
@@ -390,11 +404,15 @@ function render(stats, online, health){
   html += '</div>';
   html += '<div class="card"><div class="chead"><h3>Recent signups</h3><p>Newest accounts, all tiers</p></div>';
   if(stats.recent_signups && stats.recent_signups.length){
-    html += '<table><thead><tr><th>User</th><th>Email</th><th>Tier</th><th>Joined</th></tr></thead><tbody>';
+    const hasVer = stats.recent_signups[0].email_verified!==undefined;
+    html += '<table><thead><tr><th>User</th><th>Email</th><th>Tier</th>'+(hasVer?'<th>Verified</th>':'')+'<th>Joined</th><th></th></tr></thead><tbody>';
     stats.recent_signups.forEach(m=>{ const t=(m.tier||"free").toLowerCase();
+      const uAttr=esc(m.username).replace(/"/g,'&quot;');
       html += '<tr><td class="mono name">'+esc(m.username)+'</td><td class="mono">'+esc(m.email)+'</td>'+
         '<td><span class="tier '+(t==="pro"?"pro":"free")+'">'+esc(t)+'</span></td>'+
-        '<td class="mono">'+esc((m.created_at||"").slice(0,10))+'</td></tr>'; });
+        (hasVer?'<td><span class="vchip '+(m.email_verified?'ok':'no')+'">'+(m.email_verified?'yes':'no')+'</span></td>':'')+
+        '<td class="mono">'+esc((m.created_at||"").slice(0,10))+'</td>'+
+        '<td style="text-align:right"><button class="rsdel" data-u="'+uAttr+'" title="Delete this account">Delete</button></td></tr>'; });
     html += '</tbody></table>';
   } else { html += '<div class="empty">No signups yet.</div>'; }
   html += '</div></div>';
@@ -456,6 +474,11 @@ document.addEventListener('click', async function(e){
     catch(_){ const ta=document.createElement('textarea'); ta.value=tv; document.body.appendChild(ta); ta.select();
       try{ document.execCommand('copy'); }catch(__){} ta.remove(); }
     copy.textContent='copied'; setTimeout(()=>{ copy.textContent=old; }, 900);
+    return;
+  }
+  const rdel=e.target.closest('.rsdel');
+  if(rdel){
+    deleteUser(rdel.dataset.u);
     return;
   }
   const act=e.target.closest('.lsact');
@@ -543,6 +566,9 @@ function renderToolsOnce(stats){
   h+='<div class="card pad tool"><div class="chead2"><h3>Member tier control</h3><p>Search an account and switch it between free and pro. For comps and manual payments.</p></div>';
   h+='<div class="tbar"><input id="tq" class="tin" placeholder="username or email" autocomplete="off" spellcheck="false"/><button class="tsearch" id="tgo">Search</button></div>';
   h+='<div id="tres" class="tres"><div class="thint">Search to begin.</div></div></div>';
+  h+='<div class="card pad tool"><div class="chead2"><h3>Purge unverified accounts</h3><p>Bulk bot cleanup: removes accounts that never verified their email and are older than the chosen age. Admins, pro members, and Stripe-linked accounts are always skipped. Preview first; nothing is deleted until you confirm.</p></div>';
+  h+='<div class="tbar"><input id="pdays" class="tin" type="number" min="1" value="7" style="max-width:110px"/><span class="thint" style="align-self:center;white-space:nowrap">days old or more</span><button class="tsearch" id="pprev">Preview</button></div>';
+  h+='<div id="pres" class="tres"><div class="thint">Preview to see exactly which accounts would be removed.</div></div></div>';
   h+='<div class="card pad tool"><div class="chead2"><h3>Free-tier preview</h3><p>See the terminal exactly as a free member does: delayed tape, free SMT, free labels. Applies to this browser session only; your owner access stays.</p></div>';
   h+='<button class="pvtoggle'+(pv?' on':'')+'" id="pvBtn" type="button"><span class="pvdot"></span><span class="pvlab">'+(pv?'PREVIEW ON':'PREVIEW OFF')+'</span></button>';
   h+='<div class="thint" id="pvHint">'+(pv?'Open the terminal in another tab to see it. Turn this off when done.':'')+'</div></div>';
@@ -551,7 +577,59 @@ function renderToolsOnce(stats){
   $("#tools-root").innerHTML=h;
   $("#tgo").addEventListener('click', findUser);
   $("#tq").addEventListener('keydown', e=>{ if(e.key==='Enter') findUser(); });
+  const pp=$("#pprev"); if(pp) pp.addEventListener('click', purgePreview);
   const pb=$("#pvBtn"); if(pb) pb.addEventListener('click', togglePreview);
+}
+async function purgePreview(){
+  const days=Math.max(1, parseInt($("#pdays").value,10)||7), box=$("#pres");
+  box.innerHTML='<div class="thint">Checking…</div>';
+  try{
+    const r=await fetch('/api/admin/purge-unverified',{method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({days:days,dry_run:true})}).then(r=>r.json());
+    if(!r.ok){ box.innerHTML='<div class="thint err">'+esc(r.error||'preview failed')+'</div>'; return; }
+    if(!r.count){ box.innerHTML='<div class="thint">No unverified accounts older than '+days+' day(s). Nothing to purge.</div>'; return; }
+    let h='<div class="thint">'+r.count+' account(s) would be removed:</div><div class="plist">';
+    r.accounts.forEach(a=>{ h+='<div class="prow"><span class="pu">'+esc(a.username)+'</span>'+
+      '<span class="pe">'+esc(a.email||'')+'</span>'+
+      '<span class="pd">'+esc((a.created_at||'').slice(0,10))+'</span></div>'; });
+    h+='</div><div style="margin-top:12px"><button class="pbtn-danger" id="prun" data-d="'+days+'">Delete these '+r.count+' account(s)</button></div>';
+    box.innerHTML=h;
+    $("#prun").addEventListener('click', ()=>purgeRun(days, r.count));
+  }catch(e){ box.innerHTML='<div class="thint err">'+esc(e.message||e)+'</div>'; }
+}
+async function purgeRun(days, count){
+  if(!confirm('PERMANENTLY delete '+count+' unverified account(s) older than '+days+' day(s)?\n\nThis cannot be undone.')) return;
+  const box=$("#pres");
+  box.innerHTML='<div class="thint">Deleting…</div>';
+  try{
+    const r=await fetch('/api/admin/purge-unverified',{method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({days:days,dry_run:false})}).then(r=>r.json());
+    if(!r.ok){ box.innerHTML='<div class="thint err">'+esc(r.error||'purge failed')+'</div>'; return; }
+    box.innerHTML='<div class="thint">Removed '+r.count+' account(s).</div>';
+    load();
+  }catch(e){ box.innerHTML='<div class="thint err">'+esc(e.message||e)+'</div>'; }
+}
+async function deleteUser(username, fromSearch){
+  const typed=prompt('PERMANENTLY delete "'+username+'"?\n\nType the exact username to confirm:');
+  if(typed===null) return;
+  if(typed.trim()!==username){ alert('Username did not match. Nothing was deleted.'); return; }
+  doDelete(username, false, fromSearch);
+}
+async function doDelete(username, force, fromSearch){
+  try{
+    const r=await fetch('/api/admin/delete-user',{method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:username,confirm:username,force:!!force})}).then(r=>r.json());
+    if(!r.ok && r.needs_force){
+      if(confirm(r.error+'\n\nDelete '+username+' anyway?')) return doDelete(username,true,fromSearch);
+      return;
+    }
+    if(!r.ok){ alert('Failed: '+(r.error||'unknown')); return; }
+    if(fromSearch) findUser();
+    load();
+  }catch(e){ alert('Error: '+(e.message||e)); }
 }
 async function togglePreview(){
   const b=$("#pvBtn"); if(!b) return;
@@ -579,6 +657,7 @@ async function findUser(){
     box.querySelectorAll('.tbtn').forEach(b=>{
       if(b.classList.contains('sbtn')) b.addEventListener('click',()=>stripeInfo(b));
       else if(b.classList.contains('rbtn')) b.addEventListener('click',()=>sendReset(b.dataset.u));
+      else if(b.classList.contains('xbtn')) b.addEventListener('click',()=>deleteUser(b.dataset.u, true));
       else b.addEventListener('click',()=>setTier(b.dataset.u,b.dataset.t));
     });
     box.querySelectorAll('.uname').forEach(el=>el.addEventListener('click',
@@ -593,7 +672,8 @@ function userRow(m){
     '<span class="tier '+tier+'">'+esc(tier)+'</span>'+
     '<button class="tbtn ghost sbtn" data-u="'+uAttr+'">Stripe</button>'+
     '<button class="tbtn ghost rbtn" data-u="'+uAttr+'">Reset</button>'+
-    '<button class="tbtn '+to+'" data-u="'+uAttr+'" data-t="'+to+'">Make '+(to==='pro'?'Pro':'Free')+'</button></div>';
+    '<button class="tbtn '+to+'" data-u="'+uAttr+'" data-t="'+to+'">Make '+(to==='pro'?'Pro':'Free')+'</button>'+
+    '<button class="tbtn danger xbtn" data-u="'+uAttr+'">Delete</button></div>';
 }
 function rowSlot(row, kind){
   // one expansion slot per member row: opening a different tool replaces the
