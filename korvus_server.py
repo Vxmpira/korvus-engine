@@ -292,6 +292,16 @@ def og_image():
     return send_from_directory(HERE, "og-image.png")
 
 
+@app.route("/robots.txt")
+def robots_txt():
+    return send_from_directory(HERE, "robots.txt")
+
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    return send_from_directory(HERE, "sitemap.xml")
+
+
 @app.route("/terminal")
 @login_required
 def terminal():

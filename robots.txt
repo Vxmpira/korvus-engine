@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+
+# Members-only surfaces, nothing for a crawler here
+Disallow: /terminal
+Disallow: /forex
+Disallow: /upgrade
+Disallow: /account
+Disallow: /verify
+Disallow: /forgot
+Disallow: /reset
+Disallow: /logout
+Disallow: /api/
+
+# Shared layout fragment, not a page
+Disallow: /blackcrown-bar.html
+
+Sitemap: https://korvus.industries/sitemap.xml
