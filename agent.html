@@ -115,7 +115,7 @@
   .fitbox{transform-origin:center center;filter:drop-shadow(0 40px 80px rgba(0,0,0,.65));}
 
   /* ======================================================================
-     THE CREATIVE  — everything below renders into the exported PNG.
+     THE CREATIVE  ,  everything below renders into the exported PNG.
      Kept html2canvas-safe: no backdrop-filter, glows via radial-gradient.
      All sizes in em so the whole ad scales with --k across formats.
      ====================================================================== */
@@ -235,6 +235,7 @@
     .controls{position:static;max-height:none;border-right:none;border-bottom:1px solid var(--line);}
   }
 </style>
+  <meta name="robots" content="noindex, nofollow">
 </head>
 <body>
 
@@ -337,8 +338,8 @@
     <div class="grp lay-fields" data-for="classified statement">
       <span class="lbl">Closing callout</span>
       <div class="field"><label>Line 1</label><input type="text" id="c-calla" /></div>
-      <div class="field"><label>Line 2 — start</label><input type="text" id="c-callb" /></div>
-      <div class="field"><label>Line 2 — bold phrase</label><input type="text" id="c-callbold" /></div>
+      <div class="field"><label>Line 2 ,  start</label><input type="text" id="c-callb" /></div>
+      <div class="field"><label>Line 2 ,  bold phrase</label><input type="text" id="c-callbold" /></div>
     </div>
 
     <!-- ===== ENGINE fields ===== -->
@@ -448,17 +449,17 @@ const MOCKUP = {
     word:'KORVUS', url:'ENGINE LIVE',
     e_eyebrow:'WHILE YOU SLEEP',
     e_h1:'It reads.', e_h2:'It scores.', e_h3:'It watches.',
-    e_sub:'24/7 market intelligence — scored, ranked, in plain English.',
+    e_sub:'24/7 market intelligence ,  scored, ranked, in plain English.',
     card2:true,
-    e1:{st:'LIVE', tm:'03:14 AM ET', imp:'HIGH', text:'Fed signals surprise hold — dollar surges overnight, NQ futures gap pre-market.', dir:'Bullish', dk:'bull', tk:'NQ · ES · DXY', cf:'78'},
-    e2:{st:'NEWSWIRE', tm:'01:47 AM ET', imp:'MED', text:'JPMorgan raises Tesla price target — renewed EV and AI narrative signals sector rotation.', dir:'Neutral-Bullish', dk:'neut', tk:'TSLA · MNQ', cf:'62'},
+    e1:{st:'LIVE', tm:'03:14 AM ET', imp:'HIGH', text:'Fed signals surprise hold ,  dollar surges overnight, NQ futures gap pre-market.', dir:'Bullish', dk:'bull', tk:'NQ · ES · DXY', cf:'78'},
+    e2:{st:'NEWSWIRE', tm:'01:47 AM ET', imp:'MED', text:'JPMorgan raises Tesla price target ,  renewed EV and AI narrative signals sector rotation.', dir:'Neutral-Bullish', dk:'neut', tk:'TSLA · MNQ', cf:'62'},
     e_cta:'Start free', e_pbig:'$0', e_pline:'FREE · PRO $3.99/MO',
   },
   statement: {
     accent:'crimson',
     word:'KORVUS', url:'KORVUS.INDUSTRIES',
     c_hmuted:'Don\u2019t', c_hlight:'get', c_haccent:'blindsided.',
-    c_sub:'The headline that moves the open is breaking now — while the desk sleeps.',
+    c_sub:'The headline that moves the open is breaking now ,  while the desk sleeps.',
     c_calla:"The worst trade isn't a loss.", c_callb:"It's the loss you ", c_callbold:'never saw coming',
   },
 };
@@ -721,14 +722,14 @@ $('save-preset').addEventListener('click', ()=>{
 /* ---------- AI copy assist (reuses /api/promo-generate) ---------- */
 $('ai-go').addEventListener('click', async ()=>{
   const btn=$('ai-go'), out=$('ai-out'), note=$('ai-note');
-  const angle = $('ai-angle').value.trim() || "don't get blindsided — knowing what's moving markets while you sleep";
+  const angle = $('ai-angle').value.trim() || "don't get blindsided ,  knowing what's moving markets while you sleep";
   btn.disabled=true; btn.textContent='Drafting\u2026'; note.className='ai-note'; note.textContent='Asking your Promo engine\u2026'; out.innerHTML='';
   try{
     const res = await fetch('/api/promo-generate', {
       method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
       body: JSON.stringify({
         platform:'X', angle, tone:'punchy, scroll-stopping, a little outlaw/nocturnal but credible',
-        extra:'Return each variant as ONE short punchy ad line under 7 words — a poster headline, not a full post.',
+        extra:'Return each variant as ONE short punchy ad line under 7 words ,  a poster headline, not a full post.',
         hashtags:false, cta:false, useContext:false, context:{}
       })
     });
