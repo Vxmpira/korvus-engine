@@ -230,6 +230,19 @@ def api_ff_calendar():
         return jsonify({"error": str(e), "events": []})
 
 
+def _save_note(pd, pdy):
+    """Annual savings vs monthly, computed so it can never drift from Stripe."""
+    try:
+        m = float(str(pd).replace("$", ""))
+        y = float(str(pdy).replace("$", ""))
+        s = m * 12 - y
+        if s > 0:
+            return "save $%.2f vs monthly" % s
+    except Exception:
+        pass
+    return ""
+
+
 def _public_page(fname):
     """Serve a public marketing page with the live Stripe display price injected
     server-side. The page markup carries comment tokens instead of hardcoded
@@ -247,6 +260,10 @@ def _public_page(fname):
         "<!--K_PRICE_CTA-->":   (", " + pd + "/mo") if pd else "",
         "<!--K_PRICE_YEAR-->":  ("or " + pdy + "/yr billed annually") if pdy else "",
         "<!--K_PRICE_INLINE-->": pd if pd else "the Pro price",
+        "<!--K_PRICE_YR_BIG-->": (pdy + "<span>/yr</span>") if pdy else ((pd + "<span>/mo</span>") if pd else "Pro"),
+        "<!--K_PRICE_MO_NOTE-->": ("or " + pd + "/mo billed monthly") if pd else "",
+        "<!--K_SAVE_NOTE-->": _save_note(pd, pdy),
+        "<!--K_PRICE_CTA_YR-->": (", " + pdy + "/yr") if pdy else ((", " + pd + "/mo") if pd else ""),
     }
     for k, v in tokens.items():
         html = html.replace(k, v)
