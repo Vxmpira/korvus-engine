@@ -302,6 +302,20 @@ def sitemap_xml():
     return send_from_directory(HERE, "sitemap.xml")
 
 
+@app.route("/p/<name>")
+def public_marketing_page(name):
+    # Open marketing pages created by the BlackCrown agents. Any .html file in
+    # the pages/ folder serves at /p/<name> with no code change and no restart.
+    # Names are strictly sanitized; nothing outside pages/ is reachable.
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,60}", name or ""):
+        return ("not found", 404)
+    fp = os.path.join(HERE, "pages", name + ".html")
+    if not os.path.isfile(fp):
+        return ("not found", 404)
+    with open(fp, encoding="utf-8") as f:
+        return f.read()
+
+
 @app.route("/terminal")
 @login_required
 def terminal():
