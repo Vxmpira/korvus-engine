@@ -837,6 +837,7 @@
 </style>
 <!-- apply the saved theme before first paint so light mode never flashes dark -->
 <script>(function(){try{var t=localStorage.getItem('korvus-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');}}catch(e){}})();</script>
+  <meta name="robots" content="noindex, nofollow">
 </head>
 <body>
 
@@ -1905,9 +1906,9 @@ function renderMacroBand(q){
 
 // global trading sessions in ET. [s,e) decimal hours; wraps midnight when s>e.
 const SESSIONS = [
-  { nm:'Asia',     s:18, e:24 },  // 6:00 PM – 12:00 AM ET
-  { nm:'London',   s:0,  e:8  },  // 12:00 AM – 8:00 AM ET
-  { nm:'New York', s:8,  e:17 },  // 8:00 AM – 5:00 PM ET
+  { nm:'Asia',     s:18, e:24 },  // 6:00 PM ,  12:00 AM ET
+  { nm:'London',   s:0,  e:8  },  // 12:00 AM ,  8:00 AM ET
+  { nm:'New York', s:8,  e:17 },  // 8:00 AM ,  5:00 PM ET
 ];
 function _etDateStr(){ // YYYY-MM-DD in ET
   const p = new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',
@@ -1935,7 +1936,7 @@ function _fmtCd(decHours){
 function _sessLabel(k){
   const f = x => { x=((x%24)+24)%24; const h=Math.floor(x), m=Math.round((x-h)*60), ap=h>=12?'p':'a'; let hh=h%12||12;
     return hh + (m?(':' + (m<10?'0':'') + m):'') + ap; };
-  return f(k.s) + '–' + f(k.e);
+  return f(k.s) + ', ' + f(k.e);
 }
 // CME equity-index futures (MNQ/MES...): Sun 6pm ET -> Fri 5pm ET, daily 5-6pm ET break.
 // Prefers the server's freshness+holiday-aware verdict (MARKET_FS); the clock
@@ -1954,7 +1955,7 @@ function _futuresStateET(){
   return 'globex';
 }
 // The board/macro/SMT/watchlist all price off US equity ETF proxies, which only
-// trade during the cash session (9:30a–4p ET). Outside that, any number we'd show
+// trade during the cash session (9:30a, 4p ET). Outside that, any number we'd show
 // is stale/placeholder, so we render an honest CLOSED state instead.
 function _proxiesLive(){ return _futuresStateET() === 'rth'; }
 
@@ -1986,7 +1987,7 @@ function renderSessions(){
   const kzEl = document.getElementById('killzones'); if(!kzEl) return;
   const t = _etNow();
   const weekendClosed = _isWeekendClosed();
-  const dailyBreak    = !weekendClosed && (t>=17 && t<18);  // weekday 5–6 PM ET maintenance gap
+  const dailyBreak    = !weekendClosed && (t>=17 && t<18);  // weekday 5, 6 PM ET maintenance gap
   const openNames = [];
   kzEl.innerHTML = SESSIONS.map(k=>{
     const open = !weekendClosed && !dailyBreak && _isOpen(k,t);
