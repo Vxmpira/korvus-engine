@@ -1,16 +1,16 @@
 <!--
   ============================================================================
-  MARKET DESK — 24/7 News & Impact Terminal   (v0.2 — refined)
+  MARKET DESK ,  24/7 News & Impact Terminal   (v0.2 ,  refined)
   ============================================================================
   WHAT THIS IS:
-    The "face" of your system — what you (and your members) stare at each day.
+    The "face" of your system ,  what you (and your members) stare at each day.
     Runs on SAMPLE DATA for now so we can perfect the look and layout.
 
   HOW THE REAL THING WORKS:
     A backend engine runs 24/7 on YOUR server, pulls news + social + prices,
     has Claude summarize/score each item, and writes results to a database.
     THIS page reads that database and displays it. (A browser page alone can't
-    run 24/7 or safely hold API keys — the heavy lifting lives on the server.)
+    run 24/7 or safely hold API keys ,  the heavy lifting lives on the server.)
 
   WHERE YOUR DATA PLUGS IN LATER:
     Search the <script> for  >>> DATA SOURCE  markers (there are 4).
@@ -18,7 +18,7 @@
 -->
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Korvus — Market Intelligence Terminal · BlackCrownVxJ</title>
+<title>Korvus ,  Market Intelligence Terminal · BlackCrownVxJ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -315,7 +315,7 @@
     </div>
     <div class="heartbeat"><span class="hb"></span>ENGINE LIVE · REAL-TIME</div>
     <div class="members" title="Members currently on the desk">
-      <span class="avatars" id="avatars"></span><span id="memCount">— on the desk</span>
+      <span class="avatars" id="avatars"></span><span id="memCount">,  on the desk</span>
     </div>
     <a class="discord" href="https://discord.gg/ZXt7Hkq7fv" target="_blank" rel="noopener noreferrer" title="Join the Eclipse-X community on Discord">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M20.3 4.6A19 19 0 0 0 15.6 3l-.3.5a13 13 0 0 1 4 2 14 14 0 0 0-12.6 0 13 13 0 0 1 4-2L10.4 3a19 19 0 0 0-4.7 1.6C2.8 8.8 2 13 2.4 17.1a19 19 0 0 0 5.7 2.9l.5-.7a13 13 0 0 1-2-1l.4-.3a13.5 13.5 0 0 0 11.6 0l.4.3a13 13 0 0 1-2 1l.5.7a19 19 0 0 0 5.7-2.9C22 12.7 21.2 8.5 20.3 4.6ZM9 14.7c-.9 0-1.7-.8-1.7-1.9S8 11 9 11s1.7.8 1.7 1.9-.8 1.8-1.7 1.8Zm6 0c-.9 0-1.7-.8-1.7-1.9S14 11 15 11s1.7.8 1.7 1.9-.8 1.8-1.7 1.8Z"/></svg>
@@ -323,11 +323,11 @@
     </a>
     <span class="econ clear" id="econChip">● NO HIGH-IMPACT PRINTS TODAY</span>
     <div class="spacer"></div>
-    <div class="sess" id="sess">SESSION <b>—</b></div>
+    <div class="sess" id="sess">SESSION <b>, </b></div>
     <div class="clock"><span id="clock">--:--:--</span><small>New York / ET</small></div>
   </header>
 
-  <!-- FUTURES BOARD — more instruments -->
+  <!-- FUTURES BOARD ,  more instruments -->
   <div class="ribbon" id="ribbon"></div>
 
   <main>
@@ -335,7 +335,7 @@
       <div class="phead">
         <h2>News &amp; Market Impact</h2>
         <span class="tag">summarized by claude</span>
-        <span class="meta" id="feedMeta">— items</span>
+        <span class="meta" id="feedMeta">,  items</span>
       </div>
       <div class="feed" id="feed"></div>
     </section>
@@ -358,7 +358,7 @@
       <span>Real feeds plug in at the <b>&gt;&gt;&gt; DATA SOURCE</b> markers (4).</span>
       <span style="flex:1"></span>
       <span class="rt">● REAL-TIME</span>
-      <span id="lastUpd">last update —</span>
+      <span id="lastUpd">last update , </span>
     </div>
     <div class="legal">
       <span class="cpy">© 2026 BlackCrownVxJ LLC</span>
@@ -370,7 +370,7 @@
 
 <script>
 /* ============================================================================
-   >>> DATA SOURCE (1/4) — FUTURES BOARD
+   >>> DATA SOURCE (1/4) ,  FUTURES BOARD
    Replace with quotes from your feed. For LIVE futures you'd use a real feed;
    for a members site, prefer delayed/each-user's-own data (see notes in chat).
    { sym, name, px, chg(%), series[] (for the sparkline) }
@@ -388,7 +388,7 @@ const SAMPLE_FUT = [
 ];
 
 /* ============================================================================
-   >>> DATA SOURCE (2/4) — NEWS FEED   (fetch from your backend in production)
+   >>> DATA SOURCE (2/4) ,  NEWS FEED   (fetch from your backend in production)
    { time, source:'x'|'reddit'|'wire', headline, summary, impact, dir, inst[], conf }
    ============================================================================ */
 const SAMPLE_NEWS = [
@@ -396,30 +396,30 @@ const SAMPLE_NEWS = [
     summary:'Aggregated chatter points to heavy <b>call buying in megacap semis</b>. Sentiment skew turning risk-on; watch for follow-through into the cash open.',
     impact:'med', dir:'bull', inst:['MNQ'], conf:62 },
   { time:'09:28', source:'wire', headline:'Fed official: "patient" on rate path, data-dependent through summer',
-    summary:'Tone read as <b>mildly dovish but non-committal</b>. No new policy signal — likely a muted, range-bound reaction rather than a directional driver.',
+    summary:'Tone read as <b>mildly dovish but non-committal</b>. No new policy signal ,  likely a muted, range-bound reaction rather than a directional driver.',
     impact:'med', dir:'neut', inst:['MNQ','MES'], conf:54 },
   { time:'09:12', source:'reddit', headline:'Retail thread momentum building around solar names ahead of ETF rebalance',
-    summary:'Rising mentions of <b>TAN / FSLR / ENPH</b>. Crowd-driven, low institutional confirmation — a watch item, not a thesis.',
+    summary:'Rising mentions of <b>TAN / FSLR / ENPH</b>. Crowd-driven, low institutional confirmation ,  a watch item, not a thesis.',
     impact:'low', dir:'bull', inst:['TAN'], conf:38 },
   { time:'08:55', source:'wire', headline:'Overnight: Asian indices close mixed, Europe opens flat as yields steady',
-    summary:'No risk catalyst overnight. <b>Globex held its range.</b> Sets up a clean, news-light session — your preferred environment to trade structure.',
+    summary:'No risk catalyst overnight. <b>Globex held its range.</b> Sets up a clean, news-light session ,  your preferred environment to trade structure.',
     impact:'low', dir:'neut', inst:['MNQ','MES'], conf:71 },
   { time:'08:33', source:'x', headline:'Macro account: dollar index quietly probing a 3-day high',
-    summary:'<b>DXY strength</b> can pressure indices at the margin. Minor headwind for longs — keep it on the correlation board, not front of mind.',
+    summary:'<b>DXY strength</b> can pressure indices at the margin. Minor headwind for longs ,  keep it on the correlation board, not front of mind.',
     impact:'low', dir:'bear', inst:['MES'], conf:45 },
   { time:'07:58', source:'wire', headline:'No tier-1 economic releases scheduled before the cash open',
-    summary:'<b>Empty calendar confirmed.</b> Action likely driven by positioning and liquidity, not headlines — fewer surprise gaps to fade.',
+    summary:'<b>Empty calendar confirmed.</b> Action likely driven by positioning and liquidity, not headlines ,  fewer surprise gaps to fade.',
     impact:'low', dir:'neut', inst:['MNQ','MES'], conf:80 },
 ];
 
 /* ============================================================================
-   >>> DATA SOURCE (3/4) — SMT DIVERGENCE  (NQ vs ES vs YM)
+   >>> DATA SOURCE (3/4) ,  SMT DIVERGENCE  (NQ vs ES vs YM)
    Cheap start: ETF proxies QQQ/SPY/DIA (regular-hours only). Precise overnight
    SMT stays on your Tradovate chart. verdict.state: 'warn' | 'ok'
    ============================================================================ */
 const SAMPLE_SMT = {
-  verdict:{ state:'warn', title:'Bearish SMT — non-confirmation',
-    note:'NQ printed a higher high while ES failed to confirm (lower high). Classic distribution tell — favor caution on index longs until they realign.' },
+  verdict:{ state:'warn', title:'Bearish SMT ,  non-confirmation',
+    note:'NQ printed a higher high while ES failed to confirm (lower high). Classic distribution tell ,  favor caution on index longs until they realign.' },
   legs:[
     { sym:'NQ', proxy:'QQQ', chg:+0.42, swing:'HH' },
     { sym:'ES', proxy:'SPY', chg:+0.11, swing:'LH' },
@@ -428,7 +428,7 @@ const SAMPLE_SMT = {
 };
 
 /* ============================================================================
-   >>> DATA SOURCE (4/4) — FUNDS WATCHLIST (no crypto). Edit freely.
+   >>> DATA SOURCE (4/4) ,  FUNDS WATCHLIST (no crypto). Edit freely.
    ============================================================================ */
 const SAMPLE_WATCH = [
   { group:'Nasdaq Heavyweights', rows:[
@@ -567,11 +567,11 @@ renderWatch(SAMPLE_WATCH);
 renderMembers();
 tick();setInterval(tick,1000);
 
-/* Demo "liveness" — DELETE once the real feed is wired in. */
+/* Demo "liveness" ,  DELETE once the real feed is wired in. */
 setTimeout(()=>{
   SAMPLE_NEWS.unshift({ time:'09:46', source:'x',
-    headline:'Flow desk: index put/call ratio spikes — short-term hedging into midday',
-    summary:'Sudden <b>hedging demand</b> on the index complex. Often precedes a volatility uptick — tighten stops if holding directional risk.',
+    headline:'Flow desk: index put/call ratio spikes ,  short-term hedging into midday',
+    summary:'Sudden <b>hedging demand</b> on the index complex. Often precedes a volatility uptick ,  tighten stops if holding directional risk.',
     impact:'high', dir:'bear', inst:['MNQ','MES'], conf:67 });
   renderNews(SAMPLE_NEWS);
   document.querySelector('.item').classList.add('flash');
