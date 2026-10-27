@@ -361,6 +361,15 @@ def sitemap_xml():
     return send_from_directory(HERE, "sitemap.xml")
 
 
+INDEXNOW_KEY = "bc1f4e2a7d5946c8a3b0e6d1f8279c4b"
+
+
+@app.route("/" + INDEXNOW_KEY + ".txt")
+def indexnow_key():
+    # IndexNow ownership key: lets the company push new pages to Bing/Yandex
+    return INDEXNOW_KEY, 200, {"Content-Type": "text/plain"}
+
+
 @app.route("/p/<name>")
 def public_marketing_page(name):
     # Open marketing pages created by the BlackCrown agents. Any .html file in
