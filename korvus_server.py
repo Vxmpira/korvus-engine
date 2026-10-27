@@ -230,6 +230,47 @@ def api_ff_calendar():
         return jsonify({"error": str(e), "events": []})
 
 
+ADMIN_BEACON = os.environ.get("ADMIN_BEACON", "https://admin.blackcrownvxj.com/api/track")
+
+
+@app.before_request
+def _capture_utm():
+    """First-touch attribution: the utm params from the visitor's first landing
+    ride the session all the way to signup, so every signup maps to a source."""
+    try:
+        if "utm" not in session and request.args.get("utm_source"):
+            session["utm"] = {
+                "source": (request.args.get("utm_source") or "")[:32],
+                "medium": (request.args.get("utm_medium") or "")[:32],
+                "campaign": (request.args.get("utm_campaign") or "")[:48],
+            }
+    except Exception:
+        pass
+
+
+def _fire_signup_beacon():
+    """Best effort, off the request thread: tell the admin box a signup landed
+    and which source sent it. Never slows or breaks the signup itself."""
+    try:
+        utm = session.get("utm") or {}
+        src = re.sub(r"[^a-z0-9_-]", "", (utm.get("source") or "direct").lower())[:32] or "direct"
+    except Exception:
+        src = "direct"
+
+    def _send(k):
+        try:
+            import urllib.request
+            urllib.request.urlopen(ADMIN_BEACON + "?e=signup&k=" + k, timeout=4)
+        except Exception:
+            pass
+
+    try:
+        import threading
+        threading.Thread(target=_send, args=(src,), daemon=True).start()
+    except Exception:
+        pass
+
+
 def _save_note(pd, pdy):
     """Annual savings vs monthly, computed so it can never drift from Stripe."""
     try:
@@ -448,6 +489,7 @@ def signup_page():
             request.form.get("password"),
         )
         if ok:
+            _fire_signup_beacon()
             auth.send_verification_email(request.form.get("email"), token)
             return _render("korvus_signup.html",
                 f'<div class="msg ok">{msg} We sent a verification link to your email. '
