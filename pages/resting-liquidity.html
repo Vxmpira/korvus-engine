@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resting Liquidity Explained for Index Futures Traders</title>
+<meta name="description" content="Resting liquidity explained plainly for index futures traders: clustered stops, equal highs and lows, how sweeps resolve, and where the idea fails. Education only.">
+<link rel="canonical" href="https://korvus.industries/p/resting-liquidity">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 22L6 10l6 6 4-8 4 8 6-6 2 12z' fill='%23ff2d8f'/%3E%3C/svg%3E">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0f;color:#d8d8e0;font:16px/1.65 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+a{color:#ff2d8f;text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:820px;margin:0 auto;padding:0 20px}
+header{border-bottom:1px solid #22222e;padding:18px 0}
+.brand{display:flex;align-items:center;gap:10px;color:#fff;font-weight:700;letter-spacing:.04em}
+.brand svg{width:30px;height:30px}
+nav{margin-left:auto;display:flex;gap:16px;font-size:14px}
+nav a{color:#9a9aab}
+h1{color:#fff;font-size:32px;line-height:1.2;margin:40px 0 12px}
+h2{color:#fff;font-size:22px;margin:40px 0 10px}
+p{margin:0 0 16px}
+.lede{font-size:18px;color:#e8e8f0}
+.panel{background:#12121a;border:1px solid #22222e;border-radius:10px;padding:22px;margin:24px 0}
+.tag{display:inline-block;font-size:12px;color:#ff2d8f;border:1px solid #ff2d8f;border-radius:4px;padding:1px 7px;margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase}
+figure svg{width:100%;height:auto;display:block}
+figcaption{font-size:13px;color:#8a8a9a;margin-top:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.chip{background:#1a1a26;border:1px solid #2a2a3a;border-radius:99px;padding:4px 12px;font-size:13px;color:#c8c8d4}
+ul{margin:0 0 16px 20px}
+li{margin-bottom:6px}
+.cta{background:#12121a;border:1px solid #ff2d8f;border-radius:10px;padding:24px;margin:40px 0;text-align:center}
+.btn{display:inline-block;background:#ff2d8f;color:#0a0a0f;font-weight:700;padding:11px 22px;border-radius:6px;margin-top:8px}
+.btn:hover{text-decoration:none;opacity:.9}
+.related{margin:32px 0}
+.related a{display:block;padding:10px 0;border-bottom:1px solid #22222e}
+.disclaimer{font-size:13px;color:#8a8a9a;border-top:1px solid #22222e;padding:24px 0 40px;margin-top:40px}
+@media(max-width:600px){h1{font-size:26px}nav{display:none}}
+</style>
+</head>
+<body>
+<header>
+<div class="wrap">
+<div class="brand">
+<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 22L6 10l6 6 4-8 4 8 6-6 2 12z" fill="#ff2d8f"/><rect x="4" y="23" width="24" height="3" fill="#ff2d8f"/></svg>
+<span>KORVUS</span>
+<nav>
+<a href="/">Home</a>
+<a href="/lodestone">LodeStone</a>
+<a href="/legal">Legal</a>
+</nav>
+</div>
+</div>
+</header>
+
+<main class="wrap">
+<h1>Resting Liquidity Explained for Index Futures Traders</h1>
+<p class="lede">Resting liquidity is the most talked about idea in price action and the least understood. Here is the plain version: where orders cluster, why price visits those areas, and where the idea breaks.</p>
+
+<h2>What resting liquidity is</h2>
+<p>Liquidity means orders that can be filled. Resting liquidity is the pool of those orders sitting in the book or implied by the chart, waiting. On an index future, a large share of that pool is stop orders. Traders place stops just beyond recent highs and lows because those levels mark where a idea is wrong. Those stops become market orders when touched, and market orders need a counterparty.</p>
+<p>So the cluster of stops above a swing high and below a swing low is the resting liquidity. Nobody has to plan to hunt it. It is simply where many traders put the same kind of order.</p>
+
+<h2>Why price gravitates there</h2>
+<p>Price moves toward liquidity because a large move needs fills. If a big participant wants to buy size, selling pressure above the market is useful to them. The stops above a high are a source of buy fills. The same logic works below a low. Price does not reach for these areas on purpose. It reaches them because that is where the orders are.</p>
+<p>This is a description of mechanics, not a forecast. Liquidity can attract price, but attraction does not guarantee a touch, a reversal, or a continuation.</p>
+
+<h2>Equal highs and lows as magnets</h2>
+<p>Equal highs and equal lows are the clearest clusters. When two or more swings print at nearly the same level, many traders have placed stops just beyond that level, which makes the pool bigger and easier to see. The more times a level has been tested without breaking cleanly, the more orders tend to sit behind it.</p>
+
+<section class="panel" aria-label="Illustration of equal highs and a sweep">
+<span class="tag">Illustration</span>
+<figure>
+<svg viewBox="0 0 640 260" role="img" aria-label="Illustrative diagram: equal highs with stops above, a sweep through the level, then a reversal">
+<rect x="0" y="0" width="640" height="260" fill="#12121a"/>
+<line x1="40" y1="90" x2="600" y2="90" stroke="#ff2d8f" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="40" y="70" width="560" height="22" fill="#ff2d8f" opacity="0.08"/>
+<polyline points="60,170 120,140 160,90 200,150 250,120 290,90 330,160 380,110 420,90 460,200 520,190 600,210" fill="none" stroke="#9a9aab" stroke-width="2.5"/>
+<circle cx="460" cy="92" r="0" fill="#ff2d8f"/>
+<path d="M440 60 L460 88 L480 60" fill="none" stroke="#ff2d8f" stroke-width="2"/>
+<line x1="460" y1="88" x2="460" y2="200" stroke="#ff2d8f" stroke-width="1" opacity="0.5"/>
+<rect x="40" y="220" width="560" height="6" fill="#22222e"/>
+</svg>
+<figcaption>Illustration only. Not market data. Shows a cluster of equal highs (dashed line), a brief trade through the level, and a return below it.</figcaption>
+</figure>
+</section>
+
+<h2>How sweeps resolve</h2>
+<p>A sweep is a move that trades through a clustered level, takes the resting orders, and then returns. Traders call it a stop run or a liquidity grab. The defining feature is the return: price pushes through the level, fills the pool, and comes back inside the range.</p>
+<p>A sweep does not have a fixed outcome. Some sweeps lead to a reversal. Some lead to a clean trend that happens to start from that level. Some simply chop. The honest statement is that a sweep is a fact you can point to on a chart after it happens. Predicting the next one is a different claim, and most people who make it are selling something.</p>
+<ul>
+<li>Note where the cluster sits and how many times it was tested.</li>
+<li>Watch whether price trades through and closes back inside.</li>
+<li>Log what happened next across many sessions, not one.</li>
+</ul>
+
+<h2>Where the idea fails</h2>
+<p>This is the part most content skips. Resting liquidity fails in several common ways:</p>
+<ul>
+<li>Clusters are guesses. You cannot see every stop, so any pool you mark is an estimate.</li>
+<li>Price can run through a level and keep going. Breakouts are real, and a level that breaks is not a trap.</li>
+<li>News overrides structure. Scheduled releases and unscheduled headlines can move price through every level on the chart.</li>
+<li>Thin sessions distort levels. Overnight and holiday tape can print swings that never mattered to the day session.</li>
+<li>Hindsight makes everything look obvious. A sweep you can circle after the fact tells you little about the one forming now.</li>
+</ul>
+<p>If a method only works when you already know the answer, it is not a method yet. Test the idea against your own charts and be ready to find that it does not hold.</p>
+
+<h2>Keep learning the building blocks</h2>
+<div class="chips">
+<span class="chip">Liquidity pools</span>
+<span class="chip">Equal highs and lows</span>
+<span class="chip">Sweeps</span>
+<span class="chip">Session context</span>
+</div>
+<div class="related">
+<a href="/p/what-is-smt-divergence">What is SMT divergence? A plain explanation for index traders</a>
+<a href="/p/prior-day-levels">Prior day levels: how index traders use yesterday's range</a>
+</div>
+
+<section class="cta">
+<p><strong>Watch the market while you sleep.</strong> Korvus Observer is free. Scored market news, session context, and the terminal basics, with no card required.</p>
+<a class="btn" href="/">Create a free Observer account</a>
+</section>
+</main>
+
+<footer class="wrap disclaimer">
+<p>This page is education only. It is not financial advice, a trading signal, or a recommendation to buy or sell any instrument. Index futures carry substantial risk of loss and are not suitable for everyone. Past examples do not predict future results. Illustrations are not market data. Korvus and BlackCrownVxJ LLC are not responsible for trading decisions made using this material.</p>
+<p><a href="/legal">Legal</a> &middot; <a href="/">Korvus</a> &middot; BlackCrownVxJ.LLC@outlook.com</p>
+</footer>
+</body>
+</html>
