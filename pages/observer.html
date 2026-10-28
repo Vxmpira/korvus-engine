@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Observer vs Operator | Korvus</title>
+<meta name="description" content="Korvus Observer is free with no card. Operator adds the full terminal, cross index SMT divergence, session and macro context, and LodeStone. Compare both plans.">
+<link rel="canonical" href="https://korvus.industries/p/observer">
+<style>
+:root{--bg:#07070a;--panel:#0f0f15;--line:#23232e;--text:#e9e9f0;--mute:#8d8da0;--pink:#ff2d8f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.6}
+a{color:var(--pink)}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 28px;border-bottom:1px solid var(--line);background:#050508}
+.brand{display:flex;align-items:center;gap:12px;font-weight:700;letter-spacing:.08em;color:var(--text);text-decoration:none}
+.brand svg{width:36px;height:33px}
+.navlink{color:var(--mute);text-decoration:none;font-size:14px}
+.wrap{max-width:980px;margin:0 auto;padding:48px 24px 64px}
+.kicker{color:var(--pink);font-size:13px;letter-spacing:.14em;text-transform:uppercase;margin:0 0 10px}
+h1{font-size:40px;line-height:1.15;margin:0 0 16px}
+.lede{color:var(--mute);font-size:18px;max-width:720px;margin:0 0 32px}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 36px}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 14px;font-size:13px;color:var(--mute)}
+.chip b{color:var(--pink);font-weight:600}
+.table-wrap{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel);margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{padding:14px 18px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#0b0b11;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:600}
+th.op{color:var(--pink)}
+td.feat{color:var(--text);width:34%}
+td.yes{color:var(--text)}
+td.no{color:#5d5d6e}
+tr:last-child td{border-bottom:none}
+.tag{display:inline-block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--pink);border:1px solid rgba(255,45,143,.45);border-radius:6px;padding:2px 7px;margin-left:8px;vertical-align:middle}
+.note{font-size:13px;color:var(--mute);margin:0 0 48px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:0 0 48px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px}
+.card.op{border-color:rgba(255,45,143,.55);box-shadow:0 0 0 1px rgba(255,45,143,.12) inset}
+.card h2{margin:0 0 6px;font-size:22px}
+.price{font-size:30px;font-weight:700;margin:6px 0 4px}
+.price small{font-size:14px;color:var(--mute);font-weight:400}
+.card ul{padding-left:18px;margin:14px 0 0;color:var(--mute)}
+.card li{margin-bottom:8px}
+.card li strong{color:var(--text)}
+.save{color:var(--pink);font-size:14px;margin:0}
+.feed{background:#050508;border:1px solid var(--line);border-radius:12px;padding:18px;margin:0 0 48px}
+.feed-row{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px;color:var(--mute)}
+.feed-row:last-child{border-bottom:none}
+.feed-row span:first-child{color:var(--text)}
+.score{color:var(--pink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.illus{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin:0 0 10px}
+.cta{text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:36px 24px;margin:0 0 32px}
+.cta h2{margin:0 0 10px;font-size:26px}
+.cta p{color:var(--mute);margin:0 0 22px}
+.btn{display:inline-block;background:var(--pink);color:#07070a;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:10px;letter-spacing:.02em}
+.fine{font-size:13px;color:var(--mute);border-top:1px solid var(--line);padding-top:20px;margin-top:40px}
+@media (max-width:760px){
+  h1{font-size:30px}
+  .grid{grid-template-columns:1fr}
+  .topbar{padding:14px 18px}
+  th,td{padding:12px 12px;font-size:14px}
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="brand" href="https://korvus.industries/">
+    <svg viewBox="0 0 36 33" fill="none" stroke="#ff2d8f" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
+    <span>KORVUS</span>
+  </a>
+  <a class="navlink" href="https://korvus.industries/signup">Get started</a>
+</div>
+
+<main class="wrap">
+  <p class="kicker">Plans</p>
+  <h1>Observer or Operator. Pick the one that fits how you trade.</h1>
+  <p class="lede">Observer gives you the scored news feed and the futures basics for free, no card. Operator adds the full terminal, cross index divergence, session and macro context, and the LodeStone indicator. Same engine, more of it.</p>
+
+  <div class="chips">
+    <span class="chip"><b>Free</b> Observer, no card</span>
+    <span class="chip"><b>Annual</b> 79.99 a year</span>
+    <span class="chip"><b>Monthly</b> 9.99 a month</span>
+    <span class="chip">LodeStone TradingView included</span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="feat">Feature</th>
+          <th>Observer</th>
+          <th class="op">Operator</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="feat">Price</td>
+          <td class="yes">Free, no card</td>
+          <td class="yes">79.99 a year or 9.99 a month</td>
+        </tr>
+        <tr>
+          <td class="feat">Scored news feed</td>
+          <td class="yes">Included</td>
+          <td class="yes">Included</td>
+        </tr>
+        <tr>
+          <td class="feat">Futures basics</td>
+          <td class="yes">Included</td>
+          <td class="yes">Included</td>
+        </tr>
+        <tr>
+          <td class="feat">Full terminal</td>
+          <td class="no">Not included</td>
+          <td class="yes">Included</td>
+        </tr>
+        <tr>
+          <td class="feat">Cross index SMT divergence</td>
+          <td class="no">Not included</td>
+          <td class="yes">Included</td>
+        </tr>
+        <tr>
+          <td class="feat">Session and macro context</td>
+          <td class="no">Not included</td>
+          <td class="yes">Included</td>
+        </tr>
+        <tr>
+          <td class="feat">LodeStone TradingView indicator</td>
+          <td class="no">Not included</td>
+          <td class="yes">Included</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Feature comparison. Plan details may change; the pricing shown here is what this page lists today.</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Observer</h2>
+      <div class="price">Free <small>no card</small></div>
+      <p class="save">Start here. Nothing to cancel.</p>
+      <ul>
+        <li><strong>Scored news feed</strong> with impact and direction on each item.</li>
+        <li><strong>Futures basics</strong> so the terms and mechanics are clear before you go deeper.</li>
+        <li>Good for learning how the feed reads before you decide anything else.</li>
+      </ul>
+    </div>
+    <div class="card op">
+      <h2>Operator</h2>
+      <div class="price">79.99 <small>a year</small></div>
+      <p class="save">Annual listed first. Works out to less than 9.99 a month, billed once.</p>
+      <p class="note" style="margin:10px 0 0">Or 9.99 a month if you want to stay flexible.</p>
+      <ul>
+        <li><strong>Full terminal</strong> with the complete workspace.</li>
+        <li><strong>Cross index SMT divergence</strong> across the index futures you follow.</li>
+        <li><strong>Session and macro context</strong> around the levels and events in the feed.</li>
+        <li><strong>LodeStone TradingView indicator</strong> included at no extra cost.</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="illus">Illustration: scored feed sample, not live data</p>
+  <div class="feed">
+    <div class="feed-row"><span>Central bank speaker, rates tone</span><span class="score">Impact 7 / Dir up / Conf 62</span></div>
+    <div class="feed-row"><span>Employment figure revised lower</span><span class="score">Impact 6 / Dir down / Conf 58</span></div>
+    <div class="feed-row"><span>Index futures sector rotation note</span><span class="score">Impact 3 / Dir flat / Conf 40</span></div>
+  </div>
+
+  <div class="cta">
+    <h2>Start with Observer, or go Operator.</h2>
+    <p>Observer is free and needs no card. Operator is 79.99 a year, or 9.99 a month.</p>
+    <a class="btn" href="https://korvus.industries/signup">Create your account</a>
+  </div>
+
+  <p class="fine">Not financial advice. Korvus is market information and education, not a recommendation to buy or sell anything. Trading index futures carries substantial risk of loss and is not suitable for everyone. No result is promised, and past readings do not predict what happens next. Nothing here guarantees profit.</p>
+</main>
+</body>
+</html>
