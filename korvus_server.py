@@ -370,6 +370,12 @@ def indexnow_key():
     return INDEXNOW_KEY, 200, {"Content-Type": "text/plain"}
 
 
+@app.route("/google9f7f9a9066ed4080.html")
+def google_site_verification():
+    # Google Search Console ownership proof; never remove, Google rechecks it
+    return "google-site-verification: google9f7f9a9066ed4080.html", 200, {"Content-Type": "text/html"}
+
+
 @app.route("/p/<name>")
 def public_marketing_page(name):
     # Open marketing pages created by the BlackCrown agents. Any .html file in
