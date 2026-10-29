@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SMT Divergence for Index Futures Beginners | Korvus</title>
+<meta name="description" content="SMT divergence explained for ES and NQ beginners: what it means when the two index futures disagree at highs and lows, and how to read it as information, not a signal.">
+<link rel="canonical" href="https://korvus.industries/p/smt-divergence-ex">
+<meta name="robots" content="index, follow">
+<style>
+:root{--bg:#07080b;--panel:#0d0f14;--line:#1d2029;--ink:#e9ebf1;--mute:#9aa1b2;--pink:#ff2d8f;--cyan:#27d3ff;--gold:#f5c96b}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(900px 500px at 12% -10%, rgba(255,45,143,.14), transparent 60%),
+    radial-gradient(800px 480px at 95% 8%, rgba(39,211,255,.10), transparent 60%),
+    radial-gradient(700px 500px at 50% 110%, rgba(245,201,107,.07), transparent 60%),
+    var(--bg);
+  color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  line-height:1.65;
+  min-height:100vh;
+  position:relative;
+  overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size:56px 56px;
+}
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.65) 100%);
+}
+.wrap{position:relative;z-index:1;max-width:1060px;margin:0 auto;padding:0 20px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 0;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink);font-weight:700;letter-spacing:.04em}
+.brand span.sub{display:block;font-size:12px;font-weight:500;color:var(--mute);letter-spacing:.02em}
+nav.top a{color:var(--mute);text-decoration:none;margin-left:18px;font-size:14px}
+nav.top a:hover{color:var(--ink)}
+.hero{padding:64px 0 36px}
+.eyebrow{color:var(--gold);font-size:13px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 14px}
+h1{font-size:clamp(28px,5vw,46px);line-height:1.12;margin:0 0 18px;font-weight:800;letter-spacing:-.01em}
+h2{font-size:clamp(22px,3.2vw,30px);margin:48px 0 14px;line-height:1.2}
+h3{font-size:clamp(17px,2.2vw,20px);margin:26px 0 8px}
+.lede{font-size:clamp(17px,2.2vw,20px);color:#d4d8e3;max-width:680px;margin:0}
+.prose{max-width:680px}
+.prose p{margin:0 0 16px;color:#d4d8e3}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin:26px 0 0;padding:0;list-style:none}
+.chips li{border:1px solid var(--line);background:rgba(13,15,20,.8);padding:7px 12px;border-radius:999px;font-size:13px;color:var(--mute)}
+.chips li b{color:var(--ink);font-weight:600}
+.panel{background:linear-gradient(180deg,rgba(18,20,27,.95),rgba(10,11,16,.95));border:1px solid var(--line);border-radius:16px;padding:22px;margin:26px 0}
+.figure{width:100%}
+.figure svg{width:100%;height:auto;display:block}
+.caption{font-size:13px;color:var(--mute);margin-top:12px}
+.tag{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--pink);border:1px solid rgba(255,45,143,.45);padding:3px 8px;border-radius:6px;margin-bottom:10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:22px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}
+.card h3{margin-top:0}
+.card p{margin:0;color:#c9cedb;font-size:15px}
+.mistake{border-left:3px solid var(--pink)}
+.read{border-left:3px solid var(--cyan)}
+.cta{background:linear-gradient(135deg,rgba(255,45,143,.12),rgba(39,211,255,.08));border:1px solid var(--line);border-radius:18px;padding:28px;margin:52px 0 30px;text-align:left}
+.cta h2{margin-top:0}
+.btn{display:inline-block;background:var(--pink);color:#0b0c10;font-weight:700;text-decoration:none;padding:13px 22px;border-radius:10px;margin-top:6px}
+.btn:hover{filter:brightness(1.08)}
+.btn-ghost{display:inline-block;color:var(--ink);text-decoration:none;padding:13px 18px;border:1px solid var(--line);border-radius:10px;margin:6px 0 0 10px}
+.disclaim{font-size:13px;color:var(--mute);border-top:1px solid var(--line);padding:22px 0;margin-top:30px}
+footer.foot{padding:26px 0 40px;color:var(--mute);font-size:13px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;border-top:1px solid var(--line)}
+footer.foot a{color:var(--mute)}
+ol.steps{padding-left:20px;margin:0 0 16px;color:#d4d8e3}
+ol.steps li{margin-bottom:8px}
+@media (max-width:700px){
+  .grid{grid-template-columns:1fr}
+  nav.top{display:none}
+  .hero{padding:44px 0 26px}
+  .btn-ghost{margin-left:0;display:block;text-align:center}
+  .btn{display:block;text-align:center}
+  header.top{padding:18px 0}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <a class="brand" href="https://korvus.industries/">
+    <svg width="36" height="33" viewBox="0 0 36 33" aria-hidden="true" focusable="false">
+      <path d="M5 27 L3 9 L12 17 L18 5 L24 17 L33 9 L31 27 Z" fill="none" stroke="#ff2d8f" stroke-width="2.2" stroke-linejoin="round"/>
+      <line x1="8" y1="31" x2="28" y2="31" stroke="#ff2d8f" stroke-width="2.2" stroke-linecap="round"/>
+      <circle cx="18" cy="20" r="2.2" fill="#ff2d8f"/>
+    </svg>
+    <div>KORVUS<span class="sub">24/7 market intelligence</span></div>
+  </a>
+  <nav class="top">
+    <a href="https://korvus.industries/lodestone">LodeStone</a>
+    <a href="https://korvus.industries/legal">Legal</a>
+    <a href="https://korvus.industries/login">Log in</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <p class="eyebrow">Beginner guide · Index futures</p>
+  <h1>SMT Divergence Explained: When ES and NQ Disagree</h1>
+  <p class="lede">Smart Money Technique divergence compares two related index futures. When one makes a new high or low and the other does not, that disagreement is worth noticing. It is information to study, not a trade.</p>
+  <ul class="chips">
+    <li><b>ES</b> S&amp;P 500 futures</li>
+    <li><b>NQ</b> Nasdaq 100 futures</li>
+    <li>Beginner level</li>
+    <li>Information, not a signal</li>
+  </ul>
+</section>
+
+<section class="prose">
+  <h2>What SMT divergence means</h2>
+  <p>SMT stands for Smart Money Technique, a comparison method traders use across correlated markets. The idea is simple. ES and NQ usually move together, because both track large US stock indexes and both are pulled by the same news, rates, and risk appetite. When they move together, the market looks healthy and consistent.</p>
+  <p>Divergence happens when they stop agreeing. One index pushes to a new high or a new low, and the other fails to confirm it. That gap between the two charts is what SMT divergence describes.</p>
+  <p>Nothing about a divergence guarantees a reversal, a breakout, or any particular direction. It is a description of a disagreement, and beginners should treat it that way.</p>
+</section>
+
+<section>
+  <h2>A simple picture of the disagreement</h2>
+  <div class="panel">
+    <span class="tag">Illustration</span>
+    <div class="figure">
+      <svg viewBox="0 0 600 260" role="img" aria-label="Illustration: ES makes a higher high while NQ does not confirm it">
+        <rect x="0" y="0" width="600" height="260" rx="10" fill="#090a0e"/>
+        <line x1="20" y1="60" x2="580" y2="60" stroke="#1d2029" stroke-width="1"/>
+        <line x1="20" y1="130" x2="580" y2="130" stroke="#1d2029" stroke-width="1"/>
+        <line x1="20" y1="200" x2="580" y2="200" stroke="#1d2029" stroke-width="1"/>
+        <line x1="260" y1="30" x2="260" y2="230" stroke="#1d2029" stroke-width="1" stroke-dasharray="4 4"/>
+        <line x1="440" y1="30" x2="440" y2="230" stroke="#1d2029" stroke-width="1" stroke-dasharray="4 4"/>
+        <polyline points="30,190 90,160 140,175 200,120 260,70 320,130 380,100 440,40 520,90 570,110" fill="none" stroke="#27d3ff" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+        <polyline points="30,200 90,170 140,182 200,130 260,80 320,138 380,112 440,92 520,120 570,132" fill="none" stroke="#ff2d8f" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="440" cy="40" r="5" fill="#27d3ff"/>
+        <circle cx="440" cy="92" r="5" fill="#ff2d8f"/>
+        <text x="452" y="36" fill="#27d3ff" font-size="13" font-family="system-ui,sans-serif">ES new high</text>
+        <text x="452" y="110" fill="#ff2d8f" font-size="13" font-family="system-ui,sans-serif">NQ fails to confirm</text>
+        <text x="28" y="250" fill="#9aa1b2" font-size="12" font-family="system-ui,sans-serif">Illustration only. Not real market data.</text>
+      </svg>
+    </div>
+    <p class="caption">In this illustrative sketch, ES (cyan) sets a higher high on the right while NQ (pink) stays below its earlier peak. A beginner reads that as a disagreement to study, nothing more.</p>
+  </div>
+</section>
+
+<section>
+  <h2>What ES and NQ disagreement means at highs and lows</h2>
+  <div class="grid">
+    <div class="card read">
+      <h3>At a high</h3>
+      <p>ES prints a new high and NQ does not. Broad index strength is not being matched by the tech heavy index. That can hint that buying is narrowing. It does not say what comes next.</p>
+    </div>
+    <div class="card read">
+      <h3>At a low</h3>
+      <p>ES prints a new low and NQ holds above its prior low. Selling is less uniform than the headline index suggests. Again, this is context, not a verdict.</p>
+    </div>
+  </div>
+  <p class="prose">Both readings share one rule: a divergence is a question. Why is one index leading while the other lags? Check the session, the news flow, the levels on your chart, and whether the move has follow through before you draw any conclusion.</p>
+</section>
+
+<section>
+  <h2>Read it as information, not a signal</h2>
+  <div class="prose">
+    <p>A signal says do something. Information says notice something. SMT divergence belongs in the second group, and that difference protects beginners from their own impatience.</p>
+    <ol class="steps">
+      <li>Mark where ES and NQ are making highs or lows on the same timeframe.</li>
+      <li>Note whether the other index confirms, stalls, or disagrees.</li>
+      <li>Write down what the wider session is doing, including scheduled news.</li>
+      <li>Watch what happens next before deciding the divergence mattered.</li>
+    </ol>
+    <p>Keeping a written log of these observations is one of the most useful habits a new trader can build. Over time you learn how often divergences resolve, stall, or get ignored in the conditions you actually trade.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Common beginner mistakes</h2>
+  <div class="grid">
+    <div class="card mistake">
+      <h3>Treating every divergence as a setup</h3>
+      <p>Divergences appear often. Most do not turn into anything tradeable on their own. Expecting each one to pay is how accounts get hurt.</p>
+    </div>
+    <div class="card mistake">
+      <h3>Ignoring the timeframe</h3>
+      <p>A divergence on a one minute chart and one on a daily chart describe different things. Mixing them creates false confidence.</p>
+    </div>
+    <div class="card mistake">
+      <h3>Reading the divergence in isolation</h3>
+      <p>Price structure, session context, volume, and news all change what a divergence means. A single comparison rarely tells the full story.</p>
+    </div>
+    <div class="card mistake">
+      <h3>Assuming the lagging index will catch up</h3>
+      <p>Sometimes NQ follows ES. Sometimes it never does. Hoping for convergence is a belief, not an analysis.</p>
+    </div>
+  </div>
+</section>
+
+<section class="cta">
+  <h2>Watch these comparisons live, with context</h2>
+  <p class="prose">Korvus is a 24/7 market intelligence terminal for index futures traders. It keeps track of the wire, the levels, and the cross market context so you can study how ES and NQ behave across sessions. The free Observer tier needs no card. Operator adds the LodeStone TradingView indicator.</p>
+  <a class="btn" href="https://korvus.industries/signup">Create your free Korvus account</a>
+  <a class="btn-ghost" href="https://korvus.industries/lodestone">See LodeStone</a>
+</section>
+
+<p class="disclaim">
+Educational content only. Nothing on this page is financial advice, a trading recommendation, or a signal to buy or sell any instrument. Index futures carry substantial risk of loss and are not suitable for everyone. Past behavior does not predict future results. The chart in this guide is an illustration and not real market data. BlackCrownVxJ LLC does not guarantee profits or outcomes from any method described here.
+</p>
+
+<footer class="foot">
+  <span>© BlackCrownVxJ LLC · A crown is not handed down, it is built.</span>
+  <span><a href="https://korvus.industries/legal">Legal</a> · <a href="https://korvus.industries/">Korvus</a> · BlackCrownVxJ.LLC@outlook.com</span>
+</footer>
+
+</div>
+</body>
+</html>
