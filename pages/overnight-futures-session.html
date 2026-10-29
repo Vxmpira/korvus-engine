@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overnight Futures Session: How ES and NQ Trade While You Sleep</title>
+<meta name="description" content="The overnight futures session explained for beginners. Learn the clock, what moves ES and NQ after hours, and how to read the overnight range without guessing.">
+<link rel="canonical" href="https://korvus.industries/p/overnight-futures-session">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Overnight Futures Session: How ES and NQ Trade While You Sleep">
+<meta property="og:description" content="A plain guide to the overnight futures session for beginner index futures traders.">
+<meta property="og:url" content="https://korvus.industries/p/overnight-futures-session">
+<meta property="og:site_name" content="Korvus">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Overnight Futures Session: ES and NQ Explained">
+<meta name="twitter:description" content="The clock, the moves, and the overnight range. A plain guide for beginner index futures traders.">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:#07070b}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#d9dce6;line-height:1.65;background:#07070b;min-height:100vh;position:relative;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;background:radial-gradient(60vw 45vw at 12% 8%,rgba(255,45,143,.13),transparent 70%),radial-gradient(55vw 40vw at 92% 30%,rgba(90,70,255,.12),transparent 70%),radial-gradient(70vw 50vw at 40% 100%,rgba(0,200,255,.07),transparent 70%)}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(rgba(255,255,255,.015) 1px,transparent 1px) 0 0/56px 56px,linear-gradient(90deg,rgba(255,255,255,.015) 1px,transparent 1px) 0 0/56px 56px,radial-gradient(120% 90% at 50% 50%,transparent 55%,rgba(0,0,0,.6) 100%)}
+.wrap{max-width:1060px;margin:0 auto;padding:0 22px}
+header{padding:24px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:#fff;font-weight:700;letter-spacing:.04em;font-size:1.05rem}
+.brand svg{width:36px;height:33px}
+.tag{font-size:.8rem;color:#8d93a6;margin-left:auto}
+main{padding:44px 0 30px}
+.eyebrow{color:#ff2d8f;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;font-weight:600}
+h1{font-size:clamp(1.9rem,4.6vw,3rem);line-height:1.12;color:#fff;margin:12px 0 16px;letter-spacing:-.01em}
+h2{font-size:clamp(1.35rem,2.8vw,1.8rem);color:#fff;margin:44px 0 12px;line-height:1.2}
+h3{font-size:1.05rem;color:#fff;margin:0 0 6px}
+p,li{max-width:68ch;font-size:1.02rem}
+p{margin:0 0 14px}
+ul,ol{margin:0 0 16px 20px;max-width:68ch}
+li{margin-bottom:6px}
+.lead{font-size:1.12rem;color:#eef0f6}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.015));border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:22px}
+.figure{margin:26px 0;padding:22px}
+.label{display:inline-block;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#8d93a6;border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:3px 10px;margin-bottom:12px}
+.timeline{width:100%;height:auto;display:block}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}
+.chip{font-size:.8rem;color:#e6e8f2;background:rgba(255,45,143,.08);border:1px solid rgba(255,45,143,.3);border-radius:999px;padding:4px 12px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:22px 0}
+.grid .card h3{color:#ff2d8f;font-size:.95rem}
+.grid .card p{font-size:.95rem;margin:0}
+.panel{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid rgba(255,255,255,.09);border-radius:14px;overflow:hidden;margin:22px 0}
+.panel div{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.07);font-size:.95rem}
+.panel div:nth-child(odd){color:#8d93a6;border-right:1px solid rgba(255,255,255,.07)}
+.panel div:nth-child(even){color:#fff;font-variant-numeric:tabular-nums}
+.note{font-size:.9rem;color:#8d93a6;margin-top:10px}
+.disclaimer{margin-top:44px;padding:20px 22px;border-left:2px solid #8d93a6;background:rgba(255,255,255,.02);font-size:.9rem;color:#a5aaba}
+.cta{margin:44px 0 30px;padding:34px 26px;text-align:center;border:1px solid rgba(255,45,143,.28);border-radius:18px;background:radial-gradient(70% 90% at 50% 0%,rgba(255,45,143,.14),transparent 70%),rgba(255,255,255,.02)}
+.cta h2{margin-top:0}
+.cta p{margin:0 auto 18px;text-align:center}
+.btn{display:inline-block;background:#ff2d8f;color:#fff;text-decoration:none;font-weight:700;padding:13px 26px;border-radius:10px;letter-spacing:.02em}
+.tagline{margin-top:16px;font-style:italic;color:#c9cde0}
+footer{border-top:1px solid rgba(255,255,255,.07);padding:22px 0 40px;font-size:.85rem;color:#7a8095}
+@media (max-width:700px){
+.grid{grid-template-columns:1fr}
+.panel{grid-template-columns:1fr}
+.panel div:nth-child(odd){border-right:none;padding-bottom:4px;border-bottom:none;padding-top:14px}
+.panel div:nth-child(even){padding-top:0}
+.tag{display:none}
+.figure{padding:16px}
+}
+</style>
+</head>
+<body>
+<header>
+<div class="wrap">
+<a class="brand" href="https://korvus.industries/">
+<svg viewBox="0 0 36 33" fill="none" stroke="#ff2d8f" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
+Korvus
+</a>
+<span class="tag">Your edge while the world sleeps</span>
+</div>
+</header>
+
+<main class="wrap">
+<div class="eyebrow">Beginner guide</div>
+<h1>The Overnight Futures Session: How ES and NQ Trade While the Cash Market Sleeps</h1>
+<p class="lead">Index futures do not stop when the stock exchange closes. This guide explains the overnight futures session in plain terms: the clock, what moves ES and NQ between sessions, and how to read the overnight range without turning it into a forecast.</p>
+
+<h2>What the overnight session is</h2>
+<p>ES (the E-mini S&amp;P 500) and NQ (the E-mini Nasdaq 100) trade electronically on CME Globex for most of the day, from Sunday evening through Friday afternoon Eastern. There is a short daily maintenance break, usually around 5 p.m. Eastern for about an hour.</p>
+<p>The cash session is the regular trading hours window, 9:30 a.m. to 4:00 p.m. Eastern. Everything outside that window is the overnight or extended session. It is the same contract. The difference is who is trading, how many of them there are, and how much each move costs in depth.</p>
+<p>Times shift with daylight saving and with your broker's settings. Confirm the exact session times on your own platform before you rely on any of them.</p>
+
+<h2>The clock</h2>
+<p>Think of the 24-hour day as a handful of phases. Each one has a different feel. The figure below is a simplified map, not a schedule.</p>
+
+<figure class="card figure">
+<span class="label">Illustration</span>
+<svg class="timeline" viewBox="0 0 960 230" role="img" aria-label="Illustrative timeline of overnight, pre-market and cash session phases for index futures">
+<rect x="20" y="70" width="300" height="46" rx="6" fill="rgba(90,70,255,.22)" stroke="rgba(120,100,255,.6)"/>
+<rect x="320" y="70" width="210" height="46" rx="6" fill="rgba(0,200,255,.14)" stroke="rgba(0,200,255,.5)"/>
+<rect x="530" y="70" width="90" height="46" rx="6" fill="rgba(255,45,143,.12)" stroke="rgba(255,45,143,.45)"/>
+<rect x="620" y="70" width="230" height="46" rx="6" fill="rgba(255,45,143,.28)" stroke="#ff2d8f"/>
+<rect x="850" y="70" width="90" height="46" rx="6" fill="rgba(255,45,143,.12)" stroke="rgba(255,45,143,.45)"/>
+<line x1="20" y1="150" x2="940" y2="150" stroke="rgba(255,255,255,.2)"/>
+<circle cx="530" cy="150" r="4" fill="#ff2d8f"/>
+<circle cx="620" cy="150" r="4" fill="#ff2d8f"/>
+<circle cx="850" cy="150" r="4" fill="#ff2d8f"/>
+<text x="170" y="98" fill="#e6e8f2" font-size="16" text-anchor="middle" font-family="system-ui,sans-serif">Overnight, thinner</text>
+<text x="425" y="98" fill="#e6e8f2" font-size="16" text-anchor="middle" font-family="system-ui,sans-serif">Europe and early US</text>
+<text x="575" y="98" fill="#e6e8f2" font-size="14" text-anchor="middle" font-family="system-ui,sans-serif">Pre</text>
+<text x="735" y="98" fill="#fff" font-size="16" text-anchor="middle" font-family="system-ui,sans-serif">Cash session</text>
+<text x="895" y="98" fill="#e6e8f2" font-size="14" text-anchor="middle" font-family="system-ui,sans-serif">Post</text>
+<text x="170" y="182" fill="#8d93a6" font-size="13" text-anchor="middle" font-family="system-ui,sans-serif">Evening into Asia hours</text>
+<text x="425" y="182" fill="#8d93a6" font-size="13" text-anchor="middle" font-family="system-ui,sans-serif">Overnight into 8:30 data</text>
+<text x="575" y="182" fill="#8d93a6" font-size="13" text-anchor="middle" font-family="system-ui,sans-serif">Open</text>
+<text x="735" y="182" fill="#8d93a6" font-size="13" text-anchor="middle" font-family="system-ui,sans-serif">9:30 to 4:00 ET</text>
+<text x="895" y="182" fill="#8d93a6" font-size="13" text-anchor="middle" font-family="system-ui,sans-serif">Close</text>
+</svg>
+<div class="chips"><span class="chip">Thinner depth</span><span class="chip">Scheduled data</span><span class="chip">Global headlines</span><span class="chip">Cash open</span></div>
+<p class="note">Illustration. Phase widths are not to scale and do not show real volume.</p>
+</figure>
+
+<h2>What moves ES and NQ overnight</h2>
+<p>The same forces that move the index during the day keep working at night. The difference is the number of participants and the size of the orders that can move price without much resistance.</p>
+
+<div class="grid">
+<div class="card"><h3>Global news</h3><p>Headlines from Asia and Europe land while US desks are quiet. Price can reprice on the news before most US participants are online.</p></div>
+<div class="card"><h3>Scheduled data</h3><p>The big US releases usually hit at 8:30 a.m. Eastern. The minutes before that release often run quieter, and the reaction can be sharp once the numbers print.</p></div>
+<div class="card"><h3>Related markets</h3><p>Currencies, bonds and crude keep trading. Moves there can carry into index futures, since the index is priced against rates and growth expectations.</p></div>
+</div>
+
+<p>Thin trading does not mean the move is meaningless. It means the move is made by fewer hands, and a single large order can travel further than it would at 10 a.m. That is the main reason beginners get surprised by overnight candles.</p>
+
+<h2>The gap, described and not predicted</h2>
+<p>A gap is the space between one session's last price and the next session's first price. Overnight, the gap is the difference between the cash close and the overnight trading you see the next morning. Gaps happen. Some fill, some do not, and no pattern guarantees either outcome.</p>
+<p>The useful habit is to note the gap and describe it. Where did ES or NQ close? Where is it trading now? How far apart are they? Write it down. Do not treat the gap as a promise about the open.</p>
+
+<h2>Reading the overnight range as a record</h2>
+<p>Many traders mark the overnight high and low on their chart before the cash open. That is a reference line, a record of where price has been. It is not a signal. Price can break it, hold inside it, or ignore it.</p>
+
+<div class="card figure">
+<span class="label">Illustration</span>
+<h3>Session notes panel</h3>
+<p class="note" style="margin:0 0 14px">Sample layout only. Values are placeholders, not market data.</p>
+<div class="panel">
+<div>Cash close</div><div>Reference level, prior session</div>
+<div>Overnight high</div><div>Recorded before the open</div>
+<div>Overnight low</div><div>Recorded before the open</div>
+<div>Scheduled data</div><div>Time and name of release</div>
+<div>Gap noted</div><div>Yes or no, with size written down</div>
+<div>What you watched</div><div>Your own observations, in your own words</div>
+</div>
+</div>
+
+<h2>Common beginner mistakes</h2>
+<ol>
+<li>Treating a quiet overnight range as a sign the market has no interest. Thin is not the same as dead.</li>
+<li>Trading the first candle after a data release without knowing the spread and the speed.</li>
+<li>Assuming the overnight direction will hold into the cash open.</li>
+<li>Forgetting the maintenance break and the session times change with daylight saving.</li>
+<li>Using a level from a chart you did not check against your own platform.</li>
+</ol>
+
+<h2>A simple prep routine</h2>
+<ul>
+<li>Confirm today's session times and any scheduled releases on your own platform.</li>
+<li>Note the prior cash close and the current overnight range.</li>
+<li>Write one sentence describing what changed overnight, with no forecast in it.</li>
+<li>Decide ahead of time what you are watching, and what you are not doing.</li>
+</ul>
+<p>Keep the notes. A written record of how the overnight session behaved, compared against what you expected, teaches more than any single day.</p>
+
+<div class="disclaimer">
+<strong>Not financial advice.</strong> This guide is education only. It does not predict price, promise profit, or recommend any trade, position or product. Index futures carry substantial risk, including the loss of more than you deposit. Korvus does not know your goals, your capital or your risk tolerance. Check the rules of your broker and the contract specifications before trading.
+</div>
+
+<section class="cta">
+<h2>Watch the session with Korvus Observer</h2>
+<p>Korvus is a 24/7 market intelligence terminal for index futures traders. Create a free Observer account at korvus.industries and see the overnight wire for yourself, with no card required.</p>
+<a class="btn" href="https://korvus.industries/signup">Create your free Observer account</a>
+<p class="tagline">Your edge while the world sleeps.</p>
+</section>
+</main>
+
+<footer>
+<div class="wrap">
+<p style="margin:0">Korvus, a product of BlackCrownVxJ LLC. Education only, not financial advice. <a href="https://korvus.industries/legal" style="color:#8d93a6">Legal</a></p>
+</div>
+</footer>
+</body>
+</html>
