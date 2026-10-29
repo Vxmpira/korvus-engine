@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ES vs NQ for Beginners: Index Futures Explained</title>
+<meta name="description" content="ES and NQ explained for beginners: what each index futures contract tracks, tick size and tick value, and how their volatility differs. Plain facts, no hype.">
+<link rel="canonical" href="https://korvus.industries/p/es-vs-nq-beginners">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#07070b;color:#e8e8ef;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.6;min-height:100%}
+body{position:relative;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-3;background:
+radial-gradient(circle at 12% 8%,rgba(255,45,143,.14),transparent 38%),
+radial-gradient(circle at 88% 30%,rgba(120,80,255,.12),transparent 40%),
+radial-gradient(circle at 50% 95%,rgba(255,45,143,.08),transparent 45%),
+#07070b}
+body::after{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+background-image:linear-gradient(rgba(255,255,255,.015) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.015) 1px,transparent 1px);
+background-size:56px 56px}
+.vignette{position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.65) 100%)}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+header.top{display:flex;align-items:center;gap:12px;padding:24px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+header.top svg{width:36px;height:33px;flex:0 0 36px}
+.brand{font-weight:700;letter-spacing:.06em;font-size:1.05rem}
+.brand span{color:#ff2d8f}
+nav.top a{color:#b9b9c6;text-decoration:none;font-size:.92rem;margin-left:18px}
+nav.top a:hover{color:#fff}
+.hero{padding:64px 0 36px}
+.eyebrow{color:#ff2d8f;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;font-weight:600}
+h1{font-size:clamp(1.9rem,4.6vw,3.1rem);line-height:1.12;margin:14px 0 18px;letter-spacing:-.01em}
+h2{font-size:clamp(1.4rem,3vw,2rem);margin:56px 0 14px;line-height:1.2}
+h3{font-size:1.1rem;margin:0 0 8px;color:#fff}
+p,li{color:#c9c9d6}
+.prose{max-width:75ch}
+.prose p{margin:0 0 16px}
+.lede{font-size:1.1rem;color:#dcdce6}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.chip{border:1px solid rgba(255,45,143,.35);background:rgba(255,45,143,.06);padding:6px 12px;border-radius:999px;font-size:.82rem;color:#ffd1e6}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px}
+.card{border:1px solid rgba(255,255,255,.09);background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01));border-radius:14px;padding:22px}
+.tag{display:inline-block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:#8e8ea3;margin-bottom:8px}
+.kv{display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,.07);padding:8px 0;font-size:.93rem}
+.kv b{color:#fff;font-weight:600}
+table{width:100%;border-collapse:collapse;margin-top:18px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.09);border-radius:12px;overflow:hidden}
+th,td{text-align:left;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07);font-size:.94rem;vertical-align:top}
+th{background:rgba(255,45,143,.07);color:#fff;font-weight:600}
+td{color:#c9c9d6}
+.figure{border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:24px;background:rgba(10,10,16,.7);margin-top:20px}
+.figure .cap{font-size:.8rem;color:#8e8ea3;margin-bottom:14px;letter-spacing:.04em}
+.bar{display:grid;grid-template-columns:70px 1fr 110px;gap:12px;align-items:center;margin:12px 0;font-size:.9rem}
+.track{height:14px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden}
+.fill{height:100%;border-radius:999px}
+.fill.es{background:linear-gradient(90deg,#7a6cff,#a99bff)}
+.fill.nq{background:linear-gradient(90deg,#ff2d8f,#ff7ab8)}
+.note{font-size:.8rem;color:#8e8ea3;margin-top:12px}
+.callout{border-left:3px solid #ff2d8f;background:rgba(255,45,143,.05);padding:16px 18px;border-radius:0 10px 10px 0;margin:22px 0;max-width:75ch}
+.cta{margin:64px 0 40px;padding:36px;border-radius:18px;border:1px solid rgba(255,45,143,.35);background:radial-gradient(circle at 0% 0%,rgba(255,45,143,.16),transparent 55%),rgba(12,12,20,.9);text-align:left}
+.btn{display:inline-block;margin-top:14px;background:#ff2d8f;color:#fff;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:10px}
+.btn:hover{background:#ff4f9f}
+footer{border-top:1px solid rgba(255,255,255,.07);padding:28px 0 48px;color:#7d7d92;font-size:.8rem}
+footer p{margin-bottom:8px;color:#7d7d92}
+@media (max-width:699px){
+  .grid{grid-template-columns:1fr}
+  .bar{grid-template-columns:56px 1fr 90px}
+  nav.top{display:none}
+  .cta{padding:26px}
+  table th,table td{padding:11px 10px;font-size:.86rem}
+}
+</style>
+</head>
+<body>
+<div class="vignette"></div>
+<div class="wrap">
+  <header class="top">
+    <svg viewBox='0 0 36 33' fill='none' stroke='#ff2d8f' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'><path d='M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z'/><path d='M8 28 L28 28'/></svg>
+    <div class="brand">KORVUS<span>.</span>INDUSTRIES</div>
+    <nav class="top">
+      <a href="https://korvus.industries/">Home</a>
+      <a href="https://korvus.industries/lodestone">LodeStone</a>
+      <a href="https://korvus.industries/signup?utm_source=guide&utm_medium=organic&utm_campaign=es-vs-nq&utm_content=nav">Sign up</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="eyebrow">Beginner guide</div>
+    <h1>ES vs NQ: what the two most-watched index futures actually are</h1>
+    <p class="lede prose">If you are new to index futures, ES and NQ are the two names you will hear first. They look similar on a screen. They are not the same product. This guide explains what each one tracks, how tick size and tick value differ, and why NQ usually moves more points in a session. It is education, not a recommendation to trade either one.</p>
+    <div class="chips">
+      <span class="chip">Education only</span>
+      <span class="chip">Specs as listed by CME</span>
+      <span class="chip">Figures marked Illustration</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>What each contract tracks</h2>
+    <div class="prose">
+      <p>Both contracts are E-mini index futures traded on the CME. An index futures contract is an agreement tied to the value of a stock index, not to a single company. You never own the stocks. You trade the price of the index.</p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="tag">Ticker: ES</div>
+        <h3>E-mini S&amp;P 500</h3>
+        <p>Tracks the S&amp;P 500, a broad basket of roughly 500 large US companies across many sectors. It is the usual benchmark for the overall US stock market.</p>
+        <div class="kv"><span>Underlying</span><b>S&amp;P 500 Index</b></div>
+        <div class="kv"><span>Point value</span><b>$50 per point</b></div>
+        <div class="kv"><span>Tick size</span><b>0.25 points</b></div>
+        <div class="kv"><span>Tick value</span><b>$12.50</b></div>
+      </div>
+      <div class="card">
+        <div class="tag">Ticker: NQ</div>
+        <h3>E-mini Nasdaq-100</h3>
+        <p>Tracks the Nasdaq-100, a basket of 100 large non-financial companies listed on the Nasdaq. It is heavily weighted toward technology and growth names.</p>
+        <div class="kv"><span>Underlying</span><b>Nasdaq-100 Index</b></div>
+        <div class="kv"><span>Point value</span><b>$20 per point</b></div>
+        <div class="kv"><span>Tick size</span><b>0.25 points</b></div>
+        <div class="kv"><span>Tick value</span><b>$5.00</b></div>
+      </div>
+    </div>
+    <p class="note">Contract specifications can change. Confirm current specs directly with CME before you rely on any number here.</p>
+  </section>
+
+  <section>
+    <h2>Side by side</h2>
+    <div class="prose">
+      <p>The table below puts the basics next to each other. Read the last two rows twice. They explain most of the differences you will notice on a chart.</p>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Feature</th><th>ES (E-mini S&amp;P 500)</th><th>NQ (E-mini Nasdaq-100)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>What it tracks</td><td>S&amp;P 500, about 500 large US companies</td><td>Nasdaq-100, about 100 large non-financial companies</td></tr>
+        <tr><td>Sector mix</td><td>Broad: tech, financials, health care, energy, and more</td><td>Concentrated: technology and growth names dominate</td></tr>
+        <tr><td>Point value</td><td>$50 per index point</td><td>$20 per index point</td></tr>
+        <tr><td>Minimum tick</td><td>0.25 points</td><td>0.25 points</td></tr>
+        <tr><td>Dollar value of one tick</td><td>$12.50</td><td>$5.00</td></tr>
+        <tr><td>Typical point movement per session</td><td>Smaller point swings in absolute terms</td><td>Larger point swings in absolute terms</td></tr>
+        <tr><td>Dollar movement per point</td><td>Each point is worth more</td><td>Each point is worth less, but moves more points</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Tick value, worked through</h2>
+    <div class="prose">
+      <p>A tick is the smallest price step a contract can move. For both ES and NQ that step is 0.25 index points. The dollar value of a tick depends on the point value of the contract. Multiply the tick size by the point value and you get the tick value.</p>
+      <p>ES: 0.25 points times $50 equals $12.50 per tick. NQ: 0.25 points times $20 equals $5.00 per tick. The same 0.25 point step is worth more dollars in ES, because each ES point carries a larger multiplier.</p>
+    </div>
+    <div class="callout prose">
+      <p>Dollar figures in this guide are per contract, before fees, commissions, and slippage. They show arithmetic, not expected results.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Volatility: why NQ looks busier</h2>
+    <div class="prose">
+      <p>Volatility means how far price travels over a period. Two things drive the difference between these contracts. NQ is built from fewer, faster-moving companies, and the Nasdaq-100 level is a much larger number than the S&amp;P 500 level, so the same percentage move produces more index points. A session that moves a few percent looks very different in points depending on which index you are watching.</p>
+      <p>The chart below is an Illustration. It is not market data and it is not a forecast. It shows the kind of relative difference beginners usually see, using round sample numbers.</p>
+    </div>
+    <div class="figure">
+      <div class="cap">ILLUSTRATION: sample average daily range in index points (not real market data)</div>
+      <div class="bar"><span>ES</span><div class="track"><div class="fill es" style="width:30%"></div></div><span>Sample: 45 pts</span></div>
+      <div class="bar"><span>NQ</span><div class="track"><div class="fill nq" style="width:85%"></div></div><span>Sample: 160 pts</span></div>
+      <div class="note">Illustration only. Real ranges change daily with market conditions. Check historical data from your broker or CME before drawing conclusions.</div>
+    </div>
+    <div class="prose">
+      <p>The practical point for a beginner is simple. A one point move is not the same thing in both contracts. Before you size anything, convert points to dollars using the table above, and remember that a bigger point range in NQ does not automatically mean a bigger dollar result, since each NQ point is worth less.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>What the numbers do not tell you</h2>
+    <div class="prose">
+      <p>Tick value and point value are arithmetic. They do not show how often price moves, when it moves, or in which direction. They also do not include margin requirements, which change over time, or the costs of trading. Read the contract specs, read the margin rules from your broker, and treat any single chart as one piece of information out of many.</p>
+      <p>Nothing on this page predicts where either index will go. Both contracts can lose money quickly. If you are new, learn the mechanics on paper or in a simulator first.</p>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="eyebrow">Next step</div>
+    <h2 style="margin-top:10px">Watch the market with a free Korvus Observer account</h2>
+    <p class="prose">Korvus is a 24/7 market intelligence terminal for index futures traders. The Observer tier is free. Create an account to see the terminal and judge the output yourself.</p>
+    <a class="btn" href="https://korvus.industries/signup?utm_source=guide&utm_medium=organic&utm_campaign=es-vs-nq&utm_content=guide_cta">Create your free Observer account</a>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <p>Korvus is an information product from BlackCrownVxJ LLC. Nothing on this page is financial advice, a trading recommendation, or a promise of profit. Futures trading involves substantial risk of loss and is not suitable for every person.</p>
+    <p>Business contact: BlackCrownVxJ.LLC@outlook.com</p>
+    <p>&copy; BlackCrownVxJ LLC. Korvus is a product of BlackCrown Intelligence.</p>
+  </div>
+</footer>
+</body>
+</html>
