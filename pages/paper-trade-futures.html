@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to Paper Trade Index Futures: A Beginner Guide</title>
+<meta name="description" content="A plain guide to paper trading index futures: what it is, how it differs from live trading, how long to sim, common mistakes, and how to move to live carefully.">
+<link rel="canonical" href="https://korvus.industries/p/paper-trade-futures">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Korvus">
+<meta property="og:title" content="How to Paper Trade Index Futures: A Beginner Guide">
+<meta property="og:description" content="What paper trading is, how simulated fills differ from live ones, how long to sim, and the mistakes beginners repeat.">
+<meta property="og:url" content="https://korvus.industries/p/paper-trade-futures">
+<meta property="og:image" content="https://korvus.industries/static/og-korvus.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#07080b;--panel:#0d0f14;--line:#1d2029;--text:#e7e9ee;--muted:#9aa1ae;--pink:#ff2d8f;--cyan:#27d3e8;--gold:#e8b44a}
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.65;min-height:100vh;position:relative;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+background:
+radial-gradient(900px 520px at 12% -8%,rgba(255,45,143,.13),transparent 60%),
+radial-gradient(760px 480px at 92% 6%,rgba(39,211,232,.10),transparent 60%),
+radial-gradient(620px 420px at 50% 110%,rgba(232,180,74,.07),transparent 60%),
+repeating-linear-gradient(0deg,rgba(255,255,255,.015) 0 1px,transparent 1px 56px),
+repeating-linear-gradient(90deg,rgba(255,255,255,.015) 0 1px,transparent 1px 56px)}
+body::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.72) 100%)}
+.wrap{position:relative;z-index:1;max-width:1060px;margin:0 auto;padding:0 22px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;color:var(--text);text-decoration:none;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:15px}
+.brand svg{width:36px;height:33px;display:block}
+nav.top a{color:var(--muted);text-decoration:none;font-size:14px;margin-left:18px}
+nav.top a:hover{color:var(--text)}
+.hero{padding:64px 0 36px}
+.eyebrow{color:var(--cyan);font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;margin-bottom:14px}
+h1{font-size:clamp(30px,5.2vw,52px);line-height:1.12;letter-spacing:-.01em;max-width:18ch}
+.lede{color:var(--muted);font-size:clamp(16px,2vw,19px);max-width:62ch;margin-top:18px}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:7px 14px;font-size:13px;color:var(--muted)}
+.chip b{color:var(--gold);font-weight:600}
+section.block{padding:40px 0;border-top:1px solid var(--line)}
+h2{font-size:clamp(22px,3.2vw,30px);line-height:1.2;margin-bottom:14px}
+h3{font-size:18px;margin:22px 0 8px;color:var(--text)}
+.prose{max-width:68ch}
+.prose p{color:#c9ced8;margin-bottom:14px}
+.prose ul,.prose ol{color:#c9ced8;margin:0 0 14px 22px}
+.prose li{margin-bottom:6px}
+.prose strong{color:var(--text)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;margin:22px 0}
+.tag{display:inline-block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);border:1px solid rgba(232,180,74,.4);border-radius:6px;padding:3px 8px;margin-bottom:12px}
+.table-wrap{width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:14px 18px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--cyan);font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;background:rgba(255,255,255,.02)}
+td{color:#c9ced8}
+tr:last-child td{border-bottom:0}
+td.k{color:var(--text);font-weight:600;white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}
+.card h3{margin-top:0}
+.card p{color:var(--muted);font-size:15px}
+.num{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--pink);font-size:13px;margin-bottom:6px;display:block}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.disclaimer{color:var(--muted);font-size:13px;border-left:2px solid var(--gold);padding:6px 0 6px 14px;margin:26px 0;max-width:72ch}
+.cta{background:linear-gradient(135deg,rgba(255,45,143,.12),rgba(39,211,232,.08));border:1px solid rgba(255,45,143,.35);border-radius:16px;padding:32px;margin-top:12px;text-align:left}
+.cta h2{margin-bottom:10px}
+.cta p{color:#c9ced8;max-width:60ch;margin-bottom:20px}
+.btn{display:inline-block;background:var(--pink);color:#07080b;font-weight:700;text-decoration:none;padding:13px 22px;border-radius:10px;font-size:15px}
+.btn-note{color:var(--muted);font-size:13px;margin-top:12px}
+footer{border-top:1px solid var(--line);padding:26px 0 40px;color:var(--muted);font-size:13px;margin-top:20px}
+footer a{color:var(--muted)}
+@media (max-width:700px){
+  .grid{grid-template-columns:1fr}
+  .two{grid-template-columns:1fr}
+  nav.top a{margin-left:12px}
+  .hero{padding:44px 0 28px}
+  th,td{padding:11px 12px;font-size:14px}
+  .cta{padding:24px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+<a class="brand" href="/" aria-label="Korvus home"><svg viewBox="0 0 36 33" fill="none" stroke="#ff2d8f" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>Korvus</a>
+<nav class="top">
+<a href="/lodestone">LodeStone</a>
+<a href="/login">Log in</a>
+<a href="/signup">Sign up</a>
+</nav>
+</header>
+
+<div class="hero">
+<div class="eyebrow">Korvus Guide</div>
+<h1>How to paper trade index futures</h1>
+<p class="lede">Paper trading means placing simulated trades with no real money at risk. Done well, it teaches you your process before the market charges you for lessons. Done badly, it teaches you habits that fall apart the first time real money is on the line. This guide covers the difference.</p>
+<div class="chips">
+<span class="chip">Beginner level</span>
+<span class="chip">Reading time <b>about 8 min</b></span>
+<span class="chip">Education only, not advice</span>
+</div>
+</div>
+
+<section class="block">
+<div class="prose">
+<h2>What paper trading is</h2>
+<p>Paper trading is practice trading in a simulated account. You see live or delayed prices, pick a contract such as ES or NQ, and enter and exit trades as if they were real. The fills, profit and loss, and account balance are tracked by the software, but no money moves.</p>
+<p>The point is not to make fake money. The point is to test a written plan, learn how your platform behaves, and find out where your own decisions go wrong while the cost is zero.</p>
+<p>Paper trading does not tell you whether a strategy will work with real money. It tells you whether you can follow your rules, read the chart you chose, and use the tools without fumbling. Those are real skills, but they are only part of the job.</p>
+</div>
+</section>
+
+<section class="block">
+<div class="prose">
+<h2>Simulated versus live: what changes</h2>
+<p>The gap between a simulated account and a live one is where most beginners get surprised. The table below lists the usual differences. Treat it as a checklist to read, not a forecast of your results.</p>
+</div>
+<div class="panel" style="padding:0;margin-top:20px">
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Area</th><th>Simulated account</th><th>Live account</th></tr>
+</thead>
+<tbody>
+<tr><td class="k">Money at risk</td><td>None. Losses are only numbers.</td><td>Real capital. Every loss is paid from your account.</td></tr>
+<tr><td class="k">Fills</td><td>Often filled at the price you see. Can look cleaner than reality.</td><td>Filled where the order actually executes, which can differ from the price you expected.</td></tr>
+<tr><td class="k">Slippage</td><td>Frequently absent or understated.</td><td>Present, especially around fast moves, news, and thin trading hours.</td></tr>
+<tr><td class="k">Commissions and fees</td><td>Often left out or set to zero.</td><td>Charged per contract and per round trip. Subtract them from every result.</td></tr>
+<tr><td class="k">Emotional pressure</td><td>Low. Hesitation and fear are easy to ignore.</td><td>High. Small size can still feel heavy, and it changes decisions.</td></tr>
+<tr><td class="k">Position sizing</td><td>Size is free to choose, so people often size up without noticing.</td><td>Size has a direct cost, and the cost of a bad day is visible.</td></tr>
+<tr><td class="k">Discipline under stress</td><td>Rules get bent without consequence.</td><td>Rules are tested. Breaking them has a price.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<p class="prose" style="color:var(--muted);font-size:13px;margin-top:10px">Illustration: a conceptual comparison of typical differences. Not data from any account, product, or market result.</p>
+</section>
+
+<section class="block">
+<div class="prose">
+<h2>How long to sim</h2>
+<p>There is no magic number, and anyone who gives you one is selling something. What matters is whether your sample is big enough and varied enough to say anything at all.</p>
+<p>A few sensible checks before you move on:</p>
+<ul>
+<li>You have written your plan down and followed it on most trades, not just the ones that felt good.</li>
+<li>You have logged enough trades to see patterns in your own behavior, not just a lucky week.</li>
+<li>Your sample includes different conditions: quiet sessions, fast sessions, news days, and days when nothing worked.</li>
+<li>You can explain why each trade was taken and why each one was exited, in plain words.</li>
+<li>Your simulated results still look reasonable after you subtract realistic commissions and assume some slippage.</li>
+</ul>
+<p>If you have only traded a handful of sessions, you have not simmed long enough. If you have traded for months and cannot describe your own rules, the time has not been used well.</p>
+</div>
+</section>
+
+<section class="block">
+<div class="prose">
+<h2>Common mistakes beginners repeat</h2>
+<p>These show up over and over. None of them is unique to index futures, and all of them are cheap to fix while you are still on paper.</p>
+</div>
+<div class="grid">
+<div class="card"><span class="num">01</span><h3>Treating sim fills as real fills</h3><p>Paper fills are often cleaner than live ones. Build in a slippage assumption and a commission cost before you trust any result.</p></div>
+<div class="card"><span class="num">02</span><h3>Sizing up because it is free</h3><p>Trading five contracts on paper teaches nothing about trading one contract live. Practice at the size you plan to trade.</p></div>
+<div class="card"><span class="num">03</span><h3>Changing the rules mid trade</h3><p>Moving a stop because the trade feels bad is the habit you most need to catch early. Write the rule first, then follow it.</p></div>
+<div class="card"><span class="num">04</span><h3>Judging by one good week</h3><p>A short streak says more about variance than skill. Look at the full log, including the weeks that hurt.</p></div>
+<div class="card"><span class="num">05</span><h3>Skipping the journal</h3><p>Without notes on why you entered and exited, you cannot separate a process problem from bad luck.</p></div>
+<div class="card"><span class="num">06</span><h3>Ignoring the calendar</h3><p>Scheduled releases and thin sessions change how price moves. Note the context of each trade, not just the chart.</p></div>
+</div>
+</section>
+
+<section class="block">
+<div class="prose">
+<h2>Moving to live, carefully</h2>
+<p>Going live is a change in conditions, not a graduation. Assume your first live weeks will feel different from your sim, and plan for that instead of hoping it will not.</p>
+<ol>
+<li><strong>Start with the smallest contract size your broker offers</strong> for the instrument you practiced.</li>
+<li><strong>Keep the same written plan.</strong> Do not add new setups or new markets in the first stretch.</li>
+<li><strong>Set a loss limit you can absorb</strong> and decide in advance what you will do when you hit it, such as stopping for the day.</li>
+<li><strong>Log live trades the same way you logged sim trades,</strong> and compare the two honestly.</li>
+<li><strong>Increase size only after a long, documented period</strong> in which your behavior matches your plan, not just your P&amp;L.</li>
+</ol>
+<div class="two" style="margin-top:20px">
+<div class="card"><h3>Before you go live</h3><p>Confirm your platform, your data feed, your fee schedule, and your margin requirements. Know how to close a position quickly.</p></div>
+<div class="card"><h3>After you go live</h3><p>Review each session. Note where the fill differed from the sim, what you felt, and whether you followed the plan.</p></div>
+</div>
+</div>
+</section>
+
+<section class="block">
+<div class="prose">
+<h2>Where Korvus fits</h2>
+<p>Korvus is a 24/7 market intelligence terminal for index futures traders. Its free Observer tier lets you look at the market context while you practice. Operator adds the LodeStone TradingView indicator, a session level toolkit built on ICT concepts for index futures. Use any tool as an input to your own plan, not as a replacement for it.</p>
+</div>
+</section>
+
+<div class="disclaimer">
+Education only. Nothing on this page is financial advice, a recommendation to buy or sell any instrument, or a promise of profit or any specific result. Futures trading involves substantial risk of loss and is not suitable for everyone. Past simulated results do not predict live performance. Please consult a qualified professional about your situation.
+</div>
+
+<section class="block" style="padding-bottom:20px">
+<div class="cta">
+<h2>Practice on the terminal with a free account</h2>
+<p>Create a free Korvus account to explore the Observer tier and set up your practice routine. No card needed to start, and you can upgrade later if it fits your process.</p>
+<a class="btn" href="https://korvus.industries/signup?utm_source=korvus_guide&amp;utm_medium=web&amp;utm_campaign=paper_trading_guide&amp;utm_content=paper_guide_cta">Create a free Korvus account</a>
+<div class="btn-note">Education only. Not financial advice.</div>
+</div>
+</section>
+</div>
+
+<footer>
+<div class="wrap" style="padding:0 22px">
+<p>&copy; BlackCrownVxJ LLC. Korvus is a product of BlackCrownVxJ LLC. Contact: <a href="mailto:BlackCrownVxJ.LLC@outlook.com">BlackCrownVxJ.LLC@outlook.com</a></p>
+<p style="margin-top:8px"><a href="/legal">Legal</a> &middot; <a href="/lodestone">LodeStone</a> &middot; <a href="/">Korvus home</a></p>
+</div>
+</footer>
+</body>
+</html>
