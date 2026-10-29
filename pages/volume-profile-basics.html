@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Volume Profile Basics for Index Futures | Korvus</title>
+<meta name="description" content="Volume profile basics for index futures traders: what it shows, what the point of control means, high and low volume nodes, and how to read it as context.">
+<link rel="canonical" href="https://korvus.industries/p/volume-profile-basics">
+<style>
+:root{--bg:#07070a;--panel:#0e0e14;--line:#23232e;--text:#e6e6ee;--muted:#9a9aab;--pink:#ff2d8f;--cyan:#3fd2e8}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+a{color:var(--pink);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:820px;margin:0 auto;padding:0 20px}
+header{border-bottom:1px solid var(--line);padding:18px 0}
+.brand{display:flex;align-items:center;gap:12px;color:var(--text);font-weight:700;letter-spacing:.04em}
+.brand svg{width:36px;height:33px}
+nav{margin-left:auto;display:flex;gap:18px;font-size:14px}
+nav a{color:var(--muted)}
+h1{font-size:2.1rem;line-height:1.2;margin:40px 0 12px}
+h2{font-size:1.4rem;margin:40px 0 10px;color:var(--text)}
+p{margin:0 0 16px;color:var(--text)}
+.lede{color:var(--muted);font-size:1.1rem}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}
+.chip{border:1px solid var(--line);background:var(--panel);padding:6px 12px;border-radius:999px;font-size:13px;color:var(--muted)}
+.chip b{color:var(--pink);font-weight:600}
+figure{margin:28px 0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px}
+figure svg{width:100%;height:auto;display:block}
+figcaption{color:var(--muted);font-size:13px;margin-top:10px}
+.tag{display:inline-block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan);border:1px solid var(--cyan);padding:2px 8px;border-radius:4px;margin-right:6px}
+ul{padding-left:20px;margin:0 0 16px}
+li{margin-bottom:6px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;margin:28px 0}
+.cta{text-align:center;padding:30px 20px;border:1px solid var(--pink);border-radius:10px;margin:40px 0}
+.btn{display:inline-block;background:var(--pink);color:#07070a;font-weight:700;padding:12px 22px;border-radius:6px;margin-top:8px}
+.btn:hover{text-decoration:none;opacity:.9}
+.disclaimer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:48px;padding:20px 0 40px}
+footer{color:var(--muted);font-size:13px;padding:0 0 40px}
+</style>
+</head>
+<body>
+<header>
+<div class="wrap" style="display:flex;align-items:center">
+<a class="brand" href="/">
+<svg viewBox="0 0 36 33" aria-hidden="true"><path d="M4 26 L6 10 L13 18 L18 6 L23 18 L30 10 L32 26 Z" fill="none" stroke="#ff2d8f" stroke-width="2" stroke-linejoin="round"/><path d="M4 30 H32" fill="none" stroke="#ff2d8f" stroke-width="2" stroke-linecap="round"/></svg>
+<span>KORVUS</span>
+</a>
+<nav>
+<a href="/lodestone">LodeStone</a>
+<a href="/p/resting-liquidity">Resting Liquidity</a>
+<a href="/signup">Create account</a>
+</nav>
+</div>
+</header>
+
+<main class="wrap">
+<h1>Volume profile basics for index futures</h1>
+<p class="lede">A volume profile shows where trading happened, not just when. For index futures traders it is one of the most useful pieces of context on the chart, and one of the easiest to misread.</p>
+
+<div class="chips">
+<span class="chip"><b>Beginner</b> guide</span>
+<span class="chip">Context, not signal</span>
+<span class="chip">Index futures</span>
+</div>
+
+<h2>What a volume profile is</h2>
+<p>A normal volume bar tells you how many contracts traded in a single time period. A volume profile flips that view. It stacks the volume traded at each price level over a chosen window, such as a session, a day, or a week, and draws the result sideways along the price axis.</p>
+<p>The result is a histogram. Wide bars mark prices where a lot of contracts changed hands. Thin bars mark prices where the market moved through quickly. The profile answers one question: at which prices did the most agreement between buyers and sellers happen?</p>
+
+<figure>
+<span class="tag">Illustration</span>
+<svg viewBox="0 0 400 240" role="img" aria-label="Illustrative volume profile: horizontal bars by price, widest bar highlighted as point of control">
+<line x1="40" y1="10" x2="40" y2="220" stroke="#23232e" stroke-width="1"/>
+<rect x="40" y="18" width="70" height="16" fill="#3fd2e8" opacity=".35"/>
+<rect x="40" y="40" width="110" height="16" fill="#3fd2e8" opacity=".5"/>
+<rect x="40" y="62" width="160" height="16" fill="#3fd2e8" opacity=".65"/>
+<rect x="40" y="84" width="230" height="16" fill="#ff2d8f" opacity=".9"/>
+<rect x="40" y="106" width="190" height="16" fill="#3fd2e8" opacity=".6"/>
+<rect x="40" y="128" width="120" height="16" fill="#3fd2e8" opacity=".45"/>
+<rect x="40" y="150" width="60" height="16" fill="#3fd2e8" opacity=".3"/>
+<rect x="40" y="172" width="25" height="16" fill="#3fd2e8" opacity=".2"/>
+<text x="282" y="96" fill="#ff2d8f" font-size="13" font-family="system-ui,sans-serif">Point of control</text>
+<text x="282" y="30" fill="#9a9aab" font-size="12" font-family="system-ui,sans-serif">Higher price</text>
+<text x="282" y="200" fill="#9a9aab" font-size="12" font-family="system-ui,sans-serif">Lower price</text>
+</svg>
+<figcaption>Illustration only. Bar length shows volume traded at each price. Not real market data.</figcaption>
+</figure>
+
+<h2>Point of control</h2>
+<p>The point of control, usually shortened to POC, is the price level with the most volume inside the profile window. It is the widest bar on the histogram.</p>
+<p>The POC is a reference. It tells you where the market spent the most time agreeing on value during that window. Many traders watch whether price returns to it, moves away from it, or holds above or below it. Those are observations to note, not instructions to act.</p>
+
+<h2>High and low volume nodes</h2>
+<p>Beyond the POC, the profile has other shapes worth naming:</p>
+<ul>
+<li><strong>High volume nodes</strong> are clusters of heavy trading. Price often slows or consolidates near them because there was a lot of two-sided business there.</li>
+<li><strong>Low volume nodes</strong> are thin zones. Price tended to move through them quickly. They are sometimes described as areas of less acceptance, but that is a description of past trade, not a forecast.</li>
+</ul>
+<p>Some traders call a thin area a gap in the profile. Think of it as a place where little happened last time. Whether price behaves that way again is a separate question, and the profile does not answer it.</p>
+
+<h2>Read it as context, not a signal</h2>
+<p>This is the part beginners skip. A volume profile is a map of what already happened inside a window. It does not tell you what happens next.</p>
+<div class="card">
+<p>Useful questions the profile can help you ask:</p>
+<ul>
+<li>Where did most of the business happen this session or week?</li>
+<li>Is price currently trading inside a heavy area or a thin one?</li>
+<li>Is the current price near the POC, or far from where the market agreed on value?</li>
+<li>Does the higher timeframe profile agree with the lower one?</li>
+</ul>
+<p style="margin:0">Useful questions it cannot answer: whether price will break a level, how far a move will travel, or whether a trade is worth taking. Anyone who sells a profile as an entry signal is selling more than the tool does.</p>
+</div>
+<p>Profiles also pair well with other context. Price levels that cluster where contracts were resting, such as those covered in <a href="/p/resting-liquidity">resting liquidity</a>, and repeated swing points, covered in <a href="/p/equal-highs-and-lows">equal highs and lows</a>, can sit next to a profile on the same chart. Agreement between tools is a reason to look closer. It is never a guarantee.</p>
+
+<h2>How LodeStone presents it</h2>
+<p>LodeStone is the chart side of the Korvus stack, a session level toolkit built on ICT concepts for index futures. Its volume profile layer is deliberately restrained. It draws the profile without clutter, so the chart stays readable while you study context.</p>
+<p>In the TradingView version, the volume profile sits inside a full inputs panel alongside sessions and timezone settings, prior day and week levels, premium and discount, resting liquidity, SMT divergence, and sweep cleanup. You choose what to show. The indicator does not repaint, and it does not tell you when to trade.</p>
+<p>LodeStone is available as a standalone product on TradingView or included with Korvus Operator. Details live on the <a href="/lodestone">LodeStone page</a>.</p>
+
+<h2>A simple way to start</h2>
+<ul>
+<li>Pick one window, such as the current session, and look only at its profile for a week.</li>
+<li>Note where the POC sits each morning, then check where price trades relative to it through the day.</li>
+<li>Write down what you saw. Compare your notes with what happened, not with what you hoped would happen.</li>
+<li>Only add a second tool once the first one feels familiar.</li>
+</ul>
+
+<div class="cta">
+<p style="font-size:1.2rem;margin-bottom:6px">Watch the market with the context already drawn.</p>
+<p style="color:var(--muted);margin-bottom:0">Create a free Korvus account and explore the Observer tier. No card required.</p>
+<a class="btn" href="/signup">Create your free Korvus account</a>
+</div>
+
+<p class="disclaimer">Not financial advice. Nothing on this page is a recommendation to buy, sell, or hold any instrument, or a promise of any result. Volume profiles and LodeStone describe past trading activity and are tools for study. Index futures carry substantial risk of loss and are not suitable for everyone. Past behavior of any level does not predict future price. Trade only with capital you can afford to lose and make your own decisions.</p>
+</main>
+
+<footer class="wrap">
+<p>BlackCrownVxJ LLC. Korvus is a 24/7 market intelligence terminal for index futures traders. Business contact: BlackCrownVxJ.LLC@outlook.com</p>
+</footer>
+</body>
+</html>
