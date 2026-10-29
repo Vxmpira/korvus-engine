@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SMT Divergence Explained for Index Futures</title>
+<meta name="description" content="A plain guide to SMT divergence on ES and NQ. What it is, how to spot it on a chart, and how to review it honestly after the fact. Education only.">
+<link rel="canonical" href="https://korvus.industries/p/smt-divergence">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0c;color:#e6e6ea;font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+a{color:#ff2d8f;text-decoration:none}
+a:hover{text-decoration:underline}
+header{display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid #1e1e24}
+header .name{font-weight:700;letter-spacing:.04em;color:#fff}
+header .name span{color:#ff2d8f}
+main{max-width:760px;margin:0 auto;padding:32px 24px 64px}
+h1{font-size:2rem;line-height:1.2;color:#fff;margin-bottom:12px}
+h2{font-size:1.3rem;color:#fff;margin:36px 0 10px}
+p{margin-bottom:14px}
+ul,ol{margin:0 0 16px 22px}
+li{margin-bottom:6px}
+.lede{font-size:1.1rem;color:#cfcfd6}
+.figure{background:#111116;border:1px solid #1e1e24;border-radius:8px;padding:18px;margin:24px 0}
+.figure svg{width:100%;height:auto;display:block}
+.figure figcaption{font-size:.85rem;color:#8a8a96;margin-top:10px}
+.tag{display:inline-block;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:#ff2d8f;border:1px solid #ff2d8f;border-radius:4px;padding:2px 8px;margin-bottom:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.chips span{background:#16161c;border:1px solid #2a2a33;border-radius:999px;padding:4px 12px;font-size:.85rem;color:#cfcfd6}
+.card{background:#111116;border-left:3px solid #ff2d8f;padding:14px 18px;margin:20px 0;border-radius:4px}
+.note{font-size:.85rem;color:#8a8a96;border-top:1px solid #1e1e24;margin-top:40px;padding-top:16px}
+.cta{margin-top:32px;padding:20px;background:#111116;border:1px solid #2a2a33;border-radius:8px}
+.cta a.btn{display:inline-block;margin-top:8px;background:#ff2d8f;color:#0a0a0c;font-weight:700;padding:10px 18px;border-radius:6px}
+.cta a.btn:hover{text-decoration:none;opacity:.9}
+</style>
+</head>
+<body>
+<header>
+<svg viewBox="0 0 36 33" width="36" height="33" aria-hidden="true">
+<polyline points="4,26 6,10 13,18 18,6 23,18 30,10 32,26 Z" fill="none" stroke="#ff2d8f" stroke-width="2" stroke-linejoin="round"/>
+<line x1="4" y1="30" x2="32" y2="30" stroke="#ff2d8f" stroke-width="2"/>
+</svg>
+<div class="name">KORVUS<span>.</span> <span style="color:#8a8a96;font-weight:400">education</span></div>
+</header>
+
+<main>
+<span class="tag">Beginner guide</span>
+<h1>SMT Divergence for Index Futures</h1>
+<p class="lede">Two correlated indexes usually move together. When one makes a new high and the other does not, that gap is called SMT divergence. This page explains what it is, how to find it, and how to review it honestly.</p>
+
+<h2>What SMT divergence means</h2>
+<p>SMT stands for Smart Money Technique. The idea is simple. Index futures that move together often confirm each other. When one index pushes to a new high or low and its partner fails to do the same, the two charts disagree.</p>
+<p>That disagreement is the signal. It does not tell you what happens next. It only tells you the move is not fully shared.</p>
+
+<h2>ES and NQ as the classic pair</h2>
+<p>The most common pair is the S&amp;P 500 future (ES) and the Nasdaq 100 future (NQ). They track broad US equity risk. They are not identical. NQ is more tech heavy and often moves more in points and percent.</p>
+<p>Because they are closely linked, a clean split between them gets attention. If NQ prints a higher high and ES stalls under its prior high, you have a divergence to study.</p>
+<p>Other pairs exist, including YM against ES, and cross market comparisons. The logic is the same. Pick two instruments with a known relationship, then watch where they stop agreeing.</p>
+
+<div class="figure" role="img" aria-label="Illustration: two index lines, one making a new high while the other fails to confirm">
+<svg viewBox="0 0 400 180" xmlns="http://www.w3.org/2000/svg">
+<line x1="20" y1="160" x2="380" y2="160" stroke="#2a2a33" stroke-width="1"/>
+<line x1="20" y1="20" x2="20" y2="160" stroke="#2a2a33" stroke-width="1"/>
+<polyline points="20,130 70,110 110,120 150,85 190,100 230,60 270,75 310,30 350,45" fill="none" stroke="#ff2d8f" stroke-width="2.5"/>
+<polyline points="20,128 70,108 110,118 150,84 190,98 230,82 270,96 310,84 350,92" fill="none" stroke="#6b7bd6" stroke-width="2.5"/>
+<circle cx="310" cy="30" r="4" fill="#ff2d8f"/>
+<circle cx="310" cy="84" r="4" fill="#6b7bd6"/>
+<text x="268" y="22" fill="#cfcfd6" font-size="11" font-family="system-ui,sans-serif">new high</text>
+<text x="262" y="104" fill="#cfcfd6" font-size="11" font-family="system-ui,sans-serif">no confirm</text>
+</svg>
+<figcaption>Illustration. Pink line makes a new high. Blue line fails to follow. Not real market data.</figcaption>
+</div>
+
+<h2>How to spot it on a chart</h2>
+<ol>
+<li>Open both charts on the same timeframe and time window. Align the candles.</li>
+<li>Mark the most recent swing high or low on each instrument.</li>
+<li>Watch for one instrument to take out its prior swing and the other to stop short.</li>
+<li>Note the time. A divergence that forms during a session window tends to be easier to review later.</li>
+<li>Write down what you saw before you look at what happened next.</li>
+</ol>
+<p>Keep the rule plain. One side breaks, the other does not confirm. Anything more complicated tends to be the eye filling gaps.</p>
+
+<h2>Why it can signal weakness in a move</h2>
+<p>A rally that only one index is pushing is narrower than a rally both are pushing. Breadth is thinner. Fewer participants are behind the move.</p>
+<p>That can mean the move is running on less support than it looks. It does not mean price must reverse. Divergences can persist. Some resolve by the other index catching up.</p>
+<div class="card">
+<p>The signal is about agreement, not direction. A split tells you the picture is incomplete. Treat it as a question to answer, not an answer to act on.</p>
+</div>
+
+<h2>Reviewing examples after the fact</h2>
+<p>Most of the learning happens in review. Build a simple log.</p>
+<ul>
+<li>Date, session, and timeframe of the divergence.</li>
+<li>Which instrument broke and which one stalled.</li>
+<li>What the next 20 to 60 minutes did. Write it down without spin.</li>
+<li>Whether the divergence was clean or messy. Be strict.</li>
+<li>Count the misses as hard as the hits.</li>
+</ul>
+<p>After a month of logging, you will know how often your own reads hold up. That number matters more than any single example.</p>
+
+<h2>Where session timing fits</h2>
+<p>A divergence in a quiet lunch chop means something different than one at a major open. Time context changes how much weight a split deserves. Read the session before you read the split.</p>
+
+<div class="chips">
+<span>ES vs NQ</span>
+<span>Swing highs and lows</span>
+<span>Session context</span>
+<span>Post-trade review</span>
+</div>
+
+<h2>Keep reading</h2>
+<ul>
+<li><a href="/p/liquidity-sweeps">Liquidity sweeps</a>, what a stop run looks like before a divergence matters.</li>
+<li><a href="/p/ict-kill-zones">ICT kill zones</a>, the session windows where many traders watch these splits closely.</li>
+</ul>
+
+<div class="cta">
+<p><strong>Korvus tracks cross index SMT divergence live.</strong> The Observer tier is free. Create an account at korvus.industries and see the divergence feed for yourself.</p>
+<a class="btn" href="https://korvus.industries/signup">Open a free Observer account</a>
+</div>
+
+<p class="note">Education only. Nothing on this page is financial advice, a trade signal, or a promise of any result. Index futures carry substantial risk of loss. Past examples do not predict future moves. Make your own decisions and size your own risk.</p>
+</main>
+</body>
+</html>
