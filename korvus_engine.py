@@ -192,6 +192,9 @@ def db_init():
     if "category" not in cols:
         conn.execute("ALTER TABLE items ADD COLUMN category TEXT DEFAULT 'general'")
         print("  [db] migrated: added category column")
+    if "article_summary" not in cols:
+        conn.execute("ALTER TABLE items ADD COLUMN article_summary TEXT")
+        print("  [db] migrated: added article_summary column")
     conn.commit()
     conn.close()
 
@@ -459,6 +462,55 @@ def fetch_rss() -> list[dict]:
 
 
 # ----------------------------------------------------------------------------
+# ARTICLE FETCH - pull the real article body so the detail view can carry a
+# full summary instead of a guess from the headline. Stdlib only, best-effort:
+# any failure (paywall, timeout, weird markup) returns "" and scoring proceeds
+# on the headline + RSS blurb exactly as before.
+# ----------------------------------------------------------------------------
+ARTICLE_MAX_CHARS = 7000      # plenty for a news story, keeps tokens bounded
+ARTICLE_TIMEOUT = 6           # seconds; a slow site must never stall the pass
+
+
+def fetch_article_text(url: str) -> str:
+    if not url or not url.lower().startswith(("http://", "https://")):
+        return ""
+    try:
+        import urllib.request
+        req = urllib.request.Request(url, headers={
+            "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                           "AppleWebKit/537.36 (KHTML, like Gecko) "
+                           "Chrome/124.0 Safari/537.36"),
+            "Accept": "text/html,application/xhtml+xml",
+            "Accept-Language": "en-US,en;q=0.9",
+        })
+        with urllib.request.urlopen(req, timeout=ARTICLE_TIMEOUT) as r:
+            ctype = (r.headers.get("Content-Type") or "").lower()
+            if "html" not in ctype and "text" not in ctype:
+                return ""
+            raw = r.read(900_000)
+        html = raw.decode("utf-8", errors="replace")
+        # drop non-content blocks wholesale, then read paragraph text only:
+        # paragraph tags carry the story, nav/boilerplate mostly lives outside
+        html = re.sub(r"(?is)<(script|style|noscript|svg|header|footer|nav|aside|form)[^>]*>.*?</\1>", " ", html)
+        html = re.sub(r"(?is)<!--.*?-->", " ", html)
+        paras = re.findall(r"(?is)<p[^>]*>(.*?)</p>", html)
+        out = []
+        for p in paras:
+            t = re.sub(r"(?is)<[^>]+>", " ", p)
+            t = (t.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+                  .replace("&#39;", "'").replace("&quot;", '"').replace("&nbsp;", " "))
+            t = re.sub(r"\s+", " ", t).strip()
+            if len(t) >= 40:          # skip captions, bylines, cookie stubs
+                out.append(t)
+        text = "\n".join(out).strip()
+        if len(text) < 200:
+            return ""                 # too thin to be the story; don't pretend
+        return text[:ARTICLE_MAX_CHARS]
+    except Exception:
+        return ""
+
+
+# ----------------------------------------------------------------------------
 # THE BRAIN - Claude scores one item: summary + impact + direction + conf
 # ----------------------------------------------------------------------------
 SYSTEM_PROMPT = """You are the senior markets analyst behind Korvus, a market-intelligence \
@@ -472,6 +524,7 @@ Return exactly this shape:
 {
   "noise": true | false,        // true ONLY for pure non-market junk (see rules)
   "summary": "<=2 sentences, plain English, the quick take shown on the feed card>",
+  "article_summary": "<3-6 sentences that SUMMARIZE THE ARTICLE ITSELF so the reader never has to open the link. Report what was actually announced or reported: the concrete facts, numbers, dates, names, quotes, and context the story contains. Pure reporting, no market take (that belongs in impact_desc). When ARTICLE text is provided, draw only from it. When only HEADLINE/BODY are available, summarize what they establish and say plainly what the story does not yet specify; never invent details.>",
   "impact_desc": "<3-5 sentences of desk-grade analysis for the detail view, reasoning about impact on INDEX FUTURES specifically. Work the real framework: (1) classify the event, broad macro versus single-name or sector, and whether the names involved are large enough to move the index by weight or breadth; (2) name the transmission mechanism, the concrete channel by which it reaches the tagged instruments (rates, risk sentiment, index weight, credit spreads, the dollar, positioning); (3) anchor to the base rate for this kind of event (for example, single-name M&A in mid-cap industrials is typically low-impact to broad index futures); (4) give the calibrated read plus the specific thing that would confirm or invalidate it and what to watch next. Concrete and specific to THIS story, sober, and honest about uncertainty. This is analysis and a read, never personalized advice or a trade instruction.>",
   "impact": "high" | "med" | "low",
   "direction": "bull" | "bear" | "neut",
@@ -526,11 +579,12 @@ OTHER:
   advice or a trade instruction. Explain mechanisms and what to watch, never "buy",
   "sell", or "go long". Calibrate confidence honestly; a genuinely low-conviction read
   is fine and correct.
-- FORMAT: write the text fields (summary, impact_desc) in plain professional prose.
-  Do NOT use em-dashes anywhere; use commas or periods instead. No markdown and no
-  bullet characters inside the fields.
-- summary = the fast headline take. impact_desc = the deeper "why it matters / how
-  it transmits / what to watch" analysis. Both grounded in THIS story only.
+- FORMAT: write the text fields (summary, article_summary, impact_desc) in plain
+  professional prose. Do NOT use em-dashes anywhere; use commas or periods instead.
+  No markdown and no bullet characters inside the fields.
+- summary = the fast headline take. article_summary = what the story SAYS, the facts,
+  so the link never needs opening. impact_desc = the deeper "why it matters / how
+  it transmits / what to watch" analysis. All grounded in THIS story only.
 - Tag ONLY the instruments this story is a PRIMARY, direct driver for. Be strict:
   AT MOST 3, usually 1-2, ordered most-direct first. If a story wouldn't plausibly
   move an instrument on its own, do NOT tag it. A single-stock story tags that stock
@@ -596,10 +650,13 @@ def score_with_claude(client, item: dict, _retry: bool = True) -> Optional[dict]
         f"HEADLINE: {item['headline']}\n"
         f"BODY: {item.get('raw_text','')}"
     )
+    art = (item.get("article_text") or "").strip()
+    if art:
+        user_blob += f"\n\nARTICLE (full text, fetched from the source):\n{art}"
     try:
         resp = client.messages.create(
             model=CLAUDE_MODEL,
-            max_tokens=1024,
+            max_tokens=1600,
             system=sys_prompt,
             messages=[{"role": "user", "content": user_blob}],
         )
@@ -634,6 +691,7 @@ def score_with_claude(client, item: dict, _retry: bool = True) -> Optional[dict]
             t = (t or "").strip().replace(" " + _EM + " ", ", ").replace(_EM, ", ")
             return t.replace(" ,", ",").replace("  ", " ")
         data["summary"] = _plain(data.get("summary"))
+        data["article_summary"] = _plain(data.get("article_summary"))
         data["impact_desc"] = _plain(data.get("impact_desc"))
         data["noise"] = bool(data.get("noise", False))
         return data
@@ -659,15 +717,20 @@ def process_unscored(conn, client, limit: int = 40):
     print(f"  [brain] scoring {len(rows)} item(s) with {CLAUDE_MODEL}...")
     for row in rows:
         item = dict(row)
+        # pull the real article body for wire stories so the detail view can
+        # summarize the piece itself; social posts ARE the content already.
+        if item.get("source") == "wire":
+            item["article_text"] = fetch_article_text(item.get("url") or "")
         result = score_with_claude(client, item)
         if result is None:
             continue
         conn.execute("""
             UPDATE items
-            SET summary=?, impact_desc=?, impact=?, direction=?, instruments=?, confidence=?, noise=?, processed=1
+            SET summary=?, article_summary=?, impact_desc=?, impact=?, direction=?, instruments=?, confidence=?, noise=?, processed=1
             WHERE id=?
         """, (
             result["summary"],
+            result.get("article_summary", ""),
             result.get("impact_desc", ""),
             result["impact"],
             result["direction"],

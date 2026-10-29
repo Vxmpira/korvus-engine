@@ -141,6 +141,7 @@ def api_news():
             "source_name": r["source_name"] if "source_name" in r.keys() else "",
             "headline": r["headline"],
             "summary": r["summary"] or "",
+            "article_summary": (r["article_summary"] if "article_summary" in r.keys() else "") or "",
             "impact_desc": (r["impact_desc"] if "impact_desc" in r.keys() else "") or "",
             "raw": r["raw_text"] or "",      # original blurb, for the detail view
             "impact": r["impact"] or "low",
@@ -368,12 +369,6 @@ INDEXNOW_KEY = "bc1f4e2a7d5946c8a3b0e6d1f8279c4b"
 def indexnow_key():
     # IndexNow ownership key: lets the company push new pages to Bing/Yandex
     return INDEXNOW_KEY, 200, {"Content-Type": "text/plain"}
-
-
-@app.route("/google9f7f9a9066ed4080.html")
-def google_site_verification():
-    # Google Search Console ownership proof; never remove, Google rechecks it
-    return "google-site-verification: google9f7f9a9066ed4080.html", 200, {"Content-Type": "text/html"}
 
 
 @app.route("/p/<name>")

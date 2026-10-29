@@ -1253,10 +1253,13 @@ function openNewsDetail(idx){
   const linkBtn = n.url
     ? `<a class="readfull" href="${n.url}" target="_blank" rel="noopener noreferrer">Read full article ↗</a>`
     : '<span class="ndim">no source link available</span>';
-  const origBlurb = (n.raw && n.raw.trim() && n.raw.trim() !== (n.summary||'').trim())
+  const artSum = (n.article_summary && n.article_summary.trim()) ? n.article_summary.trim() : '';
+  const origBlurb = (!artSum && n.raw && n.raw.trim() && n.raw.trim() !== (n.summary||'').trim())
     ? `<div class="ndlabel">Original report</div><p class="ndorig">${n.raw}</p>` : '';
+  const storySec = artSum
+    ? `<div class="ndlabel">The story</div><p class="nddetail">${artSum}</p>` : '';
   const detail = (n.impact_desc && n.impact_desc.trim()) ? n.impact_desc : (n.summary || '-');
-  const quickTake = (n.impact_desc && n.impact_desc.trim() && n.summary && n.summary.trim())
+  const quickTake = (!artSum && n.impact_desc && n.impact_desc.trim() && n.summary && n.summary.trim())
     ? `<p class="ndsummary">${n.summary}</p>` : '';
   document.getElementById('newsDetailBody').innerHTML = `
     <div class="ndhead">
@@ -1271,6 +1274,7 @@ function openNewsDetail(idx){
       <span class="conf">conf ${n.conf}%</span>
     </div>
     ${quickTake}
+    ${storySec}
     <div class="ndlabel">Korvus analysis</div>
     <p class="nddetail">${detail}</p>
     ${origBlurb}
@@ -2124,100 +2128,115 @@ setInterval(loadContextBands, 30000);
 })();
 </script>
 <script>
-/* Live candlestick backdrop: scrolls slowly, generates randomized candles, and
-   recolors per theme (white/pink on dark, ink/pink on light). Sits behind the
-   frosted glass so it blurs into a moody backdrop and reads sharper in the gaps.
-   Performance: the strip is rasterized ONCE as a seamless loop, then glided by a
-   compositor-driven Web Animation. No per-frame JS, no per-second repaints, so
-   heavy live-data DOM updates (news feed, ribbon, bands) can never stall it. */
+/* Live candlestick backdrop: an endless, live-generated random walk that
+   scrolls slowly and recolors per theme (white/pink on dark, ink/pink on
+   light). Sits behind the frosted glass so it blurs into a moody backdrop.
+   Performance design: the glide is a compositor-driven Web Animation, so no
+   JS runs per frame and heavy live-data DOM updates can never stall it. The
+   canvas is a ring of candle columns; a once-per-second feeder paints NEW
+   candles only into columns that are currently offscreen, so the structure
+   is freshly generated forever (no repeating loop) while the visible strip
+   is never touched mid-glide. The walk chains candle to candle across the
+   wrap, so there is no seam. The last V columns mirror the first V so the
+   iteration boundary lands on identical pixels. */
 (function(){
   var cv=document.getElementById('chartscape');
   if(!cv||!cv.getContext) return;
   var ctx=cv.getContext('2d');
   var dpr=Math.min(window.devicePixelRatio||1,1.5);
-  var CW=16, GAP=5, SLOT=CW+GAP, SPEED=21;   // px per second (matches old 0.35px/frame at 60fps)
-  var LOOP=64;                               // candles per seamless cycle
+  var CW=16, GAP=5, SLOT=CW+GAP, SPEED=21;   // px per second (0.35px/frame at 60fps)
+  var BUFFER=40;                             // offscreen runway, in slots (~40s)
   var reduce=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var anim=null, lastW=0, lastH=0;
+  var anim=null, feeder=null, lastW=0, lastH=0;
+  var V=0, C=0, ring=[], drawn=-1;           // ring: C candles, by virtual index % C
+  var trend=0.5, tvel=0, lastClose=0.5;      // generator state persists forever
   function theme(){
     var light=document.documentElement.getAttribute('data-theme')==='light';
     return light
       ? {bull:'#0e0b16', bear:'#c9146a', body:0.88}
       : {bull:'#f4f6ff', bear:'#ff2d8f', body:0.95};
   }
-  // Random walk of LOOP candles whose tail eases back into its head, so the
-  // strip tiles with no visible seam as the animation wraps.
-  function buildLoop(){
-    var trend=0.5, tvel=0, arr=[], o=0.5, i;
-    for(i=0;i<LOOP;i++){
-      tvel+=(Math.random()-0.5)*0.02; tvel*=0.9; trend+=tvel;
-      trend=Math.max(0.22,Math.min(0.78,trend));
-      var c=o+(trend-o)*0.32+(Math.random()-0.5)*0.24;
-      c=Math.max(0.06,Math.min(0.95,c));
-      arr.push({o:o,c:c,h:0,l:0}); o=c;
-    }
-    var M=10, target=arr[0].o;
-    for(i=0;i<M;i++){
-      var k=LOOP-M+i;
-      arr[k].o=arr[k-1].c;
-      arr[k].c=arr[k].o+(target-arr[k].o)*((i+1)/M);
-    }
-    for(i=0;i<LOOP;i++){
-      var cd=arr[i];
-      cd.h=Math.max(cd.o,cd.c)+Math.random()*0.06;
-      cd.l=Math.min(cd.o,cd.c)-Math.random()*0.06;
-    }
-    return arr;
+  function nextC(){
+    tvel+=(Math.random()-0.5)*0.02; tvel*=0.9; trend+=tvel;
+    trend=Math.max(0.22,Math.min(0.78,trend));
+    var o=lastClose;
+    var c=o+(trend-o)*0.32+(Math.random()-0.5)*0.24;
+    c=Math.max(0.06,Math.min(0.95,c));
+    lastClose=c;
+    return {o:o,c:c,h:Math.max(o,c)+Math.random()*0.06,l:Math.min(o,c)-Math.random()*0.06};
   }
-  var candles=buildLoop();
-  // Draw the loop, repeated, across the whole strip. Runs only on setup and
-  // theme flips, never per frame.
-  function render(){
-    var W=lastW, H=lastH, CWID=W+LOOP*SLOT;
-    var t=theme(); ctx.clearRect(0,0,CWID,H);
-    var top=H*0.20, bot=Math.round(H*0.80);
-    function yy(l){ return Math.round(bot-(bot-top)*Math.max(0,Math.min(1.05,l))); }
-    var count=Math.ceil(CWID/SLOT)+1;
-    for(var i=0;i<count;i++){
-      var x=i*SLOT, cd=candles[i%LOOP], up=cd.c>=cd.o, col=up?t.bull:t.bear;
-      var yt=yy(Math.max(cd.o,cd.c)), yb=yy(Math.min(cd.o,cd.c)), h=Math.max(2,yb-yt);
-      var yh=yy(cd.h), yl=yy(cd.l), cx=x+CW/2;
-      ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=2; ctx.globalAlpha=t.body;
+  function yy(l){
+    var top=lastH*0.20, bot=Math.round(lastH*0.80);
+    return Math.round(bot-(bot-top)*Math.max(0,Math.min(1.05,l)));
+  }
+  // paint one ring column (and its mirror in the duplicate tail when needed)
+  function drawCol(col){
+    var cd=ring[col]; if(!cd) return;
+    var t=theme(), up=cd.c>=cd.o, col2=up?t.bull:t.bear;
+    var yt=yy(Math.max(cd.o,cd.c)), yb=yy(Math.min(cd.o,cd.c)), h=Math.max(2,yb-yt);
+    var yh=yy(cd.h), yl=yy(cd.l);
+    var xs=[col*SLOT]; if(col<V) xs.push((col+C)*SLOT);
+    for(var k=0;k<xs.length;k++){
+      var x=xs[k], cx=x+CW/2;
+      ctx.clearRect(x,0,SLOT,lastH);
+      ctx.strokeStyle=col2; ctx.fillStyle=col2; ctx.lineWidth=2; ctx.globalAlpha=t.body;
       ctx.beginPath(); ctx.moveTo(cx,yh); ctx.lineTo(cx,yl); ctx.stroke();
       ctx.fillRect(x,yt,CW,h);
     }
     ctx.globalAlpha=1;
   }
+  function renderAll(){ for(var i=0;i<C;i++) drawCol(i); }
+  // how many virtual candles the glide has consumed so far
+  function progressIndex(){
+    if(!anim) return 0;
+    var ms=Number(anim.currentTime)||0;
+    return Math.floor((ms/1000)*SPEED/SLOT);
+  }
+  // once per second: generate fresh candles into columns that are offscreen.
+  // Runs on the main thread but touches only invisible pixels, so a stall
+  // from live-data updates can never cause a visible hitch; it just catches
+  // up on the next tick. The ~40-slot runway gives it 40 seconds of slack.
+  function feed(){
+    if(!anim) return;
+    var n=progressIndex();
+    var target=n+C-2;                 // stay one slot clear of re-entry
+    if(target-drawn>C) drawn=target-C; // long stall: skip ahead, no backlog
+    while(drawn<target){ drawn++; ring[drawn%C]=nextC(); drawCol(drawn%C); }
+  }
   function setup(){
     lastW=window.innerWidth; lastH=window.innerHeight;
-    var CYC=LOOP*SLOT, CWID=lastW+CYC;
+    V=Math.ceil(lastW/SLOT)+2;
+    C=V+BUFFER;
+    var CYC=C*SLOT, CWID=(C+V)*SLOT;
     cv.width=Math.round(CWID*dpr); cv.height=Math.round(lastH*dpr);
     cv.style.width=CWID+'px'; cv.style.height=lastH+'px';
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    render();
+    ring=new Array(C);
+    for(var i=0;i<C;i++) ring[i]=nextC();
+    drawn=C-1;
+    renderAll();
     if(anim){ anim.cancel(); anim=null; }
+    if(feeder){ clearInterval(feeder); feeder=null; }
     if(reduce || !cv.animate){ cv.style.transform='translate3d(0,0,0)'; return; }
-    // One full cycle per iteration; the compositor keeps this running even when
-    // the main thread is busy rebuilding live data.
     anim=cv.animate(
       [{transform:'translate3d(0,0,0)'},{transform:'translate3d('+(-CYC)+'px,0,0)'}],
       {duration:(CYC/SPEED)*1000, iterations:Infinity}
     );
+    feeder=setInterval(feed,1000);
   }
-  // Debounce resize so layout churn from live updates never forces mid-frame
-  // rebuilds; only a real viewport change re-rasterizes the strip.
+  // debounce resize; only a real viewport change rebuilds the strip
   var rt=null;
   window.addEventListener('resize',function(){
     if(window.innerWidth===lastW && window.innerHeight===lastH) return;
     if(rt) clearTimeout(rt);
     rt=setTimeout(setup,200);
   });
-  // Theme flips repaint the strip once in place; the glide never stops.
+  // theme flips repaint in place; the glide never stops
   if(window.MutationObserver){
-    new MutationObserver(render).observe(document.documentElement,
+    new MutationObserver(renderAll).observe(document.documentElement,
       {attributes:true,attributeFilter:['data-theme']});
   }
-  // Pause offscreen to save battery; resume exactly where it left off.
+  // pause offscreen to save battery; resume exactly where it left off
   document.addEventListener('visibilitychange',function(){
     if(!anim) return;
     if(document.hidden) anim.pause(); else anim.play();
