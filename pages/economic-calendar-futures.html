@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Economic Calendar for Futures Traders, Explained</title>
+<meta name="description">
+<meta name="description" content="A plain guide to the economic calendar for index futures traders. What CPI, PPI, NFP and FOMC measure, when they land, and how to read a release row.">
+<link rel="canonical" href="https://korvus.industries/p/economic-calendar-futures">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#07070c;--ink:#e9e7ef;--mute:#9b98a8;--pink:#ff2d8f;--line:#2a2736;--card:#0e0d16}
+html,body{background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.6}
+body{min-height:100vh;position:relative;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+background:
+radial-gradient(900px 500px at 12% -10%,rgba(255,45,143,.22),transparent 60%),
+radial-gradient(800px 480px at 95% 8%,rgba(92,70,255,.20),transparent 60%),
+radial-gradient(700px 500px at 50% 110%,rgba(0,200,255,.12),transparent 60%),
+#07070c}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+background-size:56px 56px;
+-webkit-mask-image:radial-gradient(ellipse at center,#000 40%,transparent 85%);
+mask-image:radial-gradient(ellipse at center,#000 40%,transparent 85%)}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+header{display:flex;align-items:center;gap:12px;padding:22px 0;border-bottom:1px solid var(--line)}
+header svg{width:36px;height:33px;flex:none}
+header span{font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:.85rem;color:var(--mute)}
+h1{font-size:clamp(1.8rem,4.2vw,2.8rem);line-height:1.15;margin:44px 0 16px;letter-spacing:-.01em}
+h2{font-size:clamp(1.3rem,2.6vw,1.7rem);margin:48px 0 14px;color:#fff}
+h3{font-size:1.1rem;margin:24px 0 8px;color:var(--pink)}
+.lead{font-size:clamp(1.02rem,1.6vw,1.15rem);color:var(--mute);max-width:70ch}
+.prose{max-width:72ch}
+.prose p{margin:0 0 14px}
+.prose ul{margin:0 0 14px 20px}
+.prose li{margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin:26px 0}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 14px;font-size:.88rem;color:var(--ink)}
+.chip b{color:var(--pink);font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:24px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+.card h3{margin-top:0}
+.card p{font-size:.95rem;color:var(--mute)}
+.tag{display:inline-block;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--pink);border:1px solid rgba(255,45,143,.45);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+figure{margin:28px 0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;overflow:hidden}
+figcaption{font-size:.82rem;color:var(--mute);margin-top:10px}
+.table-wrap{overflow-x:auto;margin:20px 0}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:.94rem}
+th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#15131f;color:#fff;font-weight:600;font-size:.85rem;letter-spacing:.04em;text-transform:uppercase}
+td{color:var(--ink)}
+tr:last-child td{border-bottom:none}
+.row-note{color:var(--mute);font-size:.82rem;margin-top:8px}
+.callout{border-left:3px solid var(--pink);background:rgba(255,45,143,.06);padding:16px 18px;border-radius:0 10px 10px 0;margin:26px 0;max-width:72ch}
+.cta{margin:52px 0 20px;background:linear-gradient(135deg,rgba(255,45,143,.14),rgba(92,70,255,.12));border:1px solid rgba(255,45,143,.35);border-radius:18px;padding:28px}
+.cta h2{margin-top:0}
+.btn{display:inline-block;background:var(--pink);color:#fff;text-decoration:none;font-weight:700;padding:13px 22px;border-radius:10px;margin-top:6px}
+a{color:var(--pink)}
+.disclaimer{font-size:.84rem;color:var(--mute);border-top:1px solid var(--line);margin-top:40px;padding:22px 0 40px;max-width:72ch}
+@media (max-width:700px){
+.grid{grid-template-columns:1fr}
+header{padding:16px 0}
+h1{margin-top:30px}
+th,td{padding:10px 10px;font-size:.86rem}
+.cta{padding:20px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<svg viewBox="0 0 36 33" fill="none" stroke="#ff2d8f" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true">
+<path d="M4 26 L6 10 L13 17 L18 6 L23 17 L30 10 L32 26 Z"/>
+<line x1="4" y1="30" x2="32" y2="30"/>
+<circle cx="18" cy="21" r="2" fill="#ff2d8f"/>
+</svg>
+<span>BlackCrown Intelligence Guides</span>
+</header>
+
+<h1>The economic calendar for futures traders, explained</h1>
+<p class="lead">Index futures move on data. Every month a handful of government and central bank releases land on a fixed schedule. This guide explains what four of the big ones measure, when they usually hit, and how to read the numbers without the hype.</p>
+
+<div class="chips">
+<span class="chip"><b>CPI</b> inflation for consumers</span>
+<span class="chip"><b>PPI</b> inflation at the producer level</span>
+<span class="chip"><b>NFP</b> jobs added or lost</span>
+<span class="chip"><b>FOMC</b> the Fed rate decision</span>
+</div>
+
+<div class="prose">
+
+<h2>What an economic calendar is</h2>
+<p>An economic calendar is a list of scheduled releases. Each row names an event, the country or agency behind it, a time, and usually three numbers: the actual result, the forecast, and the previous reading.</p>
+<p>Forecasts come from surveys of economists. They are a consensus guess, not a promise. The market usually prices in the forecast before the release. The price move tends to come from the gap between the actual number and that guess.</p>
+<p>That gap is the whole game for news traders. A number that matches the forecast can still move price, because the surrounding story changed. A number far from the forecast can fade within minutes. The calendar tells you when the question gets answered. It does not tell you the answer.</p>
+
+<h2>How to read one row</h2>
+<ul>
+<li><strong>Time.</strong> Most US releases print at 8:30 AM Eastern. Check your own timezone before the morning, not during it.</li>
+<li><strong>Impact.</strong> Calendars rank events as low, medium or high. High impact usually means the market has a reason to care right now.</li>
+<li><strong>Actual, forecast, previous.</strong> Read the actual against the forecast first. Then compare it to the previous month to see the direction of travel.</li>
+<li><strong>Revisions.</strong> Previous numbers are sometimes revised. A revision can change the story even when the headline looks flat.</li>
+</ul>
+
+<h2>CPI: Consumer Price Index</h2>
+<p>CPI tracks the prices households pay for a basket of goods and services, including food, energy, rent and transport. The Bureau of Labor Statistics publishes it monthly.</p>
+<p>Traders watch CPI because inflation shapes what the Federal Reserve does with interest rates. Hotter inflation tends to raise the odds of tighter policy. Cooler inflation tends to raise the odds of easier policy. Markets react to those odds, and index futures often react fast.</p>
+<p>Core CPI strips out food and energy, which swing a lot. Many traders read core first. Headline CPI still gets the attention in the first seconds of a release.</p>
+
+<h2>PPI: Producer Price Index</h2>
+<p>PPI measures prices at the producer level, the costs businesses see before they reach shoppers. It is also published monthly by the Bureau of Labor Statistics.</p>
+<p>PPI is often treated as an early signal. If producers face higher costs, some of that may reach consumer prices later. Some traders weight PPI heavily. Others see it as a secondary read that rarely beats CPI on the day. Both views are common. Neither is a rule.</p>
+
+<h2>NFP: Nonfarm Payrolls</h2>
+<p>Nonfarm Payrolls, usually shortened to NFP, counts the change in US jobs outside farming. It comes out on the first Friday of most months, and it is one of the most watched releases of the month.</p>
+<p>Strong job growth can signal an economy that does not need rate cuts. Weak growth can signal the opposite. The unemployment rate and wage growth print in the same report, and traders often look at wages for inflation clues.</p>
+<p>NFP can be noisy. Revisions to earlier months are common, and the first print is often revised later. Treat the first number as a snapshot, not a verdict.</p>
+
+<h2>FOMC: the Federal Open Market Committee</h2>
+<p>The FOMC is the Federal Reserve's policy committee. It meets about eight times a year. At the end of each meeting it issues a statement on interest rates, and the Fed chair usually holds a press conference shortly after.</p>
+<p>The rate decision is only part of the event. The wording of the statement, the updated economic projections, and the tone of the press conference can all move markets. Many traders say the words matter as much as the decision. Some moves happen during the press conference, not at the statement itself.</p>
+<p>FOMC days often carry more volatility than a standard data print. Volatility cuts both ways. Wider swings can produce larger losses as easily as larger gains.</p>
+
+<h2>A quick comparison</h2>
+</div>
+
+<figure>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Release</th><th>Publisher</th><th>Cadence</th><th>What it measures</th><th>Usual time (ET)</th></tr>
+</thead>
+<tbody>
+<tr><td>CPI</td><td>Bureau of Labor Statistics</td><td>Monthly</td><td>Consumer price changes across a fixed basket</td><td>8:30 AM</td></tr>
+<tr><td>PPI</td><td>Bureau of Labor Statistics</td><td>Monthly</td><td>Prices received by domestic producers</td><td>8:30 AM</td></tr>
+<tr><td>NFP</td><td>Bureau of Labor Statistics</td><td>Monthly, usually first Friday</td><td>Jobs added or lost outside farming, plus unemployment and wages</td><td>8:30 AM</td></tr>
+<tr><td>FOMC</td><td>Federal Reserve</td><td>About eight meetings a year</td><td>Federal funds rate decision and policy outlook</td><td>2:00 PM statement, press conference after</td></tr>
+</tbody>
+</table>
+</div>
+<figcaption>Illustration. Times and cadences are typical patterns, not a live schedule. Confirm exact dates and times on the official agency calendar before any session.</figcaption>
+</figure>
+
+<div class="prose">
+
+<h2>Why timing matters more than you think</h2>
+<p>Data drops at fixed times, and liquidity often thins right before them. Spreads can widen. Fills can slip. Price can jump several points in a single second. A beginner who has never watched a release live often underestimates how fast the book changes.</p>
+<p>Many experienced traders simply know the schedule and plan around it. Some step aside for the high-impact prints. Others stay in the market and accept the risk. Both choices are personal. The calendar does not decide it for you.</p>
+
+<h2>A simple prep habit</h2>
+<p>Before each week, write down the high-impact events and their times in your local zone. Note which ones touch your market. Decide ahead of time whether you will watch, wait or ignore. That habit costs nothing and prevents most of the morning scramble.</p>
+<p>Keep notes after each release too. Record the actual, the forecast, and how price behaved in the first few minutes. Over a few months you build a reference that is specific to your own market and your own habits.</p>
+
+<h2>Where a scoring terminal fits</h2>
+<p>Reading a release is one task. Turning a fresh number into a directional read takes more time when the feed is busy. Korvus is a 24/7 market intelligence terminal for index futures traders that scores these releases for impact, direction and confidence, with a written read you can check against your own view. It is a tool for reading the news faster, not a replacement for your own judgment.</p>
+
+<p>For the overnight window, when many of these releases land while US traders sleep, see our guide to <a href="/p/overnight-futures-session">the overnight futures session</a>.</p>
+
+</div>
+
+<section class="cta">
+<h2>See the releases scored as they land</h2>
+<p class="prose" style="color:var(--mute);margin-bottom:16px">Create a free Observer account and look at the market feed on your own schedule. No card required. Judge the output yourself before you pay anything.</p>
+<a class="btn" href="https://korvus.industries/signup?utm_source=guide&amp;utm_medium=page&amp;utm_campaign=econ_calendar&amp;utm_content=guide_cta">Create free Observer account</a>
+</section>
+
+<div class="disclaimer">
+<p>This guide is education and general information only. It is not financial advice, a recommendation to buy or sell any instrument, or a forecast of any outcome. Futures trading carries substantial risk, including the loss of more than your initial margin. Past data releases do not predict future price moves. Check all dates and figures against the official publishing agencies.</p>
+<p style="margin-top:12px">BlackCrownVxJ LLC. Business contact: BlackCrownVxJ.LLC@outlook.com</p>
+</div>
+</div>
+</body>
+</html>
