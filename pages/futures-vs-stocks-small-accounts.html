@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Futures vs Stocks for Small Accounts | Korvus</title>
+<meta name="description" content="An honest look at MES and MNQ futures versus stock trading for small accounts: capital, leverage, the pattern day trader rule, sessions, and real risk.">
+<link rel="canonical" href="https://korvus.industries/p/futures-vs-stocks-small-accounts">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#07070a;--panel:#0f0f15;--line:#23232e;--text:#e7e7ee;--muted:#9a9aab;--pink:#ff2d8f;--cyan:#38d6ff;--gold:#e8b84a}
+html,body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.6;min-height:100%}
+body{position:relative;overflow-x:hidden;background-color:var(--bg);background-image:radial-gradient(900px 520px at 85% -10%,rgba(255,45,143,.16),transparent 60%),radial-gradient(760px 480px at -10% 30%,rgba(56,214,255,.10),transparent 60%),radial-gradient(700px 500px at 60% 110%,rgba(232,184,74,.07),transparent 60%),linear-gradient(rgba(255,255,255,.015) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.015) 1px,transparent 1px);background-size:auto,auto,auto,56px 56px,56px 56px;background-attachment:fixed}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.65) 100%)}
+.wrap{position:relative;z-index:1;max-width:1060px;margin:0 auto;padding:0 20px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:22px 0;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;color:var(--text);text-decoration:none;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:15px}
+.brand svg{width:36px;height:33px}
+nav.links{display:flex;gap:18px;flex-wrap:wrap}
+nav.links a{color:var(--muted);text-decoration:none;font-size:14px}
+nav.links a:hover{color:var(--text)}
+.hero{padding:64px 0 36px}
+.eyebrow{display:inline-block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px}
+h1{font-size:clamp(28px,5vw,46px);line-height:1.15;font-weight:800;letter-spacing:-.01em;margin-bottom:18px}
+h2{font-size:clamp(22px,3.4vw,30px);line-height:1.2;margin:48px 0 14px;font-weight:750}
+h3{font-size:clamp(17px,2.4vw,19px);margin:24px 0 8px}
+p,li{color:var(--text);max-width:75ch}
+p{margin-bottom:14px}
+.lede{font-size:clamp(17px,2.2vw,19px);color:var(--muted)}
+ul.plain{padding-left:20px;margin-bottom:14px}
+ul.plain li{margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0 8px}
+.chip{font-size:13px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted)}
+.chip.hot{border-color:rgba(255,45,143,.5);color:var(--text)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:20px 0}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}
+.stat b{display:block;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px;font-weight:600}
+.stat p{margin:0;color:var(--muted);font-size:15px}
+.figure{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;margin:24px 0}
+.figure svg{width:100%;height:auto;display:block}
+.cap{font-size:13px;color:var(--muted);margin-top:10px}
+.tag{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);border:1px solid rgba(232,184,74,.45);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.table-wrap{width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--panel);margin:18px 0}
+table{width:100%;border-collapse:collapse;min-width:520px;font-size:15px}
+caption{caption-side:top;text-align:left;padding:14px 16px;color:var(--muted);font-size:13px}
+th,td{text-align:left;padding:12px 16px;border-top:1px solid var(--line);vertical-align:top}
+th{color:var(--text);font-weight:650;background:rgba(255,255,255,.02)}
+td{color:var(--muted)}
+.warn{border-left:3px solid var(--pink);background:rgba(255,45,143,.06);padding:16px 18px;border-radius:0 12px 12px 0;margin:20px 0}
+.warn p{margin:0 0 8px;max-width:75ch}
+.warn p:last-child{margin-bottom:0}
+.related{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0}
+.related a{display:block;text-decoration:none;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;transition:none}
+.related a span{display:block;color:var(--muted);font-size:14px;margin-top:6px}
+.related a:hover{border-color:rgba(56,214,255,.5)}
+.cta{text-align:center;padding:40px 24px;margin:56px 0 24px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(160deg,rgba(255,45,143,.08),rgba(56,214,255,.05) 60%,transparent),var(--panel)}
+.cta p{margin:0 auto 18px}
+.btn{display:inline-block;background:var(--pink);color:#07070a;font-weight:700;text-decoration:none;padding:13px 26px;border-radius:10px}
+.btn-ghost{display:inline-block;margin-left:10px;color:var(--text);text-decoration:none;border:1px solid var(--line);padding:12px 22px;border-radius:10px}
+footer.foot{border-top:1px solid var(--line);margin-top:40px;padding:28px 0 44px;color:var(--muted);font-size:13px}
+footer.foot p{max-width:75ch;margin-bottom:10px;font-size:13px;color:var(--muted)}
+footer.foot a{color:var(--muted)}
+@media (max-width:700px){
+.grid2,.related{grid-template-columns:1fr}
+.hero{padding:44px 0 24px}
+.btn-ghost{margin:10px 0 0 0;display:block;text-align:center}
+.btn{display:block}
+nav.links{gap:12px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+<a class="brand" href="https://korvus.industries/" aria-label="Korvus home">
+<svg viewBox="0 0 36 33" fill="none" stroke="#ff2d8f" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" aria-label="Crown mark"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
+<span>Korvus</span>
+</a>
+<nav class="links" aria-label="Primary">
+<a href="https://korvus.industries/lodestone">LodeStone</a>
+<a href="https://korvus.industries/legal">Legal</a>
+<a href="https://korvus.industries/login">Log in</a>
+</nav>
+</header>
+
+<main>
+
+<section class="hero">
+<span class="eyebrow">Guide, education only</span>
+<h1>Futures vs stocks for small accounts</h1>
+<p class="lede">Small accounts often compare micro index futures like MES and MNQ with stock trading. Both can be traded with a modest balance, and both can lose money quickly. This guide walks through the differences plainly, so you can judge the tradeoffs yourself.</p>
+<div class="chips">
+<span class="chip hot">Education only</span>
+<span class="chip">No promised outcomes</span>
+<span class="chip">Not trading advice</span>
+<span class="chip">About 8 min read</span>
+</div>
+</section>
+
+<h2>Why small accounts look at futures</h2>
+<p>Most people who start with a small balance want to know one thing: can I learn to trade without needing a large account first? Stocks feel familiar. Futures feel like the professional route. Micro contracts, such as Micro E-mini S&amp;P 500 (MES) and Micro E-mini Nasdaq-100 (MNQ), were designed to be smaller than the standard contracts, so a single position can represent a fraction of the exposure.</p>
+<p>That smaller size is the appeal. It is also the reason to slow down. A smaller contract does not make the market less risky. It only changes how much money each move is worth to you.</p>
+
+<div class="grid2">
+<div class="stat">
+<b>What MES tracks</b>
+<p>An index futures contract linked to the S&amp;P 500. Each full index point is worth $5 per contract.</p>
+</div>
+<div class="stat">
+<b>What MNQ tracks</b>
+<p>An index futures contract linked to the Nasdaq-100. Each full index point is worth $2 per contract.</p>
+</div>
+</div>
+
+<h2>Capital efficiency, stated honestly</h2>
+<p>Futures use margin rather than a full purchase price. Margin is a performance deposit held by your broker, not a fee and not a down payment on ownership. Required margin is set by the exchange and adjusted by your broker, and it changes over time. Check your broker's current figures before you plan around them.</p>
+<p>Lower margin can make futures look cheap to enter. But a low requirement to open a position says nothing about how much that position can move against you in a session. Efficiency describes how little capital is tied up at entry. It does not describe how much you can afford to lose.</p>
+
+<h2>Leverage cuts both ways</h2>
+<p>Leverage means a small move in the underlying index creates a larger change in your account. That works for you on a winning trade and against you on a losing one. The same contract that turns a few points into a gain can turn a few points into a loss faster than many people expect.</p>
+<ul class="plain">
+<li>Position size decides how much each point costs or earns. Size is the lever you control most directly.</li>
+<li>Losses can exceed what you planned for if a stop is slow, skipped, or gapped through.</li>
+<li>A margin call or forced liquidation can happen before you have made a decision you intended to make.</li>
+</ul>
+
+<h2>The pattern day trader rule does not apply to futures</h2>
+<p>In the United States, stock margin accounts that make four or more day trades within five business days are classed as pattern day traders. Under FINRA's rule as currently written, those accounts must keep a minimum equity balance, which has been set at $25,000. Below that level, day trading in that account can be restricted. Rules change, so confirm the current requirement with your broker or FINRA.</p>
+<p>Futures are regulated under a separate framework, and the pattern day trader rule does not apply to them. That is one reason small traders look at futures. It is not a reason to assume futures are easier, safer, or more forgiving. The absence of one restriction is not the absence of risk.</p>
+
+<h2>Session hours</h2>
+<p>Stocks trade during set exchange hours, with extended sessions offered by some brokers. Index futures on CME Globex trade nearly around the clock, with a short daily maintenance break and a weekend closure. Trading hours change with holidays and exchange notices, so check the current schedule before you rely on any session.</p>
+<p>Long hours can feel like freedom. They can also mean you are reacting to news, overnight moves, and thin liquidity while tired. Decide in advance which sessions, if any, you will trade and why.</p>
+
+<div class="figure" role="img" aria-label="Illustration of a single index point move multiplied by contract count">
+<span class="tag">Illustration</span>
+<svg viewBox="0 0 560 220" fill="none" aria-label="Bar figure, illustration only">
+<rect x="0" y="0" width="560" height="220" fill="none"/>
+<line x1="60" y1="190" x2="520" y2="190" stroke="#23232e" stroke-width="2"/>
+<rect x="90" y="120" width="80" height="70" fill="#38d6ff" opacity="0.7" rx="4"/>
+<rect x="240" y="80" width="80" height="110" fill="#ff2d8f" opacity="0.7" rx="4"/>
+<rect x="390" y="40" width="80" height="150" fill="#e8b84a" opacity="0.7" rx="4"/>
+<text x="130" y="210" fill="#9a9aab" font-size="13" text-anchor="middle" font-family="system-ui,sans-serif">1 contract</text>
+<text x="280" y="210" fill="#9a9aab" font-size="13" text-anchor="middle" font-family="system-ui,sans-serif">3 contracts</text>
+<text x="430" y="210" fill="#9a9aab" font-size="13" text-anchor="middle" font-family="system-ui,sans-serif">5 contracts</text>
+</svg>
+<p class="cap">Illustration only. Bars show how the same index move scales with position count. Not a forecast and not a sizing recommendation.</p>
+</div>
+
+<h2>Side by side</h2>
+<div class="table-wrap">
+<table>
+<caption><span class="tag">Illustration</span> General differences for discussion. Brokers, rules, and contract specs change. Verify current terms before acting.</caption>
+<thead>
+<tr><th scope="col">Topic</th><th scope="col">Stocks (margin account)</th><th scope="col">Micro index futures (MES, MNQ)</th></tr>
+</thead>
+<tbody>
+<tr><th scope="row">Pattern day trader rule</th><td>Applies to qualifying margin accounts</td><td>Does not apply</td></tr>
+<tr><th scope="row">Capital at entry</th><td>Typically a purchase price per share</td><td>Margin deposit set by exchange and broker</td></tr>
+<tr><th scope="row">Leverage</th><td>Available through margin, subject to broker rules</td><td>Built into the contract structure</td></tr>
+<tr><th scope="row">Trading hours</th><td>Exchange hours plus some extended sessions</td><td>Nearly 23 hours on weekdays with a daily break</td></tr>
+<tr><th scope="row">Expiration</th><td>None for shares</td><td>Contracts expire and roll on a schedule</td></tr>
+<tr><th scope="row">Main risk</th><td>Company, sector, and market moves</td><td>Index moves amplified by contract size</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Real risk warnings</h2>
+<div class="warn">
+<p>Futures and leveraged trading can lose more than you deposit. You can lose your entire balance quickly, and you can owe money to your broker beyond what you put in.</p>
+<p>Past performance, backtests, and demo results do not predict live outcomes. Slippage, fills, and emotions all change results.</p>
+<p>Most new traders underestimate how fast position size and leverage compound losses. Use only money you can afford to lose entirely.</p>
+</div>
+
+<h2>Education only, not advice</h2>
+<p>Nothing on this page is financial, investment, tax, or trading advice. It does not recommend any instrument, position, entry, exit, or strategy. Korvus provides market information and tools for education. Any decision you make is yours, and you should consult a licensed professional about your own situation before trading.</p>
+
+<h2>Related guides</h2>
+<div class="related">
+<a href="https://korvus.industries/p/futures-tick-value-explained">Futures tick value explained<span>How a single tick translates into dollars on MES and MNQ.</span></a>
+<a href="https://korvus.industries/p/futures-margin-explained">Futures margin explained<span>What a performance deposit is, and what it is not.</span></a>
+<a href="https://korvus.industries/p/paper-trade-futures">Paper trade futures first<span>A way to practice the mechanics without risking live capital.</span></a>
+</div>
+
+<section class="cta">
+<span class="tag">Free to start</span>
+<h2 style="margin-top:12px">Watch the market with the free Observer account</h2>
+<p>Korvus Observer is free. It gives you the market intelligence terminal on the Observer tier, so you can read the tape and judge the tools before you decide anything else. No card required to look around.</p>
+<a class="btn" href="https://korvus.industries/signup">Create a free Observer account</a>
+<a class="btn-ghost" href="https://korvus.industries/">See how Korvus works</a>
+</section>
+
+</main>
+
+<footer class="foot">
+<p>Korvus is education and market information only. Nothing here is financial, investment, tax, or trading advice, and no outcome is promised or implied. Futures and leveraged products can lose more than your deposit. Past results do not predict future performance.</p>
+<p>Business contact: BlackCrownVxJ.LLC@outlook.com. <a href="https://korvus.industries/legal">Legal and disclosures</a>.</p>
+<p>&copy; BlackCrownVxJ LLC</p>
+</footer>
+
+</div>
+</body>
+</html>
