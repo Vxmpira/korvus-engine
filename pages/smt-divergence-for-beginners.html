@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SMT Divergence Explained for Beginners | Korvus</title>
+<meta name="description" content="A plain English guide to SMT divergence on correlated index futures. What it is, why traders watch it, and where beginners go wrong. Education only.">
+<link rel="canonical" href="https://korvus.industries/p/smt-divergence-for-beginners">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#07070a;--ink:#e9e9f0;--mute:#9a9aab;--pink:#ff2d8f;--cyan:#27d4ff;--line:#1f1f2a;--card:#0e0e15}
+html,body{background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.6}
+body{position:relative;min-height:100vh;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-2;background:radial-gradient(60vw 40vw at 15% 0%,rgba(255,45,143,.14),transparent 70%),radial-gradient(50vw 40vw at 90% 10%,rgba(39,212,255,.10),transparent 70%),var(--bg)}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:56px 56px;background-position:-1px -1px;-webkit-mask-image:radial-gradient(ellipse at center,#000 40%,transparent 90%);mask-image:radial-gradient(ellipse at center,#000 40%,transparent 90%)}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+header{display:flex;align-items:center;justify-content:space-between;padding:22px 0;border-bottom:1px solid var(--line);gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;color:var(--ink);text-decoration:none;font-weight:700;letter-spacing:.04em}
+.brand svg{width:36px;height:33px}
+nav a{color:var(--mute);text-decoration:none;margin-left:18px;font-size:.95rem}
+nav a:hover{color var(--ink)}
+.hero{padding:56px 0 28px}
+.tag{display:inline-block;font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);border:1px solid var(--line);padding:4px 10px;border-radius:999px;margin-bottom:18px}
+h1{font-size:clamp(1.9rem,4.6vw,3rem);line-height:1.15;margin-bottom:16px;max-width:22ch}
+h2{font-size:clamp(1.35rem,2.8vw,1.8rem);margin:44px 0 12px}
+h3{font-size:1.1rem;margin:22px 0 8px;color:var(--pink)}
+.lede{font-size:clamp(1.05rem,2vw,1.2rem);color:var(--mute);max-width:64ch}
+.prose{max-width:68ch}
+.prose p{margin-bottom:14px}
+.prose ul,.prose ol{margin:0 0 16px 22px}
+.prose li{margin-bottom:6px}
+a{color:var(--cyan)}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:.92rem;color:var(--ink)}
+.chip b{color:var(--pink);font-weight:600}
+figure{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin:26px 0}
+figure svg{width:100%;height:auto;display:block}
+figcaption{color:var(--mute);font-size:.88rem;margin-top:12px}
+.badge{color:var(--pink);font-weight:600}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+.card h3{margin-top:0}
+.notice{border-left:3px solid var(--pink);background:var(--card);padding:16px 18px;border-radius:8px;color:var(--mute);font-size:.92rem;margin:30px 0}
+.cta{margin:36px 0;padding:26px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(135deg,rgba(255,45,143,.08),rgba(39,212,255,.06))}
+.btn{display:inline-block;margin-top:10px;background:var(--pink);color:#07070a;font-weight:700;padding:12px 20px;border-radius:10px;text-decoration:none}
+footer{border-top:1px solid var(--line);margin-top:48px;padding:24px 0 40px;color:var(--mute);font-size:.88rem}
+@media (max-width:700px){
+  .grid{grid-template-columns:1fr}
+  nav a{margin-left:12px}
+  .hero{padding-top:36px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <a class="brand" href="https://korvus.industries/">
+    <svg viewBox="0 0 36 33" aria-label="BlackCrown crown mark" role="img" fill="none" stroke="#ff2d8f" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M4 26 L6 10 L13 17 L18 6 L23 17 L30 10 L32 26 Z"/>
+      <line x1="6" y1="30" x2="30" y2="30"/>
+    </svg>
+    <span>KORVUS</span>
+  </a>
+  <nav>
+    <a href="https://korvus.industries/p/es-futures-beginners">ES futures basics</a>
+    <a href="https://korvus.industries/signup">Sign up</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <span class="tag">Beginner guide</span>
+  <h1>SMT Divergence Explained for Beginners</h1>
+  <p class="lede">Correlated index futures usually move together. When they stop agreeing at a key high or low, traders call that a divergence. Here is what it means, how to read it, and what it does not tell you.</p>
+</section>
+
+<div class="chips">
+  <div class="chip"><b>Topic</b> Smart Money Technique (SMT) divergence</div>
+  <div class="chip"><b>Markets</b> ES, NQ, YM, RTY</div>
+  <div class="chip"><b>Level</b> Beginner</div>
+  <div class="chip"><b>Type</b> Education only</div>
+</div>
+
+<div class="prose">
+
+<h2>The short version</h2>
+<p>SMT stands for Smart Money Technique. The idea is simple. Two or three index futures that normally track each other reach a level together. One of them makes a new high or low. The other one does not. That gap is the divergence.</p>
+<p>Traders watch it because it shows the markets are not agreeing. Agreement is the default state. Disagreement at an important level is worth noticing. That is all the concept says. It does not say what will happen next.</p>
+
+<h2>Why correlated indices matter</h2>
+<p>The big US index futures are built on overlapping groups of large companies. The S&amp;P 500 (ES), the Nasdaq 100 (NQ), the Dow (YM), and the Russell 2000 (RTY) respond to the same news most days. Their charts look alike because their drivers are alike.</p>
+<p>When one of them breaks a prior high while a partner stalls below its own prior high, the two charts are telling different stories. SMT divergence is the name for that mismatch.</p>
+
+<figure>
+  <svg viewBox="0 0 600 240" role="img" aria-label="Illustration of SMT divergence: ES makes a new high while NQ fails to exceed its prior high" fill="none">
+    <rect x="0" y="0" width="600" height="240" fill="#0e0e15"/>
+    <line x1="40" y1="200" x2="580" y2="200" stroke="#1f1f2a" stroke-width="1"/>
+    <line x1="40" y1="40" x2="40" y2="200" stroke="#1f1f2a" stroke-width="1"/>
+    <line x1="40" y1="60" x2="580" y2="60" stroke="#ff2d8f" stroke-width="1" stroke-dasharray="5 5" opacity=".6"/>
+    <line x1="40" y1="92" x2="580" y2="92" stroke="#27d4ff" stroke-width="1" stroke-dasharray="5 5" opacity=".5"/>
+    <polyline points="50,170 110,150 160,160 210,120 260,132 310,95 360,110 420,40" stroke="#27d4ff" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <polyline points="50,180 110,160 160,170 210,128 260,140 310,96 360,112 420,92" stroke="#ff2d8f" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="420" cy="40" r="5" fill="#27d4ff"/>
+    <circle cx="420" cy="92" r="5" fill="#ff2d8f"/>
+    <text x="436" y="44" fill="#27d4ff" font-size="13" font-family="system-ui,sans-serif">Index A: new high</text>
+    <text x="436" y="96" fill="#ff2d8f" font-size="13" font-family="system-ui,sans-serif">Index B: no new high</text>
+    <text x="48" y="54" fill="#9a9aab" font-size="11" font-family="system-ui,sans-serif">prior high, Index B</text>
+    <text x="48" y="222" fill="#9a9aab" font-size="12" font-family="system-ui,sans-serif">Illustration, not real market data</text>
+  </svg>
+  <figcaption><span class="badge">Illustration.</span> Two correlated charts reaching the same area. One makes a new high, the other stalls under its own prior high. The lines are drawn for teaching, not taken from a live feed.</figcaption>
+</figure>
+
+<h2>How beginners read it</h2>
+<p>A basic reading goes in four steps. Keep the steps in order and do not skip the first one.</p>
+<ol>
+  <li>Confirm the markets are correlated right now. A divergence between two charts that have already split apart tells you little.</li>
+  <li>Mark a clear prior high or low on each chart. Use the same time frame on both.</li>
+  <li>Check whether one market takes that level and the other does not. Watch the wick and the close, not just the spike.</li>
+  <li>Write down what you saw and what the market did next. Your notes are how you learn whether the pattern means anything to you.</li>
+</ol>
+
+<h2>Common beginner mistakes</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Treating it as a signal</h3>
+    <p>A divergence is an observation. It is not a trigger. Many divergences resolve with the market doing nothing special.</p>
+  </div>
+  <div class="card">
+    <h3>Ignoring the time frame</h3>
+    <p>A divergence on a one minute chart and a divergence on a daily chart are not the same event. Mixing them creates false confidence.</p>
+  </div>
+  <div class="card">
+    <h3>Comparing unrelated markets</h3>
+    <p>Pairing an index with a currency or a commodity does not make a valid SMT read. The correlation has to be real and current.</p>
+  </div>
+  <div class="card">
+    <h3>Looking for it everywhere</h3>
+    <p>If you see a divergence in every session, you are probably reading noise. Real divergences at meaningful levels are less frequent.</p>
+  </div>
+</div>
+
+<h2>What it does not tell you</h2>
+<p>SMT divergence does not predict direction. It does not give a price target. It does not say how long a move will last. It is one piece of market structure among many, and every piece can fail.</p>
+<p>Learning to spot the pattern is a reasonable study goal. Turning the pattern into a plan with money at risk is a separate decision, and it belongs to you.</p>
+
+<h2>Keep learning</h2>
+<p>If the futures basics are new to you, start with the contract specs and session times before you study correlations. The Korvus beginner guide on ES futures covers that ground: <a href="https://korvus.industries/p/es-futures-beginners">ES futures basics</a>.</p>
+<p>Korvus tracks index futures markets around the clock and logs what it sees in plain language. You can look at the tools on the free tier and decide for yourself: <a href="https://korvus.industries/signup">create a Korvus account</a>.</p>
+
+</div>
+
+<section class="cta">
+  <h2 style="margin-top:0">Study the market on your own clock</h2>
+  <p class="prose" style="margin-bottom:0">Korvus is a 24/7 market intelligence terminal for index futures traders. The Observer tier is free. Operator adds the LodeStone TradingView indicator at 9.99 a month or 79.99 a year.</p>
+  <a class="btn" href="https://korvus.industries/signup">Sign up for Korvus</a>
+</section>
+
+<div class="notice">
+  <strong>Education only, not financial advice.</strong> This guide explains a chart concept for learning purposes. It is not a recommendation to buy, sell, or hold any instrument, and it does not promise any outcome. Futures trading carries substantial risk of loss and is not suitable for everyone. Past chart behavior does not predict future results. Make your own decisions and consult a licensed professional when you need one.
+</div>
+
+<footer>
+  <div class="wrap" style="padding:0">
+    <p>Korvus is a product of BlackCrownVxJ LLC. Business contact: BlackCrownVxJ.LLC@outlook.com</p>
+    <p><a href="https://korvus.industries/legal">Legal</a></p>
+  </div>
+</footer>
+</div>
+</body>
+</html>
