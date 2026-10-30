@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Futures Rollover Explained | Korvus Guides</title>
+<meta name="description" content="How ES, NQ, MES and MNQ futures expire and roll: the quarterly H, M, U, Z cycle, what front month means, roll week volume, and why charts gap. Education only.">
+<link rel="canonical" href="https://korvus.industries/p/futures-rollover-explained">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#e9e6ef;--mute:#9a95a6;--line:rgba(255,255,255,.08);--pink:#ff2d8f;--violet:#7b5cff;--cyan:#27d3e6;--card:rgba(255,255,255,.03)}
+html,body{background:#07060a;color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;position:relative;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-2;background:radial-gradient(900px 500px at 12% -8%,rgba(255,45,143,.16),transparent 60%),radial-gradient(800px 480px at 95% 10%,rgba(123,92,255,.14),transparent 60%),radial-gradient(700px 420px at 50% 110%,rgba(39,211,230,.09),transparent 60%),#07060a}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.015) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.015) 1px,transparent 1px),radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.65) 100%);background-size:56px 56px,56px 56px,100% 100%}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink)}
+.brand svg{width:36px;height:33px;flex:none}
+.brand b{font-size:1.15rem;letter-spacing:.04em}
+.brand small{display:block;color:var(--mute);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase}
+nav.top a{color:var(--mute);text-decoration:none;font-size:.92rem;margin-left:18px}
+nav.top a:hover{color:var(--ink)}
+.eyebrow{display:inline-block;margin-top:44px;color:var(--cyan);font-size:.78rem;letter-spacing:.16em;text-transform:uppercase}
+h1{font-size:clamp(1.9rem,4.6vw,3.1rem);line-height:1.12;margin:12px 0 16px;letter-spacing:-.01em;max-width:24ch}
+h1 span{background:linear-gradient(90deg,var(--pink),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-size:clamp(1.35rem,2.8vw,1.8rem);margin:52px 0 14px;letter-spacing:-.005em}
+h3{font-size:1.05rem;margin:22px 0 8px;color:#fff}
+p,li{color:#d6d2de;max-width:75ch}
+p{margin:0 0 14px}
+ul,ol{margin:0 0 16px 22px;max-width:75ch}
+li{margin-bottom:6px}
+.lede{font-size:1.1rem;color:#e6e2ee}
+.note{border-left:3px solid var(--violet);background:var(--card);padding:14px 18px;border-radius:0 10px 10px 0;margin:22px 0;max-width:75ch;color:#cfcade}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 6px}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:.82rem;color:#cfcade}
+.panel{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.015));border:1px solid var(--line);border-radius:16px;padding:22px;margin:26px 0;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.panel-head strong{font-size:1rem;color:#fff}
+.tag{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#f5c26b;border:1px solid rgba(245,194,107,.35);border-radius:6px;padding:3px 8px}
+table{width:100%;border-collapse:collapse;font-size:.95rem}
+th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line)}
+th{color:var(--mute);font-weight:600;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase}
+td code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--cyan)}
+.bars{display:grid;gap:14px}
+.day{display:grid;grid-template-columns:minmax(110px,160px) 1fr;gap:14px;align-items:center}
+.day .lbl{font-size:.9rem;color:#cfcade}
+.track{height:26px;border-radius:7px;background:rgba(255,255,255,.04);overflow:hidden;display:flex}
+.seg-front{background:linear-gradient(90deg,var(--pink),#c23d9b);height:100%}
+.seg-next{background:linear-gradient(90deg,var(--violet),var(--cyan));height:100%}
+.legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:6px;font-size:.84rem;color:var(--mute)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:22px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.card h3{margin-top:0}
+.related{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0 8px}
+.related a{display:block;text-decoration:none;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;transition:none}
+.related a:hover{border-color:rgba(255,45,143,.5)}
+.related a b{display:block;color:#fff;margin-bottom:6px}
+.related a span{color:var(--mute);font-size:.9rem}
+.cta{margin:56px 0 20px;padding:26px;border-radius:18px;border:1px solid rgba(255,45,143,.28);background:radial-gradient(500px 220px at 0% 0%,rgba(255,45,143,.14),transparent 70%),var(--card)}
+.cta h2{margin-top:0}
+.btn{display:inline-block;margin-top:8px;padding:12px 20px;border-radius:10px;background:linear-gradient(90deg,var(--pink),var(--violet));color:#fff;text-decoration:none;font-weight:600}
+.fine{color:var(--mute);font-size:.84rem;margin:26px 0 10px;max-width:75ch}
+footer.site{border-top:1px solid var(--line);margin-top:30px;padding:24px 0 40px;color:var(--mute);font-size:.86rem;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+footer.site a{color:var(--mute)}
+@media (max-width:700px){
+  .grid2,.related{grid-template-columns:1fr}
+  .day{grid-template-columns:1fr;gap:6px}
+  nav.top a{margin-left:12px}
+  .panel{padding:16px}
+  th,td{padding:9px 8px;font-size:.88rem}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <a class="brand" href="https://korvus.industries/" aria-label="Korvus home">
+    <svg viewBox="0 0 36 33" fill="none" stroke="#ff2d8f" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" aria-label="Korvus crown logo" role="img"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
+    <span><b>Korvus</b><small>Guides</small></span>
+  </a>
+  <nav class="top">
+    <a href="https://korvus.industries/lodestone">LodeStone</a>
+    <a href="https://korvus.industries/signup">Free account</a>
+  </nav>
+</header>
+
+<span class="eyebrow">Futures guide</span>
+<h1>Futures <span>rollover</span> explained</h1>
+<p class="lede">Index futures do not last forever. Every contract has an expiration date, and the market moves its attention to the next one before that date arrives. This guide explains the cycle, the vocabulary, and why charts look different on either side of a roll.</p>
+
+<div class="chips" aria-label="Topics covered">
+  <span class="chip">ES and NQ</span>
+  <span class="chip">MES and MNQ</span>
+  <span class="chip">H, M, U, Z codes</span>
+  <span class="chip">Front month</span>
+  <span class="chip">Roll week volume</span>
+  <span class="chip">Continuous charts</span>
+</div>
+
+<div class="note">Education only. This page describes how futures contracts are structured. It is not trading advice, and it makes no claim that any approach will be profitable.</div>
+
+<h2>The quarterly cycle</h2>
+<p>The popular index futures contracts, including E-mini S&amp;P 500 (ES), E-mini Nasdaq-100 (NQ), Micro E-mini S&amp;P 500 (MES), and Micro E-mini Nasdaq-100 (MNQ), trade on a quarterly schedule. Four contracts are listed at any time, and each one ends in a month that carries a fixed letter code.</p>
+
+<div class="panel" aria-label="Quarterly contract code table">
+  <div class="panel-head">
+    <strong>Quarterly month codes</strong>
+    <span class="tag">Standard scheme</span>
+  </div>
+  <table>
+    <thead>
+      <tr><th>Contract month</th><th>Letter code</th><th>ES example</th><th>NQ example</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>March</td><td><code>H</code></td><td><code>ESH</code></td><td><code>NQH</code></td></tr>
+      <tr><td>June</td><td><code>M</code></td><td><code>ESM</code></td><td><code>NQM</code></td></tr>
+      <tr><td>September</td><td><code>U</code></td><td><code>ESU</code></td><td><code>NQU</code></td></tr>
+      <tr><td>December</td><td><code>Z</code></td><td><code>ESZ</code></td><td><code>NQZ</code></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>The micro contracts follow the same month codes. MES and MNQ are written as <code>MES</code> and <code>MNQ</code> followed by the month letter and year digit, so a June 2030 micro S&amp;P contract is written <code>MESM30</code>. The letters are a convention for naming. They do not describe the contract itself.</p>
+
+<h2>What expiration means</h2>
+<p>Each quarterly contract has a last trading day, which falls on the third Friday of its contract month. After that day the contract stops trading and settles. Index futures of this type are cash settled, so no shares change hands. Your position is closed out against the final settlement price and the account is adjusted in cash.</p>
+<p>Before expiration, a trader who wants to keep exposure to the index has to move to a later contract. That move is what people call a roll.</p>
+
+<h2>What front month means</h2>
+<p>The front month is the nearest contract that has not yet expired. It is the one most people mean when they say "the ES" or "the NQ" without naming a month.</p>
+<p>In practice, the front month is usually the contract with the most volume and open interest. That is not a rule written into the exchange, and it can change. The front month is a description of where activity sits at a given moment, and that position moves forward on a schedule.</p>
+
+<h2>Roll week and the volume shift</h2>
+<p>In the days before expiration, volume tends to migrate from the expiring contract to the next one. Traders who hold positions close them in the old contract and open matching positions in the new one. Market makers and institutions do the same on their own schedules. Over a few sessions, the bulk of activity moves across.</p>
+<p>The timing varies. Some participants roll early, others wait until the final days. The shift is gradual in most cases, though the exact pattern changes from quarter to quarter.</p>
+
+<div class="panel" aria-label="Illustrative roll calendar">
+  <div class="panel-head">
+    <strong>Roll calendar: share of daily volume, one contract pair</strong>
+    <span class="tag">Illustration</span>
+  </div>
+  <div class="bars">
+    <div class="day">
+      <span class="lbl">About 2 weeks out</span>
+      <div>
+        <div class="track"><div class="seg-front" style="width:92%"></div><div class="seg-next" style="width:8%"></div></div>
+      </div>
+    </div>
+    <div class="day">
+      <span class="lbl">Roll week, early</span>
+      <div>
+        <div class="track"><div class="seg-front" style="width:68%"></div><div class="seg-next" style="width:32%"></div></div>
+      </div>
+    </div>
+    <div class="day">
+      <span class="lbl">Roll week, late</span>
+      <div>
+        <div class="track"><div class="seg-front" style="width:35%"></div><div class="seg-next" style="width:65%"></div></div>
+      </div>
+    </div>
+    <div class="day">
+      <span class="lbl">Expiration day</span>
+      <div>
+        <div class="track"><div class="seg-front" style="width:6%"></div><div class="seg-next" style="width:94%"></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--pink)"></i>Expiring contract</span>
+    <span><i style="background:var(--violet)"></i>Next contract</span>
+  </div>
+  <p class="fine" style="margin-bottom:0">Illustration only. These splits are made up to show the general shape of a roll. They are not real volume figures, and real splits differ from quarter to quarter.</p>
+</div>
+
+<h2>Why charts gap across contracts</h2>
+<p>Two contracts on the same index can trade at different prices on the same day. The gap comes from the cost of carrying a position until each expiration, which reflects interest rates, expected dividends on the underlying stocks, and time. Contracts that expire later usually sit at a different level than the nearer one. This difference is often called the basis or spread.</p>
+<p>When a chart switches from the expiring contract to the next one, the price history can show a jump at the switch point. That jump is a difference between two instruments, not a move in the market itself. It can look like a gap, a spike, or an odd level that never traded.</p>
+
+<h2>Continuous and actual contracts</h2>
+<p>There are two ways to look at a futures series.</p>
+<div class="grid2">
+  <div class="card">
+    <h3>Actual contract</h3>
+    <p>A single contract, such as the June contract, with only its own trades and prices. It starts trading, has an active life, and then expires. Its history stops at expiration.</p>
+  </div>
+  <div class="card">
+    <h3>Continuous contract</h3>
+    <p>A stitched series that joins many actual contracts into one line over time. It is convenient for long charts, but the joins create the gaps described above. Some continuous series adjust old prices to remove the jumps, and some do not. Knowing which one you are looking at matters when you read older levels.</p>
+  </div>
+</div>
+<p>When a level appears on a continuous chart, check which contract produced it. A level from an expired contract may not exist on the current one.</p>
+
+<h2>Practical reading notes</h2>
+<ul>
+  <li>Confirm the contract month shown in your platform before reading a price level.</li>
+  <li>Expect a difference between contracts during and around roll week.</li>
+  <li>Treat a jump on a continuous chart as a possible contract switch before treating it as a market event.</li>
+  <li>Micro and standard contracts share the same expiration schedule, so both roll in the same window.</li>
+</ul>
+
+<section class="cta" aria-label="Free Observer account">
+  <h2>Keep this reference nearby</h2>
+  <p>Korvus is a 24/7 market intelligence terminal for index futures. The free Observer account costs nothing and lets you look around the terminal before you decide anything else.</p>
+  <a class="btn" href="https://korvus.industries/signup">Create a free Observer account</a>
+</section>
+
+<h2>Related guides</h2>
+<div class="related">
+  <a href="https://korvus.industries/p/futures-tick-value-explained"><b>Tick value explained</b><span>What a single tick is worth in each contract.</span></a>
+  <a href="https://korvus.industries/p/futures-margin-explained"><b>Margin explained</b><span>How initial and maintenance margin are set and why they change.</span></a>
+  <a href="https://korvus.industries/p/futures-trading-sessions"><b>Trading sessions</b><span>When index futures trade and how the sessions overlap.</span></a>
+</div>
+
+<p class="fine">Education only. Nothing on this page is trading advice, a recommendation, or a promise of results. Contract specifications, expiration dates, and settlement rules are set by the exchange and can change. Confirm details with the exchange and your broker before you trade.</p>
+
+</div>
+
+<footer class="site wrap">
+  <span>BlackCrownVxJ LLC. Korvus is a product of BlackCrownVxJ LLC.</span>
+  <span><a href="https://korvus.industries/legal">Legal</a> &middot; <a href="mailto:BlackCrownVxJ.LLC@outlook.com">Contact</a></span>
+</footer>
+</body>
+</html>
