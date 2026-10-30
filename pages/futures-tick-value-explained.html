@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Futures Tick Value and Point Value Explained</title>
+<meta name="description" content="Learn what tick size, tick value and point value mean in index futures, with a plain math walkthrough for ES, NQ, MES and MNQ. Education only.">
+<link rel="canonical" href="https://korvus.industries/p/futures-tick-value-explained">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#07070b;--ink:#e9e7ef;--mute:#9b98a8;--pink:#ff2d8f;--line:rgba(255,255,255,.09);--card:#101018}
+html,body{background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.6;min-height:100%}
+body{position:relative;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-2;background:radial-gradient(900px 500px at 12% -5%,rgba(255,45,143,.16),transparent 60%),radial-gradient(800px 480px at 95% 10%,rgba(120,80,255,.14),transparent 60%),radial-gradient(700px 500px at 50% 110%,rgba(0,190,220,.10),transparent 60%)}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.015) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.015) 1px,transparent 1px);background-size:56px 56px;-webkit-mask-image:radial-gradient(ellipse at center,#000 40%,transparent 90%);mask-image:radial-gradient(ellipse at center,#000 40%,transparent 90%)}
+.vignette{position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.65) 100%)}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+header{display:flex;align-items:center;gap:12px;padding:22px 0;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px;color:var(--ink);text-decoration:none;font-weight:700;letter-spacing:.04em}
+.brand span{font-size:clamp(15px,2.4vw,18px)}
+.brand small{display:block;font-weight:400;color:var(--mute);font-size:12px;letter-spacing:.02em}
+nav{margin-left:auto;display:flex;gap:16px;flex-wrap:wrap}
+nav a{color:var(--mute);text-decoration:none;font-size:14px}
+nav a:hover{color:var(--ink)}
+.hero{padding:56px 0 28px}
+.eyebrow{color:var(--pink);font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:600}
+h1{font-size:clamp(28px,5.2vw,46px);line-height:1.12;margin:12px 0 16px;letter-spacing:-.01em}
+h2{font-size:clamp(21px,3.2vw,29px);margin:44px 0 12px;line-height:1.2}
+h3{font-size:clamp(17px,2.4vw,20px);margin:24px 0 8px}
+.lede{font-size:clamp(16px,2vw,18px);color:var(--mute);max-width:70ch}
+.prose{max-width:72ch}
+.prose p{margin:0 0 16px;color:#d6d3df}
+.prose ul,.prose ol{margin:0 0 16px 22px;color:#d6d3df}
+.prose li{margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin:20px 0 8px}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 14px;font-size:13px;color:var(--mute)}
+.chip b{color:var(--ink);font-weight:600}
+.formula{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--pink);border-radius:10px;padding:18px 20px;margin:20px 0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:clamp(14px,2vw,16px);color:var(--ink);overflow-x:auto}
+.formula small{display:block;color:var(--mute);font-family:system-ui,sans-serif;margin-top:8px;font-size:13px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:clamp(16px,3vw,26px);margin:24px 0}
+.tag{display:inline-block;font-size:12px;color:var(--pink);border:1px solid rgba(255,45,143,.45);border-radius:6px;padding:2px 8px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px}
+.table-wrap{width:100%;overflow-x:auto;border-radius:10px;border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:clamp(13px,1.8vw,15px);min-width:520px}
+th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line)}
+th{background:rgba(255,255,255,.03);color:var(--mute);font-weight:600;font-size:13px;letter-spacing:.03em}
+td.num{font-variant-numeric:tabular-nums;color:var(--ink)}
+tr:last-child td{border-bottom:0}
+.caption{font-size:13px;color:var(--mute);margin-top:10px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:20px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
+.card h3{margin-top:0}
+.card p{color:var(--mute);font-size:15px}
+.bar-viz{display:flex;align-items:flex-end;gap:10px;height:120px;margin:14px 0 6px}
+.bar-viz div{flex:1;background:linear-gradient(180deg,var(--pink),rgba(255,45,143,.2));border-radius:6px 6px 0 0}
+.related{margin:48px 0 0;padding:24px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+.related ul{list-style:none;display:grid;grid-template-columns:repeat(2,1fr);gap:10px 16px}
+.related a{color:var(--ink);text-decoration:none;border-bottom:1px dashed rgba(255,45,143,.5)}
+.related a:hover{color:var(--pink)}
+.cta{margin:40px 0 20px;padding:28px;border-radius:16px;border:1px solid rgba(255,45,143,.35);background:linear-gradient(135deg,rgba(255,45,143,.12),rgba(120,80,255,.08))}
+.cta p{color:#d6d3df;max-width:66ch}
+.btn{display:inline-block;margin-top:8px;background:var(--pink);color:#0a0a10;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:10px}
+.disclaimer{font-size:13px;color:var(--mute);margin:24px 0 8px;max-width:72ch}
+footer{border-top:1px solid var(--line);margin-top:40px;padding:24px 0 36px;color:var(--mute);font-size:13px}
+footer a{color:var(--mute)}
+@media (max-width:700px){
+  .grid,.related ul{grid-template-columns:1fr}
+  nav{margin-left:0;width:100%}
+  header{flex-wrap:wrap}
+  .hero{padding-top:36px}
+}
+</style>
+</head>
+<body>
+<div class="vignette" aria-hidden="true"></div>
+<div class="wrap">
+<header>
+  <a class="brand" href="/">
+    <svg width="36" height="33" viewBox="0 0 36 33" fill="none" stroke="#ff2d8f" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+      <path d="M5 26 L3 10 L12 17 L18 6 L24 17 L33 10 L31 26 Z"/>
+      <line x1="6" y1="30" x2="30" y2="30"/>
+      <circle cx="18" cy="4" r="1.6" fill="#ff2d8f"/>
+    </svg>
+    <span>KORVUS<small>Market intelligence, 24/7</small></span>
+  </a>
+  <nav aria-label="Primary">
+    <a href="/">Home</a>
+    <a href="/lodestone">LodeStone</a>
+    <a href="/login">Log in</a>
+    <a href="/signup">Free account</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="eyebrow">Beginner guide</div>
+  <h1>Futures Tick Value and Point Value Explained</h1>
+  <p class="lede">Before you can read a futures chart with any confidence, you need to know what a single price move is worth in dollars. This guide walks through tick size, tick value and point value, with the math written out so you can check it yourself.</p>
+  <div class="chips">
+    <span class="chip"><b>Level:</b> Beginner</span>
+    <span class="chip"><b>Read time:</b> about 7 minutes</span>
+    <span class="chip"><b>Covers:</b> ES, NQ, MES, MNQ</span>
+  </div>
+</section>
+
+<article class="prose">
+
+<h2>Why this matters before anything else</h2>
+<p>Index futures quote prices in index points, but your account balance moves in dollars. The bridge between the two is the contract specification. Every futures contract defines three numbers: the tick size, the tick value, and the point value. If you do not know these, a move on the chart can look small while the dollar result is much larger, or the reverse.</p>
+<p>This page is education only. It does not tell you what to trade, when to trade, or what result to expect. It only explains how the arithmetic works.</p>
+
+<h2>Point value: what one full index point is worth</h2>
+<p>A point value is the dollar amount of one full point of price movement, for one contract. Each index future has a fixed point value set by the exchange. A one point move in the S&amp;P 500 E-mini (ES) is worth $50 per contract. A one point move in the Nasdaq-100 E-mini (NQ) is worth $20 per contract.</p>
+<p>The micro versions are sized at one tenth of their full-size parents. The Micro E-mini S&amp;P 500 (MES) carries a point value of $5. The Micro E-mini Nasdaq-100 (MNQ) carries a point value of $2.</p>
+
+<h2>Tick size: the smallest price step</h2>
+<p>A tick is the minimum price increment the contract can move. For ES, NQ, MES and MNQ the tick size is 0.25 index points. Prices can only land on quarter points, so the market steps in increments of 0.25 and never in between.</p>
+
+<h2>Tick value: the dollar value of one tick</h2>
+<p>Tick value is the dollar amount of one minimum price step for one contract. It is the tick size multiplied by the point value:</p>
+
+<div class="formula">
+  Tick value = Tick size &times; Point value
+  <small>Tick size is measured in index points. Point value is dollars per full point.</small>
+</div>
+
+<p>Run the four contracts through that formula and you get the table below. The point value and tick size are the only inputs; everything else follows from them.</p>
+
+<div class="panel">
+  <span class="tag">Illustration</span>
+  <h3 style="margin-top:4px">Tick and point values, one contract</h3>
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Contract</th>
+        <th>Full name</th>
+        <th>Tick size (points)</th>
+        <th>Point value</th>
+        <th>Tick value</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>ES</td>
+        <td>E-mini S&amp;P 500</td>
+        <td class="num">0.25</td>
+        <td class="num">$50.00</td>
+        <td class="num">$12.50</td>
+      </tr>
+      <tr>
+        <td>NQ</td>
+        <td>E-mini Nasdaq-100</td>
+        <td class="num">0.25</td>
+        <td class="num">$20.00</td>
+        <td class="num">$5.00</td>
+      </tr>
+      <tr>
+        <td>MES</td>
+        <td>Micro E-mini S&amp;P 500</td>
+        <td class="num">0.25</td>
+        <td class="num">$5.00</td>
+        <td class="num">$1.25</td>
+      </tr>
+      <tr>
+        <td>MNQ</td>
+        <td>Micro E-mini Nasdaq-100</td>
+        <td class="num">0.25</td>
+        <td class="num">$2.00</td>
+        <td class="num">$0.50</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="caption">Illustration. Values shown are per contract, before commissions and exchange fees. Exchanges can revise contract specifications, so confirm current figures on the exchange or your broker's contract page before relying on them.</p>
+</div>
+
+<h2>Working the math by hand</h2>
+<p>Once you have the tick value, you can translate any price move into dollars. Two steps cover it: count the ticks, then multiply by the tick value. Counting ticks is simple division: the points moved divided by 0.25.</p>
+
+<div class="formula">
+  Dollar move = (Points moved &divide; 0.25) &times; Tick value
+  <small>Same answer as Points moved &times; Point value.</small>
+</div>
+
+<h3>Example one: ES</h3>
+<p>Suppose the ES price moves from one level to a level 3 points higher. That is 3 &divide; 0.25 = 12 ticks. At $12.50 per tick, 12 ticks is $150 for one contract. Check: 3 points &times; $50 = $150. Same result.</p>
+
+<h3>Example two: MNQ</h3>
+<p>Suppose the MNQ price moves 10 points. That is 10 &divide; 0.25 = 40 ticks. At $0.50 per tick, 40 ticks is $20 for one contract. Check: 10 points &times; $2 = $20.</p>
+
+<h3>Example three: contract count</h3>
+<p>Multiply by size. Two NQ contracts moving 5 points is 5 &times; $20 = $100 per contract, so $200 total. Position size scales every dollar figure in a straight line, which is why sizing is covered separately in the margin guide linked below.</p>
+
+<h2>A quick way to remember it</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Points tell you the move</h3>
+    <p>The chart shows index points. That is the language of price.</p>
+  </div>
+  <div class="card">
+    <h3>Dollars tell you the stake</h3>
+    <p>Your account lives in dollars. Point value converts one to the other.</p>
+  </div>
+  <div class="card">
+    <h3>Ticks tell you the steps</h3>
+    <p>Every price change is a count of 0.25 steps. Tick value prices each step.</p>
+  </div>
+  <div class="card">
+    <h3>Micros are the same math</h3>
+    <p>MES and MNQ use the same tick size. Only the dollar value per tick changes.</p>
+  </div>
+</div>
+
+<h2>Things the formula does not include</h2>
+<ul>
+  <li><strong>Commissions and fees.</strong> Your broker and the exchange charge per contract. These reduce any result and are not in the tick math above.</li>
+  <li><strong>Slippage.</strong> A fast market can fill you at a price away from the one you saw. Tick math assumes a clean fill, which is not guaranteed.</li>
+  <li><strong>Contract changes.</strong> Specifications are set by the exchange and can change. Check the current contract page.</li>
+  <li><strong>Margin.</strong> Holding a position requires margin, which is a separate concept from tick value. See the margin guide.</li>
+</ul>
+
+<h2>Where to go next</h2>
+<p>Tick value is one piece of the picture. The guides below cover the nearby ideas a beginner usually needs next, from choosing between the two main contracts to practicing without real money and reading the economic calendar.</p>
+
+</article>
+
+<section class="related" aria-labelledby="related-title">
+  <h2 id="related-title" style="margin-top:0">Related guides</h2>
+  <ul>
+    <li><a href="/p/es-vs-nq-beginners">ES vs NQ for beginners</a></li>
+    <li><a href="/p/paper-trade-futures">How to paper trade futures</a></li>
+    <li><a href="/p/futures-margin-explained">Futures margin explained</a></li>
+    <li><a href="/p/economic-calendar-futures">Reading the economic calendar for futures</a></li>
+    <li><a href="/p/smt-divergence-explained">SMT divergence explained</a></li>
+  </ul>
+</section>
+
+<section class="cta" aria-labelledby="cta-title">
+  <h2 id="cta-title" style="margin-top:0">Want to watch the market while you learn it?</h2>
+  <p>Korvus runs a 24/7 market intelligence terminal for index futures traders. A free Observer account at korvus.industries lets you look around the terminal at no cost and no card. Judge the output yourself.</p>
+  <a class="btn" href="/signup">Create a free Observer account</a>
+</section>
+
+<p class="disclaimer">Education only. Nothing on this page is trading advice, a recommendation to buy or sell any instrument, or a promise of any profit or result. Futures trading involves substantial risk of loss and is not suitable for everyone. Figures are per contract and exclude commissions, fees and slippage.</p>
+
+<footer>
+  <p>&copy; BlackCrownVxJ LLC. <a href="/legal">Legal</a> &middot; <a href="/">korvus.industries</a></p>
+</footer>
+</div>
+</body>
+</html>
