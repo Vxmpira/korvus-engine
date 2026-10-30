@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What Moves ES Futures: A Beginner Guide</title>
+<meta name="description" content="A plain guide to what moves E-mini S&amp;P 500 futures: CPI, FOMC, NFP, mega cap earnings, rates, the dollar, session opens and liquidity. Education only.">
+<link rel="canonical" href="https://korvus.industries/p/what-moves-es-futures">
+<style>
+:root{--bg:#07070b;--panel:#0e0e16;--line:#22222e;--text:#e6e6ee;--muted:#9a9ab0;--pink:#ff2d8f;--cyan:#38d6ff;--gold:#ffc857}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.6;min-height:100vh;position:relative;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-2;background:radial-gradient(900px 600px at 12% -10%,rgba(255,45,143,.16),transparent 60%),radial-gradient(800px 560px at 95% 8%,rgba(56,214,255,.12),transparent 60%),radial-gradient(700px 500px at 50% 110%,rgba(255,200,87,.07),transparent 65%)}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:56px 56px;-webkit-mask-image:radial-gradient(ellipse at center,#000 40%,transparent 85%);mask-image:radial-gradient(ellipse at center,#000 40%,transparent 85%)}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 0;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--text);font-weight:700;letter-spacing:.04em}
+.brand span{font-size:15px}
+nav.links{display:flex;gap:18px;flex-wrap:wrap}
+nav.links a{color:var(--muted);text-decoration:none;font-size:14px}
+nav.links a:hover{color:var(--text)}
+h1{font-size:clamp(28px,5vw,46px);line-height:1.15;margin:44px 0 14px;letter-spacing:-.01em}
+h2{font-size:clamp(20px,3vw,27px);margin:48px 0 12px;color:var(--text)}
+h3{font-size:clamp(16px,2.2vw,18px);margin:0 0 8px;color:var(--pink)}
+p,li{font-size:17px;color:#d4d4df;max-width:68ch}
+.lede{font-size:clamp(17px,2.2vw,19px);color:var(--muted)}
+a{color:var(--cyan)}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--pink);margin:0}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:20px 0}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0)),var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}
+.card p{font-size:15px;margin:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;margin:24px 0}
+.tag{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);border:1px solid rgba(255,200,87,.4);border-radius:999px;padding:3px 10px;margin-bottom:12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}
+.chip{font-size:13px;border:1px solid var(--line);border-radius:999px;padding:5px 12px;color:var(--muted);background:rgba(255,255,255,.02)}
+svg.fig{width:100%;height:auto;display:block}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:15px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.08em}
+td{color:#d4d4df}
+.cta{background:linear-gradient(135deg,rgba(255,45,143,.14),rgba(56,214,255,.08)),var(--panel);border:1px solid rgba(255,45,143,.35);border-radius:16px;padding:28px;margin:56px 0 24px;text-align:center}
+.cta p{margin:0 auto 18px}
+.btn{display:inline-block;background:var(--pink);color:#fff;text-decoration:none;font-weight:700;padding:13px 24px;border-radius:10px}
+.related{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:24px 0}
+.related a{display:block;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;text-decoration:none;color:var(--text)}
+.related a span{display:block;color:var(--muted);font-size:14px;margin-top:4px}
+.disclaimer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding:22px 0 40px;margin-top:40px}
+footer{font-size:13px;color:var(--muted);padding:0 0 40px}
+@media (max-width:700px){
+.grid{grid-template-columns:1fr}
+.related{grid-template-columns:1fr}
+header.top{flex-direction:column;align-items:flex-start}
+nav.links{gap:12px}
+table{font-size:14px}
+th,td{padding:8px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+<a class="brand" href="https://korvus.industries/" aria-label="Korvus home">
+<svg width="36" height="33" viewBox="0 0 36 33" aria-label="BlackCrown crown mark" role="img"><path d="M4 26 L6 10 L13 18 L18 6 L23 18 L30 10 L32 26 Z M4 30 H32" fill="none" stroke="#ff2d8f" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>
+<span>KORVUS</span>
+</a>
+<nav class="links" aria-label="Primary">
+<a href="https://korvus.industries/lodestone">LodeStone</a>
+<a href="https://korvus.industries/p/es-vs-nq-beginners">ES vs NQ</a>
+<a href="https://korvus.industries/p/economic-calendar-futures">Economic Calendar</a>
+<a href="https://korvus.industries/login">Log in</a>
+</nav>
+</header>
+
+<main>
+<p class="eyebrow">Beginner guide</p>
+<h1>What moves ES futures</h1>
+<p class="lede">The E-mini S&amp;P 500 (ES) tracks the broad US large cap market. It does not move on whim. Most of its big swings trace back to a short list of forces: economic data, central bank decisions, a few giant companies, interest rates and the dollar, the hours the market is open, and where orders tend to cluster. This page walks through each one in plain terms.</p>
+
+<h2>Start with what ES is</h2>
+<p>One ES contract is priced as the S&amp;P 500 index multiplied by $50 per index point. When the index moves 10 points, one contract moves $500. That leverage is why the contract is popular and why it is risky. ES trades nearly around the clock on CME Globex, with a daily maintenance break and a separate regular session that most traders watch closely.</p>
+<p>Because ES is a claim on 500 companies, anything that changes the expected earnings, financing costs, or risk appetite of those companies can move it. The sections below sort those forces into groups.</p>
+
+<h2>Macro data releases</h2>
+<p>Scheduled releases are the most predictable source of sudden movement. The market has a forecast for each number. The surprise, meaning the gap between the actual print and the consensus, is what moves price. A number that matches expectations often moves very little.</p>
+
+<div class="grid">
+<div class="card">
+<h3>CPI</h3>
+<p>Consumer Price Index measures inflation. A hotter than expected print tends to push rate expectations up, which often pressures equities. A cooler print can do the reverse. Core readings, which strip out food and energy, get extra attention.</p>
+</div>
+<div class="card">
+<h3>FOMC</h3>
+<p>The Federal Open Market Committee sets the policy rate. The decision itself matters, but the statement, the press conference, and the updated projections often matter more. Tone shifts can reprice the whole curve in minutes.</p>
+</div>
+<div class="card">
+<h3>NFP</h3>
+<p>Nonfarm Payrolls reports monthly job creation and wage growth. Strong jobs can read as good for growth and bad for rate cuts, so the reaction is not always one direction. Wages often matter as much as the headline count.</p>
+</div>
+</div>
+
+<div class="panel" aria-label="Illustration data panel">
+<span class="tag">Illustration</span>
+<h3>How a surprise moves ES around a release</h3>
+<p>Simplified shape only. Not real market data.</p>
+<svg class="fig" viewBox="0 0 640 220" role="img" aria-label="Illustration: ES price line jumping after a release at the vertical marker, then settling">
+<rect x="0" y="0" width="640" height="220" fill="none"/>
+<line x1="40" y1="180" x2="620" y2="180" stroke="#22222e" stroke-width="2"/>
+<line x1="40" y1="30" x2="40" y2="180" stroke="#22222e" stroke-width="2"/>
+<line x1="330" y1="20" x2="330" y2="180" stroke="#ffc857" stroke-width="2" stroke-dasharray="6 6"/>
+<polyline points="40,120 120,118 200,125 260,122 330,122 360,58 400,70 460,92 520,84 620,96" fill="none" stroke="#38d6ff" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="360" cy="58" r="5" fill="#ff2d8f"/>
+<text x="340" y="16" fill="#ffc857" font-size="13" font-family="system-ui,sans-serif">Release</text>
+</svg>
+</div>
+
+<h2>Mega cap earnings</h2>
+<p>ES is market cap weighted. A handful of very large companies carry a big share of the index. When one of them reports, its guidance can shift expectations for the whole group, and the index can move even if most of the 500 names are quiet. Reports from the largest technology and communication names tend to matter most. Watch the weight, not just the headline company.</p>
+
+<h2>Rates and the dollar</h2>
+<p>Stocks are priced against the cost of money. When Treasury yields rise, future earnings are worth less today, and equity valuations often compress. When yields fall, the reverse can happen. The dollar matters too. A stronger dollar can weigh on multinational earnings, while a weaker dollar can support them. Rates and the dollar are not always aligned, so read them together.</p>
+
+<table>
+<thead><tr><th>Force</th><th>Common read</th><th>Why it matters for ES</th></tr></thead>
+<tbody>
+<tr><td>Yields rising</td><td>Tighter financial conditions</td><td>Valuations tend to face pressure</td></tr>
+<tr><td>Yields falling</td><td>Easier conditions</td><td>Supports valuations, if growth holds</td></tr>
+<tr><td>Dollar strengthening</td><td>Headwind for exporters</td><td>Can weigh on multinational earnings</td></tr>
+<tr><td>Dollar weakening</td><td>Tailwind for exporters</td><td>Can lift overseas revenue in dollar terms</td></tr>
+</tbody>
+</table>
+
+<h2>Session opens</h2>
+<p>The market does not behave the same way at every hour. The overnight Globex session is thinner, so moves can be larger on less volume. The cash equity open at 9:30 a.m. Eastern brings in the stock market itself, and the first minutes often carry heavy volume and fast repricing. Many traders treat the open as a reset point where the overnight range is tested. Hours matter. The same headline can produce a different reaction at 3:00 a.m. than at 10:00 a.m.</p>
+
+<div class="chips" aria-label="Session chips">
+<span class="chip">Globex overnight</span>
+<span class="chip">Pre market</span>
+<span class="chip">Cash open 9:30 ET</span>
+<span class="chip">Midday lull</span>
+<span class="chip">Afternoon flow</span>
+<span class="chip">Close</span>
+</div>
+
+<h2>Liquidity</h2>
+<p>Liquidity is the depth of resting orders at each price. Where liquidity is deep, price tends to move slowly. Where it is thin, a small order can move price a lot. Prior session highs and lows, round numbers, and the prior day close are common places where orders sit. When price trades into those zones, it can accelerate, stall, or reverse. Liquidity explains why ES sometimes sweeps through a level and then returns, and why thin hours can produce sharp spikes that fade.</p>
+
+<div class="grid">
+<div class="card"><h3>Depth</h3><p>How much size sits at each price. Thin depth means bigger moves per unit of volume.</p></div>
+<div class="card"><h3>Reference levels</h3><p>Prior highs, lows, and closes that many participants watch.</p></div>
+<div class="card"><h3>Volume</h3><p>Activity confirms or questions a move. A breakout on light volume deserves more doubt.</p></div>
+</div>
+
+<h2>Putting it together</h2>
+<p>ES rarely moves for one reason. A release can land during a thin hour, near a major level, with yields already moving. Learn each force on its own, then watch how they stack. Your first goal is to recognize what is happening, not to predict what happens next.</p>
+
+<div class="related" aria-label="Related guides">
+<a href="https://korvus.industries/p/es-vs-nq-beginners">ES vs NQ for beginners<span>How the two index futures differ in size, behavior, and risk.</span></a>
+<a href="https://korvus.industries/p/economic-calendar-futures">Reading the economic calendar<span>How to find release times, forecasts, and impact levels.</span></a>
+</div>
+
+<section class="cta" aria-label="Call to action">
+<p class="eyebrow">Free to start</p>
+<h2 style="margin-top:10px">Watch the forces as they happen</h2>
+<p>Korvus runs 24/7 market intelligence for index futures traders. The Observer tier is free, with no card required. Use it to see scored news and session context while you learn.</p>
+<a class="btn" href="https://korvus.industries/signup">Start with the free Observer tier</a>
+</section>
+
+</main>
+
+<section class="disclaimer" aria-label="Disclaimer">
+<p>Education only. Nothing on this page is financial advice, a recommendation to buy or sell any instrument, or a promise of profit. Futures carry substantial risk and can lose more than you deposit. Past market behavior does not predict future results. The chart in this guide is an illustration, not real data. Consider your own situation and consult a licensed professional before trading.</p>
+</section>
+
+<footer>
+<p>BlackCrownVxJ LLC. Korvus is a market intelligence product. Contact: BlackCrownVxJ.LLC@outlook.com</p>
+</footer>
+
+</div>
+</body>
+</html>
