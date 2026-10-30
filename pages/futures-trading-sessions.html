@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Futures Trading Sessions Explained | Korvus</title>
+<meta name="description" content="A plain guide to the Asia, London and New York sessions for index futures, with open times in ET and what each session tends to look like.">
+<link rel="canonical" href="https://korvus.industries/p/futures-trading-sessions">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#06070a;color:#d9dde6;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.6}
+body{min-height:100vh;position:relative;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-2;background:radial-gradient(60% 40% at 15% 0%,rgba(90,70,200,.22),transparent 70%),radial-gradient(50% 35% at 90% 20%,rgba(30,140,160,.16),transparent 70%),radial-gradient(45% 40% at 50% 100%,rgba(120,60,180,.14),transparent 70%)}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:48px 48px;-webkit-mask-image:radial-gradient(ellipse at center,#000 40%,transparent 85%);mask-image:radial-gradient(ellipse at center,#000 40%,transparent 85%)}
+a{color:#a99cff;text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+header{padding:22px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;color:#f2f4f8;font-weight:700;letter-spacing:.04em}
+.brand svg{width:40px;height:40px}
+nav a{color:#9aa3b5;margin-left:18px;font-size:.95rem}
+nav a:hover{color:#f2f4f8}
+.hero{padding:clamp(40px,8vw,88px) 0 28px}
+.eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:.78rem;color:#8fd3e0}
+h1{font-size:clamp(2rem,5.2vw,3.4rem);line-height:1.12;color:#f6f7fb;margin:14px 0 16px;font-weight:750}
+h2{font-size:clamp(1.4rem,3vw,1.9rem);color:#f2f4f8;margin:0 0 12px}
+h3{font-size:clamp(1.1rem,2.4vw,1.25rem);color:#f2f4f8;margin:0 0 8px}
+.lead{font-size:clamp(1.05rem,2vw,1.2rem);color:#b9c0cf;max-width:640px}
+section{padding:36px 0;border-top:1px solid rgba(255,255,255,.06)}
+.prose{max-width:680px}
+.prose p{margin-bottom:14px;color:#c6ccd8}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.chip{border:1px solid rgba(169,156,255,.35);background:rgba(169,156,255,.08);color:#d7d0ff;padding:6px 12px;border-radius:999px;font-size:.88rem}
+.card-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.card{border:1px solid rgba(255,255,255,.08);background:rgba(12,14,20,.7);border-radius:14px;padding:20px}
+.card p{color:#aab2c2;font-size:.95rem}
+.tag{display:inline-block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:#f0c987;border:1px solid rgba(240,201,135,.4);padding:2px 8px;border-radius:6px;margin-bottom:10px}
+.figure{border:1px solid rgba(255,255,255,.09);background:rgba(10,12,18,.8);border-radius:16px;padding:22px;margin-top:20px}
+.figure .cap{font-size:.85rem;color:#8e97a9;margin-bottom:14px}
+.track-row{display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:center;margin-bottom:12px}
+.track-row span{font-size:.9rem;color:#c6ccd8}
+.track{position:relative;height:24px;background:rgba(255,255,255,.04);border-radius:6px;overflow:hidden}
+.seg{position:absolute;top:0;bottom:0;border-radius:6px}
+.asia{background:linear-gradient(90deg,#3d6cc4,#5b8ee6)}
+.london{background:linear-gradient(90deg,#2f9c8a,#4ec3ab)}
+.ny{background:linear-gradient(90deg,#8b5cd6,#b08cf0)}
+.hours{display:grid;grid-template-columns:120px 1fr;gap:12px;margin-top:6px}
+.hours div{display:flex;justify-content:space-between;font-size:.75rem;color:#7f889b}
+table{width:100%;border-collapse:collapse;margin-top:14px;font-size:.95rem}
+th,td{text-align:left;padding:12px 10px;border-bottom:1px solid rgba(255,255,255,.07)}
+th{color:#8fd3e0;font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.08em}
+td{color:#c6ccd8}
+.note{font-size:.88rem;color:#8e97a9;margin-top:12px}
+.disclaimer{border:1px solid rgba(240,201,135,.25);background:rgba(240,201,135,.05);border-radius:14px;padding:18px 20px;color:#d9d2bf;font-size:.92rem}
+.cta{border:1px solid rgba(169,156,255,.3);background:linear-gradient(135deg,rgba(90,70,200,.18),rgba(30,140,160,.1));border-radius:18px;padding:clamp(24px,4vw,36px);text-align:left}
+.btn{display:inline-block;margin-top:14px;background:#b8a8ff;color:#0b0c12;font-weight:700;padding:12px 22px;border-radius:10px}
+.btn:hover{text-decoration:none;background:#cbbfff}
+footer{padding:30px 0 50px;border-top:1px solid rgba(255,255,255,.07);color:#7f889b;font-size:.88rem}
+footer a{color:#9aa3b5}
+@media (max-width:700px){
+  .card-grid{grid-template-columns:1fr}
+  nav a{margin-left:12px}
+  .track-row,.hours{grid-template-columns:84px 1fr}
+  .track-row span{font-size:.8rem}
+  th,td{padding:10px 6px;font-size:.88rem}
+}
+</style>
+</head>
+<body>
+<header>
+<div class="wrap bar">
+<div class="brand">
+<svg viewBox="0 0 40 40" role="img" aria-label="Korvus crown logo">
+<circle cx="20" cy="20" r="19" fill="#14121f" stroke="#a99cff" stroke-width="1.5"/>
+<polygon points="9,26 9,14 15,20 20,11 25,20 31,14 31,26" fill="#b8a8ff"/>
+<rect x="9" y="27" width="22" height="3" rx="1" fill="#b8a8ff"/>
+</svg>
+<span>KORVUS</span>
+</div>
+<nav>
+<a href="/">Home</a>
+<a href="/lodestone">LodeStone</a>
+<a href="/signup">Sign up</a>
+</nav>
+</div>
+</header>
+
+<main>
+<div class="wrap hero">
+<div class="eyebrow">Beginner guide</div>
+<h1>Futures Trading Sessions Explained</h1>
+<p class="lead">Index futures do not sleep the way a stock exchange does. This guide walks through the Asia, London and New York sessions, when each one opens in Eastern Time, and what each one tends to look like.</p>
+<div class="chips">
+<span class="chip">Asia</span>
+<span class="chip">London</span>
+<span class="chip">New York</span>
+<span class="chip">All times in ET</span>
+</div>
+</div>
+
+<section>
+<div class="wrap">
+<h2>What a session means</h2>
+<div class="prose">
+<p>A trading session is a stretch of the day when a particular group of markets is most active. The label usually comes from the region where the largest share of trading is happening at that hour. The sessions overlap, so one ends while the next is already building.</p>
+<p>Index futures such as the E-mini S&amp;P 500 and Nasdaq contracts trade almost around the clock on CME Globex. The session labels do not mean the market closes between them. They describe who is most present and how the tape tends to move.</p>
+</div>
+</div>
+</section>
+
+<section>
+<div class="wrap">
+<h2>The 24 hour view</h2>
+<p class="prose">The strip below shows roughly when each session is active, laid out across one Eastern Time day. The bars are a teaching aid, not a schedule.</p>
+<div class="figure">
+<div class="tag">Illustration</div>
+<div class="cap">Approximate session activity across a 24 hour ET day. Exact hours shift with daylight saving time and vendor definitions.</div>
+<div class="track-row"><span>Asia (Tokyo)</span><div class="track"><div class="seg asia" style="left:0%;width:16.67%"></div><div class="seg asia" style="left:79.17%;width:20.83%"></div></div></div>
+<div class="track-row"><span>London</span><div class="track"><div class="seg london" style="left:12.5%;width:37.5%"></div></div></div>
+<div class="track-row"><span>New York</span><div class="track"><div class="seg ny" style="left:33.33%;width:37.5%"></div></div></div>
+<div class="hours"><span></span><div><span>12a</span><span>4a</span><span>8a</span><span>12p</span><span>4p</span><span>8p</span><span>12a</span></div></div>
+</div>
+</div>
+</section>
+
+<section>
+<div class="wrap">
+<h2>Session by session</h2>
+<div class="card-grid">
+<div class="card">
+<h3>Asia</h3>
+<p>Tokyo leads the Asian window. Roughly 7:00 PM to 4:00 AM ET, with Sydney opening a little earlier at about 5:00 PM ET. Volume in index futures is often lighter than later sessions. Ranges can be tighter, and price often moves within levels that were set the previous day.</p>
+</div>
+<div class="card">
+<h3>London</h3>
+<p>The London session opens around 3:00 AM ET and runs to about noon ET. European cash markets bring in more participants, and this window often sees the first larger moves of the US day. Many traders watch how price behaves as London takes over from Asia.</p>
+</div>
+<div class="card">
+<h3>New York</h3>
+<p>US trading runs from about 8:00 AM to 5:00 PM ET. The cash equity open at 9:30 AM ET is when many new data releases and participants arrive together. It is commonly the most active part of the day for US index futures.</p>
+</div>
+</div>
+</div>
+</section>
+
+<section>
+<div class="wrap">
+<h2>Open times at a glance</h2>
+<div class="prose"><p>Times are Eastern Time. Daylight saving changes can move the local open of each market, so check a current calendar before you rely on any specific hour.</p></div>
+<div class="figure" style="padding:14px 18px">
+<div class="tag">Illustration</div>
+<table>
+<thead><tr><th>Session</th><th>Approx. open (ET)</th><th>Approx. close (ET)</th><th>Common feel</th></tr></thead>
+<tbody>
+<tr><td>Asia (Tokyo)</td><td>7:00 PM</td><td>4:00 AM</td><td>Quieter, tighter ranges</td></tr>
+<tr><td>London</td><td>3:00 AM</td><td>12:00 PM</td><td>Builds momentum, first larger moves</td></tr>
+<tr><td>New York</td><td>8:00 AM</td><td>5:00 PM</td><td>Most active, data and cash open</td></tr>
+<tr><td>London and NY overlap</td><td>8:00 AM</td><td>12:00 PM</td><td>Often the busiest stretch</td></tr>
+</tbody>
+</table>
+<p class="note">Globex index futures run Sunday 6:00 PM to Friday 5:00 PM ET with a one hour daily break starting at 5:00 PM ET. Confirm against the exchange calendar.</p>
+</div>
+</div>
+</section>
+
+<section>
+<div class="wrap">
+<h2>What each tends to look like</h2>
+<div class="prose">
+<p>These are general patterns that beginners often describe. They are not guarantees, and every day has its own character. Patterns repeat more loosely than textbooks suggest.</p>
+<p><strong>Asia</strong> often shows slower, range bound activity with smaller candles. <strong>London</strong> often shows the first directional push of the day, sometimes sweeping levels from the prior session. <strong>New York</strong> often brings the widest swings, especially around scheduled releases and the cash open.</p>
+<p>Korvus Observer watches these windows as they open, so you can see how each session is developing without staring at a chart all night.</p>
+</div>
+</div>
+</section>
+
+<section>
+<div class="wrap">
+<h2>Common beginner mixups</h2>
+<div class="card-grid">
+<div class="card"><h3>Treating a session as a clock</h3><p>Sessions blur at the edges. A label is a rough guide to who is active, not a switch that flips at an exact minute.</p></div>
+<div class="card"><h3>Ignoring the calendar</h3><p>Economic releases can dominate any session. Check the agenda for the day rather than assuming a quiet hour will stay quiet.</p></div>
+<div class="card"><h3>Confusing time zones</h3><p>Local market times differ from ET. Convert every open to Eastern Time before comparing sessions, especially around daylight saving changes.</p></div>
+</div>
+</div>
+</section>
+
+<section>
+<div class="wrap">
+<div class="disclaimer">
+<strong>Not financial advice.</strong> This page is education about how market sessions are commonly described. It does not recommend any trade, contract, entry, exit or position. Futures carry substantial risk of loss and are not suitable for everyone. Past patterns do not predict future results. Do your own research and consider speaking with a licensed professional before trading.
+</div>
+</div>
+</section>
+
+<section>
+<div class="wrap">
+<div class="cta">
+<div class="eyebrow">Free to start</div>
+<h2 style="margin-top:8px">Watch the sessions with Korvus Observer</h2>
+<p class="prose" style="color:#c6ccd8">Korvus is a 24/7 market intelligence terminal for index futures traders. The Observer tier is free and needs no card. Create an account to follow the sessions as they open.</p>
+<a class="btn" href="/signup">Create a free Observer account</a>
+</div>
+</div>
+</section>
+</main>
+
+<footer>
+<div class="wrap">
+<p>Korvus is a product of BlackCrownVxJ LLC. Business contact: <a href="mailto:BlackCrownVxJ.LLC@outlook.com">BlackCrownVxJ.LLC@outlook.com</a></p>
+<p style="margin-top:8px"><a href="/legal">Legal</a> &middot; <a href="/">Home</a> &middot; <a href="/lodestone">LodeStone</a></p>
+</div>
+</footer>
+</body>
+</html>
