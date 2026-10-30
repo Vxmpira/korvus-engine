@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ES Trading Hours and Sessions Explained</title>
+<meta name="description" content="When ES and index futures trade: Globex hours, the daily halt, the 9:30 ET open, and the London and Asia sessions, explained for beginners.">
+<link rel="canonical" href="https://korvus.industries/p/es-trading-hours-explained">
+<meta name="robots" content="index, follow">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#07070a;--panel:#0f0f16;--line:#24242f;--text:#e8e8ee;--mute:#9a9aab;--pink:#ff2d8f;--cyan:#38d6ff;--gold:#f5c542}
+html{background:var(--bg)}
+body{position:relative;min-height:100vh;color:var(--text);font:16px/1.65 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-2;background:radial-gradient(900px 500px at 12% -5%,rgba(255,45,143,.14),transparent 60%),radial-gradient(800px 500px at 95% 15%,rgba(56,214,255,.10),transparent 60%),radial-gradient(700px 500px at 50% 110%,rgba(245,197,66,.07),transparent 60%)}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.015) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.015) 1px,transparent 1px);background-size:56px 56px;-webkit-mask-image:radial-gradient(ellipse at center,#000 40%,transparent 100%);mask-image:radial-gradient(ellipse at center,#000 40%,transparent 100%);box-shadow:inset 0 0 180px 40px rgba(0,0,0,.75)}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+header{display:flex;align-items:center;gap:12px;padding:22px 0;border-bottom:1px solid var(--line)}
+header svg{width:40px;height:37px;flex:none}
+.brand{font-weight:700;letter-spacing:.04em;text-transform:uppercase;font-size:14px}
+.brand span{color:var(--pink)}
+.tag{margin-left:auto;color:var(--mute);font-size:13px}
+h1{font-size:clamp(28px,5vw,46px);line-height:1.15;margin:44px 0 16px;letter-spacing:-.01em}
+h2{font-size:clamp(21px,3vw,28px);margin:44px 0 14px;color:#fff}
+h3{font-size:18px;margin:22px 0 8px;color:var(--pink)}
+.lede{font-size:clamp(17px,2vw,19px);color:#d6d6e2;max-width:75ch}
+.prose{max-width:75ch}
+.prose p{margin:0 0 14px}
+.prose ul{margin:0 0 16px 20px}
+.prose li{margin-bottom:6px}
+a{color:var(--cyan)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;margin:26px 0;width:100%}
+.kicker{display:inline-block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--pink);margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mute);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.06em}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px;color:#cfcfe0;background:#0b0b11}
+.chip b{color:var(--gold);font-weight:600}
+.tt{position:relative;margin-top:14px}
+.ttrow{display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:center;margin-bottom:12px}
+.ttlab{font-size:14px;color:#dcdce8}
+.ttlab small{display:block;color:var(--mute);font-size:12px}
+.track{position:relative;height:28px;background:#0b0b11;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg{position:absolute;top:0;bottom:0;border-radius:4px}
+.globex{background:linear-gradient(90deg,rgba(56,214,255,.18),rgba(56,214,255,.30))}
+.halt{background:repeating-linear-gradient(45deg,rgba(255,45,143,.45) 0 6px,rgba(255,45,143,.25) 6px 12px)}
+.asia{background:rgba(245,197,66,.55)}
+.london{background:rgba(56,214,255,.55)}
+.us{background:rgba(255,45,143,.6)}
+.axis{position:relative;height:22px;margin-left:164px;font-size:12px;color:var(--mute)}
+.axis span{position:absolute;transform:translateX(-50%)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--mute);margin-top:14px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;width:100%}
+.grid2 .panel{margin:0}
+.cta{text-align:center;padding:34px 22px;border:1px solid rgba(255,45,143,.45);border-radius:14px;background:linear-gradient(180deg,rgba(255,45,143,.09),rgba(255,45,143,.02))}
+.btn{display:inline-block;margin-top:12px;padding:13px 26px;border-radius:9px;background:var(--pink);color:#fff;text-decoration:none;font-weight:700}
+.related{list-style:none;margin:0}
+.related li{border-bottom:1px solid var(--line)}
+.related a{display:block;padding:12px 0;text-decoration:none;color:var(--text)}
+.related a:hover{color:var(--cyan)}
+.disc{font-size:13px;color:var(--mute);border-top:1px solid var(--line);margin-top:48px;padding:22px 0 40px;max-width:75ch}
+@media (max-width:700px){
+.grid2{grid-template-columns:1fr}
+.ttrow{grid-template-columns:1fr;gap:6px}
+.axis{margin-left:0}
+.tag{display:none}
+th,td{padding:10px 6px;font-size:14px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<svg viewBox="0 0 36 33" aria-label="BlackCrown crown mark" role="img"><path d="M4 26 L6 10 L13 18 L18 6 L23 18 L30 10 L32 26 Z" fill="none" stroke="#ff2d8f" stroke-width="2" stroke-linejoin="round"/><line x1="6" y1="30" x2="30" y2="30" stroke="#ff2d8f" stroke-width="2" stroke-linecap="round"/></svg>
+<div class="brand">Korvus <span>Guides</span></div>
+<div class="tag">Education only</div>
+</header>
+
+<h1>ES and Index Futures Trading Hours and Sessions, Explained</h1>
+<p class="lede">E-mini S&amp;P 500 (ES) futures do not trade in one block of time. They trade almost around the clock, but the character of the market changes hour by hour. This guide walks through the schedule, the daily halt, and the sessions that hand the market from one region to the next.</p>
+
+<section class="prose">
+<h2>Two ways to trade ES: Globex and RTH</h2>
+<p>CME Group lists ES on its Globex electronic platform. Globex is the trading venue that stays open for most of the week. RTH, regular trading hours, is the core window when the US cash stock market is open and trading volume is usually heaviest.</p>
+<p>Beginners often think "ES hours" means one time range. It is really two layers. Globex sets the outer boundary. RTH sits inside it and is where most of the day's volume and price discovery tends to happen.</p>
+</section>
+
+<section class="panel">
+<span class="kicker">Reference</span>
+<table>
+<thead><tr><th>Item</th><th>Central Time (CT)</th><th>Eastern Time (ET)</th></tr></thead>
+<tbody>
+<tr><td>Globex open to close, Sunday to Friday</td><td class="num">Sun 5:00 PM to Fri 4:00 PM</td><td class="num">Sun 6:00 PM to Fri 5:00 PM</td></tr>
+<tr><td>Daily maintenance halt</td><td class="num">4:00 PM to 5:00 PM</td><td class="num">5:00 PM to 6:00 PM</td></tr>
+<tr><td>US cash equity session (stock market)</td><td class="num">8:30 AM to 3:00 PM</td><td class="num">9:30 AM to 4:00 PM</td></tr>
+<tr><td>ES RTH window (most liquid stretch)</td><td class="num">8:30 AM to 3:15 PM</td><td class="num">9:30 AM to 4:15 PM</td></tr>
+</tbody>
+</table>
+<p class="prose" style="margin-top:12px;font-size:13px;color:var(--mute)">Schedules are set by CME Group and can change for holidays. Check the CME calendar before any session you plan to watch.</p>
+</section>
+
+<section class="prose">
+<h2>The 9:30 ET open</h2>
+<p>The US stock market opens at 9:30 AM ET. That open is the moment when ES joins the cash market at full strength. Orders from stock traders, index funds, and large institutions tend to arrive together. Spreads often tighten and moves can become faster.</p>
+<p>Many beginners treat the first half hour after the open as a separate world. Price can jump quickly as the overnight range meets live US participation. This guide does not say what to do with that. It only marks the time so you can understand what you are looking at.</p>
+</section>
+
+<section class="prose">
+<h2>The overnight session</h2>
+<p>Between the 6:00 PM ET reopen and the 9:30 AM ET open, ES trades on Globex without the US cash market. This is often called the overnight or electronic session. Volume is usually thinner than RTH, so single orders can move price more than they would during the day. Liquidity can also change quickly when news breaks.</p>
+<p>The character of overnight trading depends on who is active. Asian and European participants are more present. Economic releases from other regions can shift the tone. Overnight highs and lows are commonly watched because they show where price travelled while the US was away.</p>
+</section>
+
+<section class="prose">
+<h2>The daily halt</h2>
+<p>Globex closes for one hour each weekday evening for maintenance. In CT that is 4:00 to 5:00 PM. In ET it is 5:00 to 6:00 PM. During the halt no ES trades execute, and charts stop printing new prices. When the session reopens, the first prints can start from a different level than the last print before the halt.</p>
+<p>The halt is not a holiday and it is not a bug. It is a scheduled break. Knowing it exists helps beginners avoid reading a gap on the chart as a market event when it is only the reopen after maintenance.</p>
+</section>
+
+<section class="prose">
+<h2>London and Asia: the session handoff</h2>
+<p>Futures are global, so the day is usually described as a chain of sessions. Asia leads, Europe follows, and the US takes over. Each handoff can bring new volume and a new tone.</p>
+<ul>
+<li><strong>Asia session.</strong> Roughly the Tokyo and wider Asian business day, which falls in the late evening and early morning in ET. Activity is often lighter for ES, though regional news can matter.</li>
+<li><strong>London session.</strong> The European morning. London usually opens early in ET, and its activity often builds before the US arrives. Many traders watch how London trades relative to the overnight range.</li>
+<li><strong>US session.</strong> The cash open at 9:30 ET brings the largest concentration of participants and the most news-driven moves.</li>
+</ul>
+<p>These session names are approximate windows, not sharp switches. Exact start and end times depend on local clock changes, which do not all happen on the same date.</p>
+</section>
+
+<section class="prose">
+<h2>Session timetable (Illustration)</h2>
+<p>The panel below is an illustrative 24-hour ET view. It shows roughly how the sessions overlap. It is not a live feed and it is not a trading signal.</p>
+</section>
+
+<section class="panel" aria-label="Illustration: ES session timetable in Eastern Time">
+<span class="kicker">Illustration, ET, 24 hours</span>
+<div class="tt">
+<div class="ttrow">
+<div class="ttlab">Globex<small>Halt 5 to 6 PM ET</small></div>
+<div class="track">
+<div class="seg globex" style="left:0;width:100%"></div>
+<div class="seg halt" style="left:70.83%;width:4.17%"></div>
+</div>
+</div>
+<div class="ttrow">
+<div class="ttlab">Asia<small>Approx. window</small></div>
+<div class="track">
+<div class="seg asia" style="left:0;width:16.67%"></div>
+<div class="seg asia" style="left:79.17%;width:20.83%"></div>
+</div>
+</div>
+<div class="ttrow">
+<div class="ttlab">London<small>Approx. window</small></div>
+<div class="track">
+<div class="seg london" style="left:12.5%;width:37.5%"></div>
+</div>
+</div>
+<div class="ttrow">
+<div class="ttlab">US cash<small>9:30 AM to 4:00 PM ET</small></div>
+<div class="track">
+<div class="seg us" style="left:39.58%;width:27.08%"></div>
+</div>
+</div>
+<div class="axis">
+<span style="left:0">12 AM</span>
+<span style="left:25%">6 AM</span>
+<span style="left:50%">12 PM</span>
+<span style="left:75%">6 PM</span>
+<span style="left:100%;transform:translateX(-100%)">12 AM</span>
+</div>
+</div>
+<div class="legend">
+<span><i style="background:rgba(56,214,255,.35)"></i>Globex</span>
+<span><i style="background:repeating-linear-gradient(45deg,rgba(255,45,143,.6) 0 3px,rgba(255,45,143,.3) 3px 6px)"></i>Daily halt</span>
+<span><i style="background:rgba(245,197,66,.55)"></i>Asia</span>
+<span><i style="background:rgba(56,214,255,.55)"></i>London</span>
+<span><i style="background:rgba(255,45,143,.6)"></i>US cash</span>
+</div>
+</section>
+
+<section class="prose">
+<h2>The daylight saving shift</h2>
+<p>US daylight saving time ends on November 1, 2026. After that date US clocks move back one hour. CT and ET move together, so the one hour gap between them stays the same. The ET times in this guide will still read the same on your clock, but their position against UTC and against London changes.</p>
+<p>London changes its own clocks on a different schedule. For a few weeks each year the gap between US and European hours is not what it usually is. If you compare times across regions, check each city's current offset rather than relying on a fixed rule.</p>
+</section>
+
+<section class="prose">
+<h2>A beginner checklist</h2>
+</section>
+<section class="grid2">
+<div class="panel">
+<span class="kicker">Know before you look</span>
+<ul class="prose" style="margin:0 0 0 18px">
+<li>Which clock your chart uses, CT or ET.</li>
+<li>When the daily halt starts and ends.</li>
+<li>Whether you are looking at Globex or RTH data.</li>
+<li>Which contract month is front month.</li>
+</ul>
+</div>
+<div class="panel">
+<span class="kicker">Common confusions</span>
+<ul class="prose" style="margin:0 0 0 18px">
+<li>A gap after the halt is a reopen, not a news event.</li>
+<li>Thin overnight volume can exaggerate moves.</li>
+<li>Session names are approximate, not exact switches.</li>
+<li>Holiday schedules change the usual hours.</li>
+</ul>
+</div>
+</section>
+
+<section class="panel">
+<span class="kicker">Tick by tick</span>
+<div class="chips">
+<span class="chip">Globex: <b>Sun to Fri</b></span>
+<span class="chip">Halt: <b>1 hour daily</b></span>
+<span class="chip">Cash open: <b>9:30 ET</b></span>
+<span class="chip">Clocks: <b>CT and ET move together</b></span>
+</div>
+</section>
+
+<section class="prose">
+<h2>Related guides</h2>
+</section>
+<section class="panel" style="padding:8px 22px">
+<ul class="related">
+<li><a href="/p/futures-tick-value-explained">Futures tick value, explained</a></li>
+<li><a href="/p/futures-vs-stocks-small-accounts">Futures vs stocks for small accounts</a></li>
+<li><a href="/p/futures-rollover-explained">Futures rollover, explained</a></li>
+</ul>
+</section>
+
+<section class="cta">
+<h2 style="margin-top:0">See the sessions live</h2>
+<p class="prose" style="margin:0 auto;max-width:60ch">Korvus Observer is free and needs no card. It is a market intelligence terminal for index futures traders, built to keep watch while you sleep. Create an account and look at the session flow yourself.</p>
+<a class="btn" href="https://korvus.industries/signup">Create your free Observer account</a>
+</section>
+
+<footer class="disc">
+Education only. This page explains how trading hours and sessions work. It is not trading advice, a recommendation to buy or sell any instrument, or a promise of any result. Futures carry substantial risk and are not suitable for everyone. Verify all times against CME Group and your own broker before relying on them. BlackCrownVxJ LLC, Korvus Industries.
+</footer>
+</div>
+</body>
+</html>
