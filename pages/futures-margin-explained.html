@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Futures Margin Explained for Index Traders | Korvus</title>
+<meta name="description" content="How futures margin works for index traders: initial versus maintenance margin, why requirements change, and how to read them before you size a position.">
+<link rel="canonical" href="https://korvus.industries/p/futures-margin-explained">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#07080c;--ink:#e8e9ee;--mute:#9aa0ae;--gold:#d9b45a;--teal:#3fc1b0;--line:#1d2030;--card:#0e1119}
+html,body{background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.6}
+body{min-height:100vh;position:relative;overflow-x:hidden}
+body:before{content:"";position:fixed;inset:0;z-index:-2;background:radial-gradient(60% 40% at 15% 0%,rgba(217,180,90,.14),transparent 70%),radial-gradient(50% 40% at 90% 10%,rgba(63,193,176,.12),transparent 70%),var(--bg)}
+body:after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:48px 48px;opacity:.35;mask-image:radial-gradient(ellipse at center,#000 40%,transparent 85%)}
+.wrap{width:min(1060px,92vw);margin:0 auto}
+header{display:flex;align-items:center;gap:12px;padding:22px 0;border-bottom:1px solid var(--line)}
+header svg{width:38px;height:38px;flex:none}
+.brand{font-weight:700;letter-spacing:.04em}
+.brand small{display:block;color:var(--mute);font-weight:400;font-size:.78rem;letter-spacing:.02em}
+main{padding:40px 0 64px}
+h1{font-size:clamp(1.9rem,4.6vw,3rem);line-height:1.15;letter-spacing:-.01em;margin-bottom:14px}
+h2{font-size:clamp(1.3rem,2.8vw,1.7rem);margin:40px 0 12px;color:var(--gold)}
+p,li{max-width:68ch;color:var(--ink);margin-bottom:14px}
+ul{padding-left:20px}
+.lede{color:var(--mute);font-size:1.08rem}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 14px;font-size:.88rem;color:var(--mute)}
+.chip b{color:var(--teal);font-weight:600}
+figure{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;margin:28px 0}
+figcaption{color:var(--mute);font-size:.85rem;margin-top:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+.card h3{font-size:1.05rem;margin-bottom:8px;color:var(--teal)}
+.card p{margin-bottom:0;font-size:.95rem}
+.note{border-left:3px solid var(--gold);padding:14px 18px;background:var(--card);border-radius:8px;color:var(--mute);font-size:.92rem;margin:30px 0}
+.cta{margin-top:36px;padding:26px;border-radius:14px;border:1px solid var(--line);background:linear-gradient(135deg,rgba(217,180,90,.1),rgba(63,193,176,.08))}
+.btn{display:inline-block;margin-top:8px;background:var(--gold);color:#101216;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:10px}
+footer{border-top:1px solid var(--line);padding:24px 0;color:var(--mute);font-size:.85rem}
+@media (max-width:700px){.grid{grid-template-columns:1fr}figure{padding:16px}}
+</style>
+</head>
+<body>
+<!-- Rebuilt clean from the brief. Source note 281 was not in this session, so verify against the vault copy before publishing. -->
+<div class="wrap">
+<header>
+<svg viewBox="0 0 40 40" role="img" aria-label="BlackCrown crown mark">
+<path d="M4 30 L8 12 L15 22 L20 8 L25 22 L32 12 L36 30 Z" fill="none" stroke="#d9b45a" stroke-width="2" stroke-linejoin="round"/>
+<rect x="4" y="32" width="32" height="3" rx="1" fill="#d9b45a"/>
+<circle cx="20" cy="5" r="2" fill="#3fc1b0"/>
+</svg>
+<div class="brand">Korvus<small>Market intelligence for index futures</small></div>
+</header>
+<main>
+<h1>Futures margin explained for index traders</h1>
+<p class="lede">Margin is not a discount and it is not a loan. It is the deposit your broker holds against an open futures position. Here is what the terms mean, why the numbers move, and what to check before you size a trade.</p>
+<div class="chips">
+<span class="chip"><b>Initial</b> margin to open</span>
+<span class="chip"><b>Maintenance</b> margin to hold</span>
+<span class="chip"><b>Variation</b> daily mark to market</span>
+</div>
+
+<h2>The two numbers that matter</h2>
+<p>Initial margin is the amount required to open a futures contract. Maintenance margin is the lower floor your account must stay above while the position is open. If equity drops below maintenance, your broker can issue a margin call and ask for more funds.</p>
+<p>Both figures are set by the exchange and adjusted by your broker. They are not fixed for life. Read the current requirement in your broker's contract specs before every session, not from a number you saved months ago.</p>
+
+<figure>
+<svg viewBox="0 0 600 220" width="100%" role="img" aria-label="Illustration of account equity against initial and maintenance margin levels">
+<rect x="0" y="0" width="600" height="220" fill="#0e1119"/>
+<line x1="40" y1="30" x2="40" y2="190" stroke="#1d2030" stroke-width="2"/>
+<line x1="40" y1="190" x2="580" y2="190" stroke="#1d2030" stroke-width="2"/>
+<rect x="70" y="60" width="90" height="130" rx="6" fill="#3fc1b0" opacity=".85"/>
+<rect x="230" y="90" width="90" height="100" rx="6" fill="#d9b45a" opacity=".85"/>
+<rect x="390" y="120" width="90" height="70" rx="6" fill="#9aa0ae" opacity=".7"/>
+<text x="115" y="210" fill="#9aa0ae" font-size="13" text-anchor="middle">Open</text>
+<text x="275" y="210" fill="#9aa0ae" font-size="13" text-anchor="middle">Holding</text>
+<text x="435" y="210" fill="#9aa0ae" font-size="13" text-anchor="middle">Floor</text>
+</svg>
+<figcaption>Illustration. Not real account data. Shows the idea that equity must stay above the maintenance floor while the position is open.</figcaption>
+</figure>
+
+<h2>Why requirements change</h2>
+<div class="grid">
+<div class="card"><h3>Volatility</h3><p>When the market moves faster, exchanges often raise the margin needed to carry the contract.</p></div>
+<div class="card"><h3>Contract and session</h3><p>Requirements can differ by contract, by expiry, and by whether the position is held overnight.</p></div>
+<div class="card"><h3>Broker rules</h3><p>Brokers can set requirements above the exchange minimum. Your broker's number is the one that binds you.</p></div>
+<div class="card"><h3>Daily settlement</h3><p>Gains and losses post to your account every day. Your equity moves even when you do nothing.</p></div>
+</div>
+
+<h2>A short checklist before you size</h2>
+<ul>
+<li>Confirm the current initial and maintenance figures with your broker.</li>
+<li>Work out how far price can move against you before equity hits maintenance.</li>
+<li>Keep spare funds above the floor, not just above the entry requirement.</li>
+<li>Know what your broker does in a margin call and how fast.</li>
+</ul>
+
+<div class="note">Not financial advice. This page explains how margin works in general. It does not recommend any trade, position size, or contract. Futures carry substantial risk, including the loss of more than your deposit. Check your own broker's rules.</div>
+
+<div class="cta">
+<h2 style="margin-top:0">Watch the market while you work</h2>
+<p>Korvus runs a 24/7 market intelligence terminal for index futures traders. Create a free Observer account, no card required, and see the scored news and session context for yourself.</p>
+<a class="btn" href="https://korvus.industries/signup">Create your free Observer account</a>
+</div>
+</main>
+<footer>
+<p>BlackCrownVxJ LLC. Korvus is market information and education. Nothing on this page is trading advice. Contact: BlackCrownVxJ.LLC@outlook.com</p>
+</footer>
+</div>
+</body>
+</html>
