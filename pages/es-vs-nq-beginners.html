@@ -67,6 +67,19 @@ footer p{margin-bottom:8px;color:#7d7d92}
   .cta{padding:26px}
   table th,table td{padding:11px 10px;font-size:.86rem}
 }
+
+/* atmosphere: glows, grid, vignette; owner law, pure css, nothing animated */
+body{position:relative;z-index:0}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+ radial-gradient(60% 45% at 50% -10%, rgba(232,199,127,.08), transparent 70%),
+ radial-gradient(45% 40% at 88% 88%, rgba(255,45,149,.06), transparent 70%),
+ repeating-linear-gradient(0deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
+ repeating-linear-gradient(90deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
+ radial-gradient(130% 95% at 50% 35%, transparent 55%, rgba(0,0,0,.55) 100%)}
+
+/* tables never bleed the viewport: they scroll inside their own rail */
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1.1rem 0;max-width:100%}
+.tablewrap table{width:100%;min-width:540px;border-collapse:collapse}
 </style>
 </head>
 <body>
@@ -126,7 +139,7 @@ footer p{margin-bottom:8px;color:#7d7d92}
     <div class="prose">
       <p>The table below puts the basics next to each other. Read the last two rows twice. They explain most of the differences you will notice on a chart.</p>
     </div>
-    <table>
+    <div class="tablewrap"><table>
       <thead>
         <tr><th>Feature</th><th>ES (E-mini S&amp;P 500)</th><th>NQ (E-mini Nasdaq-100)</th></tr>
       </thead>
@@ -139,7 +152,7 @@ footer p{margin-bottom:8px;color:#7d7d92}
         <tr><td>Typical point movement per session</td><td>Smaller point swings in absolute terms</td><td>Larger point swings in absolute terms</td></tr>
         <tr><td>Dollar movement per point</td><td>Each point is worth more</td><td>Each point is worth less, but moves more points</td></tr>
       </tbody>
-    </table>
+    </table></div>
   </section>
 
   <section>

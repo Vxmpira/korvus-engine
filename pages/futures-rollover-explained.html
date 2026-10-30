@@ -71,6 +71,19 @@ footer.site a{color:var(--mute)}
   .panel{padding:16px}
   th,td{padding:9px 8px;font-size:.88rem}
 }
+
+/* atmosphere: glows, grid, vignette; owner law, pure css, nothing animated */
+body{position:relative;z-index:0}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+ radial-gradient(60% 45% at 50% -10%, rgba(232,199,127,.08), transparent 70%),
+ radial-gradient(45% 40% at 88% 88%, rgba(255,45,149,.06), transparent 70%),
+ repeating-linear-gradient(0deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
+ repeating-linear-gradient(90deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
+ radial-gradient(130% 95% at 50% 35%, transparent 55%, rgba(0,0,0,.55) 100%)}
+
+/* tables never bleed the viewport: they scroll inside their own rail */
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1.1rem 0;max-width:100%}
+.tablewrap table{width:100%;min-width:540px;border-collapse:collapse}
 </style>
 </head>
 <body>
@@ -110,7 +123,7 @@ footer.site a{color:var(--mute)}
     <strong>Quarterly month codes</strong>
     <span class="tag">Standard scheme</span>
   </div>
-  <table>
+  <div class="tablewrap"><table>
     <thead>
       <tr><th>Contract month</th><th>Letter code</th><th>ES example</th><th>NQ example</th></tr>
     </thead>
@@ -120,7 +133,7 @@ footer.site a{color:var(--mute)}
       <tr><td>September</td><td><code>U</code></td><td><code>ESU</code></td><td><code>NQU</code></td></tr>
       <tr><td>December</td><td><code>Z</code></td><td><code>ESZ</code></td><td><code>NQZ</code></td></tr>
     </tbody>
-  </table>
+  </table></div>
 </div>
 
 <p>The micro contracts follow the same month codes. MES and MNQ are written as <code>MES</code> and <code>MNQ</code> followed by the month letter and year digit, so a June 2030 micro S&amp;P contract is written <code>MESM30</code>. The letters are a convention for naming. They do not describe the contract itself.</p>

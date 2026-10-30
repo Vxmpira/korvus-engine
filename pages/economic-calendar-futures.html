@@ -65,6 +65,19 @@ h1{margin-top:30px}
 th,td{padding:10px 10px;font-size:.86rem}
 .cta{padding:20px}
 }
+
+/* atmosphere: glows, grid, vignette; owner law, pure css, nothing animated */
+body{position:relative;z-index:0}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+ radial-gradient(60% 45% at 50% -10%, rgba(232,199,127,.08), transparent 70%),
+ radial-gradient(45% 40% at 88% 88%, rgba(255,45,149,.06), transparent 70%),
+ repeating-linear-gradient(0deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
+ repeating-linear-gradient(90deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
+ radial-gradient(130% 95% at 50% 35%, transparent 55%, rgba(0,0,0,.55) 100%)}
+
+/* tables never bleed the viewport: they scroll inside their own rail */
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1.1rem 0;max-width:100%}
+.tablewrap table{width:100%;min-width:540px;border-collapse:collapse}
 </style>
 </head>
 <body>
@@ -127,7 +140,7 @@ th,td{padding:10px 10px;font-size:.86rem}
 
 <figure>
 <div class="table-wrap">
-<table>
+<div class="tablewrap"><table>
 <thead>
 <tr><th>Release</th><th>Publisher</th><th>Cadence</th><th>What it measures</th><th>Usual time (ET)</th></tr>
 </thead>
@@ -137,7 +150,7 @@ th,td{padding:10px 10px;font-size:.86rem}
 <tr><td>NFP</td><td>Bureau of Labor Statistics</td><td>Monthly, usually first Friday</td><td>Jobs added or lost outside farming, plus unemployment and wages</td><td>8:30 AM</td></tr>
 <tr><td>FOMC</td><td>Federal Reserve</td><td>About eight meetings a year</td><td>Federal funds rate decision and policy outlook</td><td>2:00 PM statement, press conference after</td></tr>
 </tbody>
-</table>
+</table></div>
 </div>
 <figcaption>Illustration. Times and cadences are typical patterns, not a live schedule. Confirm exact dates and times on the official agency calendar before any session.</figcaption>
 </figure>

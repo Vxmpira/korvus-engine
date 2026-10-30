@@ -55,6 +55,19 @@ nav.links{gap:12px}
 table{font-size:14px}
 th,td{padding:8px}
 }
+
+/* atmosphere: glows, grid, vignette; owner law, pure css, nothing animated */
+body{position:relative;z-index:0}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+ radial-gradient(60% 45% at 50% -10%, rgba(232,199,127,.08), transparent 70%),
+ radial-gradient(45% 40% at 88% 88%, rgba(255,45,149,.06), transparent 70%),
+ repeating-linear-gradient(0deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
+ repeating-linear-gradient(90deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
+ radial-gradient(130% 95% at 50% 35%, transparent 55%, rgba(0,0,0,.55) 100%)}
+
+/* tables never bleed the viewport: they scroll inside their own rail */
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1.1rem 0;max-width:100%}
+.tablewrap table{width:100%;min-width:540px;border-collapse:collapse}
 </style>
 </head>
 <body>
@@ -121,7 +134,7 @@ th,td{padding:8px}
 <h2>Rates and the dollar</h2>
 <p>Stocks are priced against the cost of money. When Treasury yields rise, future earnings are worth less today, and equity valuations often compress. When yields fall, the reverse can happen. The dollar matters too. A stronger dollar can weigh on multinational earnings, while a weaker dollar can support them. Rates and the dollar are not always aligned, so read them together.</p>
 
-<table>
+<div class="tablewrap"><table>
 <thead><tr><th>Force</th><th>Common read</th><th>Why it matters for ES</th></tr></thead>
 <tbody>
 <tr><td>Yields rising</td><td>Tighter financial conditions</td><td>Valuations tend to face pressure</td></tr>
@@ -129,7 +142,7 @@ th,td{padding:8px}
 <tr><td>Dollar strengthening</td><td>Headwind for exporters</td><td>Can weigh on multinational earnings</td></tr>
 <tr><td>Dollar weakening</td><td>Tailwind for exporters</td><td>Can lift overseas revenue in dollar terms</td></tr>
 </tbody>
-</table>
+</table></div>
 
 <h2>Session opens</h2>
 <p>The market does not behave the same way at every hour. The overnight Globex session is thinner, so moves can be larger on less volume. The cash equity open at 9:30 a.m. Eastern brings in the stock market itself, and the first minutes often carry heavy volume and fast repricing. Many traders treat the open as a reset point where the overnight range is tested. Hours matter. The same headline can produce a different reaction at 3:00 a.m. than at 10:00 a.m.</p>

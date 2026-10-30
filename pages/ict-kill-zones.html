@@ -47,6 +47,10 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
  repeating-linear-gradient(0deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
  repeating-linear-gradient(90deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
  radial-gradient(130% 95% at 50% 35%, transparent 55%, rgba(0,0,0,.55) 100%)}
+
+/* tables never bleed the viewport: they scroll inside their own rail */
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1.1rem 0;max-width:100%}
+.tablewrap table{width:100%;min-width:540px;border-collapse:collapse}
 </style>
 </head>
 <body>
@@ -82,7 +86,7 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 <h2>The commonly cited windows</h2>
 <p>Most ICT material uses New York time (Eastern) as the reference clock. The windows below are the ones you will see most often. Confirm them yourself before using them, because sources differ on exact start and end minutes.</p>
 
-<table>
+<div class="tablewrap"><table>
 <thead>
 <tr><th>Window</th><th>New York time</th><th>What it marks</th></tr>
 </thead>
@@ -92,7 +96,7 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 <tr><td>New York open kill zone</td><td>07:00 to 10:00</td><td>US cash session opens and volume rises</td></tr>
 <tr><td>London close kill zone</td><td>10:00 to 12:00</td><td>European session closes and US activity continues</td></tr>
 </tbody>
-</table>
+</table></div>
 
 <div class="figure">
 <span class="tag">Illustration</span>

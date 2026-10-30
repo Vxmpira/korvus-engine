@@ -64,6 +64,15 @@ footer{border-top:1px solid rgba(255,255,255,.07);padding:22px 0 40px;font-size:
 .tag{display:none}
 .figure{padding:16px}
 }
+
+/* atmosphere: glows, grid, vignette; owner law, pure css, nothing animated */
+body{position:relative;z-index:0}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+ radial-gradient(60% 45% at 50% -10%, rgba(232,199,127,.08), transparent 70%),
+ radial-gradient(45% 40% at 88% 88%, rgba(255,45,149,.06), transparent 70%),
+ repeating-linear-gradient(0deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
+ repeating-linear-gradient(90deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
+ radial-gradient(130% 95% at 50% 35%, transparent 55%, rgba(0,0,0,.55) 100%)}
 </style>
 </head>
 <body>

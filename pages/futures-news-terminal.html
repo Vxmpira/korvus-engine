@@ -49,6 +49,10 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
  repeating-linear-gradient(0deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
  repeating-linear-gradient(90deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
  radial-gradient(130% 95% at 50% 35%, transparent 55%, rgba(0,0,0,.55) 100%)}
+
+/* tables never bleed the viewport: they scroll inside their own rail */
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1.1rem 0;max-width:100%}
+.tablewrap table{width:100%;min-width:540px;border-collapse:collapse}
 </style>
 </head>
 <body>
@@ -78,12 +82,12 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 
 <div class="panel">
 <div class="tag">Illustration. Sample layout, not live data.</div>
-<table>
+<div class="tablewrap"><table>
 <tr><th>Item</th><th>Impact</th><th>Direction</th><th>Confidence</th></tr>
 <tr><td>Sample headline A</td><td>High</td><td class="up">Up lean</td><td>Medium</td></tr>
 <tr><td>Sample headline B</td><td>Medium</td><td>Neutral</td><td>High</td></tr>
 <tr><td>Sample headline C</td><td>Low</td><td>Down lean</td><td>Low</td></tr>
-</table>
+</table></div>
 </div>
 
 <h2>Cross index SMT divergence</h2>

@@ -65,6 +65,19 @@ footer a{color:#9aa3b5}
   .track-row span{font-size:.8rem}
   th,td{padding:10px 6px;font-size:.88rem}
 }
+
+/* atmosphere: glows, grid, vignette; owner law, pure css, nothing animated */
+body{position:relative;z-index:0}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+ radial-gradient(60% 45% at 50% -10%, rgba(232,199,127,.08), transparent 70%),
+ radial-gradient(45% 40% at 88% 88%, rgba(255,45,149,.06), transparent 70%),
+ repeating-linear-gradient(0deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
+ repeating-linear-gradient(90deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
+ radial-gradient(130% 95% at 50% 35%, transparent 55%, rgba(0,0,0,.55) 100%)}
+
+/* tables never bleed the viewport: they scroll inside their own rail */
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1.1rem 0;max-width:100%}
+.tablewrap table{width:100%;min-width:540px;border-collapse:collapse}
 </style>
 </head>
 <body>
@@ -150,7 +163,7 @@ footer a{color:#9aa3b5}
 <div class="prose"><p>Times are Eastern Time. Daylight saving changes can move the local open of each market, so check a current calendar before you rely on any specific hour.</p></div>
 <div class="figure" style="padding:14px 18px">
 <div class="tag">Illustration</div>
-<table>
+<div class="tablewrap"><table>
 <thead><tr><th>Session</th><th>Approx. open (ET)</th><th>Approx. close (ET)</th><th>Common feel</th></tr></thead>
 <tbody>
 <tr><td>Asia (Tokyo)</td><td>7:00 PM</td><td>4:00 AM</td><td>Quieter, tighter ranges</td></tr>
@@ -158,7 +171,7 @@ footer a{color:#9aa3b5}
 <tr><td>New York</td><td>8:00 AM</td><td>5:00 PM</td><td>Most active, data and cash open</td></tr>
 <tr><td>London and NY overlap</td><td>8:00 AM</td><td>12:00 PM</td><td>Often the busiest stretch</td></tr>
 </tbody>
-</table>
+</table></div>
 <p class="note">Globex index futures run Sunday 6:00 PM to Friday 5:00 PM ET with a one hour daily break starting at 5:00 PM ET. Confirm against the exchange calendar.</p>
 </div>
 </div>

@@ -69,6 +69,19 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .tag{display:none}
 th,td{padding:10px 6px;font-size:14px}
 }
+
+/* atmosphere: glows, grid, vignette; owner law, pure css, nothing animated */
+body{position:relative;z-index:0}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+ radial-gradient(60% 45% at 50% -10%, rgba(232,199,127,.08), transparent 70%),
+ radial-gradient(45% 40% at 88% 88%, rgba(255,45,149,.06), transparent 70%),
+ repeating-linear-gradient(0deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
+ repeating-linear-gradient(90deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
+ radial-gradient(130% 95% at 50% 35%, transparent 55%, rgba(0,0,0,.55) 100%)}
+
+/* tables never bleed the viewport: they scroll inside their own rail */
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1.1rem 0;max-width:100%}
+.tablewrap table{width:100%;min-width:540px;border-collapse:collapse}
 </style>
 </head>
 <body>
@@ -90,7 +103,7 @@ th,td{padding:10px 6px;font-size:14px}
 
 <section class="panel">
 <span class="kicker">Reference</span>
-<table>
+<div class="tablewrap"><table>
 <thead><tr><th>Item</th><th>Central Time (CT)</th><th>Eastern Time (ET)</th></tr></thead>
 <tbody>
 <tr><td>Globex open to close, Sunday to Friday</td><td class="num">Sun 5:00 PM to Fri 4:00 PM</td><td class="num">Sun 6:00 PM to Fri 5:00 PM</td></tr>
@@ -98,7 +111,7 @@ th,td{padding:10px 6px;font-size:14px}
 <tr><td>US cash equity session (stock market)</td><td class="num">8:30 AM to 3:00 PM</td><td class="num">9:30 AM to 4:00 PM</td></tr>
 <tr><td>ES RTH window (most liquid stretch)</td><td class="num">8:30 AM to 3:15 PM</td><td class="num">9:30 AM to 4:15 PM</td></tr>
 </tbody>
-</table>
+</table></div>
 <p class="prose" style="margin-top:12px;font-size:13px;color:var(--mute)">Schedules are set by CME Group and can change for holidays. Check the CME calendar before any session you plan to watch.</p>
 </section>
 

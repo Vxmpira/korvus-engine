@@ -68,6 +68,19 @@ footer.foot a{color:var(--muted)}
 .btn{display:block}
 nav.links{gap:12px}
 }
+
+/* atmosphere: glows, grid, vignette; owner law, pure css, nothing animated */
+body{position:relative;z-index:0}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+ radial-gradient(60% 45% at 50% -10%, rgba(232,199,127,.08), transparent 70%),
+ radial-gradient(45% 40% at 88% 88%, rgba(255,45,149,.06), transparent 70%),
+ repeating-linear-gradient(0deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
+ repeating-linear-gradient(90deg, rgba(255,255,255,.015) 0 1px, transparent 1px 56px),
+ radial-gradient(130% 95% at 50% 35%, transparent 55%, rgba(0,0,0,.55) 100%)}
+
+/* tables never bleed the viewport: they scroll inside their own rail */
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1.1rem 0;max-width:100%}
+.tablewrap table{width:100%;min-width:540px;border-collapse:collapse}
 </style>
 </head>
 <body>
@@ -151,7 +164,7 @@ nav.links{gap:12px}
 
 <h2>Side by side</h2>
 <div class="table-wrap">
-<table>
+<div class="tablewrap"><table>
 <caption><span class="tag">Illustration</span> General differences for discussion. Brokers, rules, and contract specs change. Verify current terms before acting.</caption>
 <thead>
 <tr><th scope="col">Topic</th><th scope="col">Stocks (margin account)</th><th scope="col">Micro index futures (MES, MNQ)</th></tr>
@@ -164,7 +177,7 @@ nav.links{gap:12px}
 <tr><th scope="row">Expiration</th><td>None for shares</td><td>Contracts expire and roll on a schedule</td></tr>
 <tr><th scope="row">Main risk</th><td>Company, sector, and market moves</td><td>Index moves amplified by contract size</td></tr>
 </tbody>
-</table>
+</table></div>
 </div>
 
 <h2>Real risk warnings</h2>
