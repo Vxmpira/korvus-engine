@@ -150,6 +150,7 @@ def db_init():
             strategy    TEXT NOT NULL,
             symbol      TEXT NOT NULL,
             accession   TEXT,             -- the filing that triggered it
+            side        TEXT DEFAULT 'long',  -- long | short
             qty         INTEGER NOT NULL,
             entry_utc   TEXT NOT NULL, entry_px REAL NOT NULL,
             target_px   REAL, stop_px REAL,
@@ -160,6 +161,9 @@ def db_init():
         CREATE INDEX IF NOT EXISTS idx_trades_status ON trades(status);
         CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
     """)
+    tcols = {r[1] for r in conn.execute("PRAGMA table_info(trades)")}
+    if "side" not in tcols:
+        conn.execute("ALTER TABLE trades ADD COLUMN side TEXT DEFAULT 'long'")   # long | short
     cols = {r[1] for r in conn.execute("PRAGMA table_info(filings)")}
     if "scorer" not in cols:
         conn.execute("ALTER TABLE filings ADD COLUMN scorer TEXT")        # who decided: haiku | crown
