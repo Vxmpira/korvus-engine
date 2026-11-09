@@ -146,6 +146,89 @@ def create_portal_url(user):
         return None, "Could not open the billing portal."
 
 
+# ----------------------------------------------------------------------------
+# ACCOUNT DELETION GATE  (no surprise bills on an account that no longer exists)
+# ----------------------------------------------------------------------------
+# Any of these statuses can still produce a charge (or resume into one), so an
+# account carrying one of them can never be self-deleted. Only 'canceled' and
+# 'incomplete_expired' are terminal in Stripe and safe.
+BILLABLE_STATUSES = {"active", "trialing", "past_due", "unpaid", "incomplete", "paused"}
+
+
+def deletion_block(user):
+    """Decide whether this account may be deleted right now.
+    Returns (blocked: bool, reason: str, ends_at: iso|None).
+
+    Checks Stripe LIVE, never just the local copy (a missed webhook must not
+    let a paying subscription outlive its account). Fails CLOSED: if the user
+    has ever had a Stripe customer and we cannot confirm their subscriptions,
+    deletion is blocked until we can."""
+    user = user or {}
+    cid = user.get("stripe_customer_id")
+    if not cid:
+        # Checkout always creates + stores the customer first, so no customer
+        # id means Stripe has nothing it could ever bill for this account.
+        return False, "", None
+    stripe = _stripe()
+    if not stripe:
+        return (True, "We can't reach billing to confirm you have no active "
+                      "subscription, so deletion is paused for your protection. "
+                      "Please try again later or contact support.", None)
+    try:
+        subs = stripe.Subscription.list(customer=cid, status="all", limit=100)
+        live = [x for x in subs.auto_paging_iter() if x.get("status") in BILLABLE_STATUSES]
+    except Exception as e:
+        print(f"  [billing] deletion check failed for {user.get('username')}: {e}")
+        return (True, "We couldn't confirm your subscription status with Stripe "
+                      "just now, so deletion is paused for your protection. "
+                      "Please try again in a few minutes.", None)
+    if not live:
+        return False, "", None
+
+    sub = live[0]
+    status = sub.get("status")
+    cpe = sub.get("current_period_end")
+    if cpe is None:
+        try:
+            cpe = sub["items"]["data"][0].get("current_period_end")
+        except (KeyError, IndexError, TypeError):
+            cpe = None
+    ends = _iso(sub.get("cancel_at") or cpe)
+    if status in ("active", "trialing") and sub.get("cancel_at_period_end"):
+        return (True, "Your Operator membership is already canceled and won't "
+                      "renew. It stays active until the end of the period you "
+                      "paid for, and you can delete your account once it ends.", ends)
+    if status in ("active", "trialing"):
+        return (True, "You have an active Operator subscription. Cancel it in "
+                      "Manage billing first so nothing renews, then come back "
+                      "here once it has ended.", ends)
+    return (True, f"Your subscription is in '{status.replace('_', ' ')}' status, "
+                  "which can still produce a charge. Open Manage billing to "
+                  "settle or cancel it first.", ends)
+
+
+def remove_payment_methods(user):
+    """Detach every saved card from the Stripe customer, so even a mistake
+    elsewhere could never charge a deleted account. Invoices and receipts
+    stay in Stripe for the business's records. Best-effort; returns count."""
+    cid = (user or {}).get("stripe_customer_id")
+    stripe = _stripe()
+    if not (cid and stripe):
+        return 0
+    n = 0
+    try:
+        for pm in stripe.PaymentMethod.list(customer=cid, limit=100).auto_paging_iter():
+            try:
+                stripe.PaymentMethod.detach(pm["id"])
+                n += 1
+            except Exception as e:
+                print(f"  [billing] detach {pm.get('id')} failed: {e}")
+        stripe.Customer.modify(cid, metadata={"korvus_account": "deleted"})
+    except Exception as e:
+        print(f"  [billing] payment-method cleanup failed for {user.get('username')}: {e}")
+    return n
+
+
 def _iso(ts):
     try:
         return dt.datetime.fromtimestamp(int(ts), dt.timezone.utc).isoformat()

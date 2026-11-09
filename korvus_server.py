@@ -828,6 +828,66 @@ def account_alerts():
                     "message": "Alerts on." if data.get("on") else "Alerts off."})
 
 
+@app.route("/api/account/delete-check")
+@login_required
+def account_delete_check():
+    """Pre-flight for the Delete account card: is deletion allowed right now?
+    Same live Stripe check the delete itself runs, so the UI never promises
+    something the server will refuse."""
+    u = auth.get_user_by_id(current_user.id) or {}
+    if u.get("username") in ADMIN_USERNAMES:
+        return jsonify({"allowed": False, "reason": "Owner accounts can't be deleted from this page."})
+    blocked, reason, ends = billing.deletion_block(u)
+    return jsonify({"allowed": not blocked, "reason": reason, "ends_at": ends})
+
+
+@app.route("/api/account/delete", methods=["POST"])
+@login_required
+def account_delete():
+    """Permanently delete the signed-in account. Order matters:
+    password -> owner guard -> LIVE Stripe gate (fails closed) -> detach cards
+    -> delete row + per-user files -> confirmation email -> sign out."""
+    data = request.get_json(silent=True) or {}
+    ip = _client_ip()
+    if not _rate_ok(f"acctdel:{current_user.id}:{ip}", 5, 3600):
+        return jsonify({"ok": False, "message": "Too many attempts. Try again in an hour."}), 429
+    if (data.get("confirm") or "").strip().upper() != "DELETE":
+        return jsonify({"ok": False, "message": "Type DELETE to confirm."}), 400
+    if not auth.check_password(current_user.id, data.get("password")):
+        return jsonify({"ok": False, "message": "Password is incorrect."}), 400
+
+    u = auth.get_user_by_id(current_user.id) or {}
+    if u.get("username") in ADMIN_USERNAMES:
+        return jsonify({"ok": False, "message": "Owner accounts can't be deleted from this page."}), 403
+    blocked, reason, ends = billing.deletion_block(u)
+    if blocked:
+        return jsonify({"ok": False, "message": reason, "ends_at": ends}), 409
+
+    billing.remove_payment_methods(u)
+    gone = auth.delete_user(current_user.id)
+    if not gone:
+        return jsonify({"ok": False, "message": "Account not found."}), 404
+    try:
+        wl = os.path.join(HERE, f"watchlist_{gone['id']}.json")
+        if os.path.exists(wl):
+            os.remove(wl)
+    except Exception as e:
+        print(f"  [account] watchlist cleanup failed: {e}")
+    _online.pop(str(gone["id"]), None)
+    try:
+        auth.send_account_deleted_email(gone.get("email"), gone.get("username"))
+    except Exception as e:
+        print(f"  [account] deletion email failed: {e}")
+    try:
+        notify.member_deleted(gone.get("username"), (gone.get("tv_username") or "").strip(),
+                              gone.get("tier") == "pro")
+    except Exception:
+        pass
+    logout_user()
+    session.clear()
+    return jsonify({"ok": True, "message": "Your account has been deleted."})
+
+
 @app.route("/api/billing/portal", methods=["POST"])
 @login_required
 def billing_portal():

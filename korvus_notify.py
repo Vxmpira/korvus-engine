@@ -97,6 +97,17 @@ def member_pro_ended(username, email, tv_username, status):
     _send("Korvus · Pro membership ended", "\n".join(lines), _RED)
 
 
+def member_deleted(username, tv_username, was_pro):
+    """A member deleted their own account (billing gate already passed)."""
+    lines = [f"**Member:** {username}",
+             "Deleted their account from the account page. Stripe showed no "
+             "billable subscription; saved cards were detached."]
+    if tv_username:
+        lines.append("")
+        lines.append(f"**ACTION: make sure `{tv_username}` no longer has LodeStone access on TradingView.**")
+    _send("Korvus · account deleted", "\n".join(lines), _RED)
+
+
 def tv_username_changed(username, old_tv, new_tv):
     """A PRO member set, changed, or cleared their TradingView username.
     Free-tier saves do not call this; their grant ping fires on upgrade."""
