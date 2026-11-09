@@ -9,3 +9,9 @@ korvus_intel.db-*
 vault_clone/
 intel_status.json
 intel_status.json.tmp
+
+# databases live only on the server, never in git
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
