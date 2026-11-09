@@ -103,10 +103,16 @@ def render(now: dt.datetime = None) -> dict:
     conn.close()
     sb = bot.scoreboard()
     files = {}
-    stamp = _et(now.isoformat()) + " ET"
+    # Stamp notes with the time the DATA last changed, not the render time,
+    # so an idle sync produces no diff and no commit in the brain repo.
+    marks = [f["seen_utc"] for f in filings] + [u["asof"] for u in universe if u.get("asof")]
+    for t in trades:
+        marks += [t["entry_utc"]] + ([t["exit_utc"]] if t.get("exit_utc") else [])
+    data_asof = max(marks) if marks else ""
+    stamp = (_et(data_asof) + " ET") if data_asof else "no data yet"
 
     # ---- README: the contract for agents ----
-    files["README.md"] = _fm(type="intel-index", updated=now.date().isoformat(), tags=["korvus-intel"]) + f"""
+    files["README.md"] = _fm(type="intel-index", updated=_et_date(data_asof) or "n/a", tags=["korvus-intel"]) + f"""
 # Korvus Intel
 
 A separate data ecosystem fed by the Korvus web crawler on the Korvus server. It watches
@@ -116,7 +122,7 @@ moment they are accepted, scores each one for the stock, and runs a **paper-only
 bot on those catalysts.
 
 {GEN}
-Last sync: {stamp}
+Data as of: {stamp}
 
 ## Where things are
 - [[{SUBDIR}/Universe|Universe]]: today's stock list with price, market cap, volume, sector
@@ -127,6 +133,7 @@ Last sync: {stamp}
   - `filings.jsonl`: one filing per line (last {EXPORT_DAYS} days)
   - `trades.jsonl`: every paper trade
   - `universe.json`: today's universe
+  - `scoreboard.json`: the bot's scoreboard and current rules (read by the BlackCrown admin)
 
 ## Rules for agents
 - Read-only. Notes here are regenerated every {SYNC_MINUTES} minutes.
@@ -140,7 +147,7 @@ Last sync: {stamp}
         rows.append(f"| {_tl(u['symbol'])} | {_cell(u['name'])} | ${u['price']:.2f} | "
                     f"${(u['mcap'] or 0)/1e9:.2f}B | {int(u['volume'] or 0):,} | {_cell(u['sector'])} |")
     asof = universe[0]["asof"] if universe else ""
-    files["Universe.md"] = _fm(type="intel-universe", updated=_et_date(asof) or now.date().isoformat(),
+    files["Universe.md"] = _fm(type="intel-universe", updated=_et_date(asof) or "n/a",
                                count=len(universe), tags=["korvus-intel"]) + \
         f"\n# Universe\n\n{GEN}\n{len(universe)} stocks, screened {_et(asof)} ET.\n\n" + "\n".join(rows) + "\n"
 
@@ -223,12 +230,12 @@ Changing any rule ships as a new version with a fresh [[{SUBDIR}/Bot/Scoreboard|
               f"\n> Sample too small to judge: {sb['closed_trades']} of {bot.MIN_SAMPLE} closed trades needed before the win rate means anything.\n")
     cats = "\n".join(f"| {c} | {v['trades']} | {round(100*v['wins']/v['trades'])}% |"
                      for c, v in sorted(sb["by_catalyst"].items())) or "| none yet | 0 | n/a |"
-    files["Bot/Scoreboard.md"] = _fm(type="intel-scoreboard", version=bot.STRATEGY, updated=now.date().isoformat(),
+    files["Bot/Scoreboard.md"] = _fm(type="intel-scoreboard", version=bot.STRATEGY, updated=_et_date(data_asof) or "n/a",
                                      closed=sb["closed_trades"], tags=["korvus-intel", "paper-bot"]) + f"""
 # Scoreboard · [[{SUBDIR}/Bot/Strategy|Strategy]] {bot.STRATEGY}
 
 {GEN}
-Last sync: {stamp}
+Data as of: {stamp}
 {sample}
 | Metric | Value |
 |---|---|
@@ -272,6 +279,18 @@ Paper results: simulated fills on 60-second quotes, no market impact. Not real r
         for f in sorted(filings, key=lambda x: x["seen_utc"]))
     files["data/trades.jsonl"] = "".join(json.dumps(t) + "\n" for t in sorted(trades, key=lambda x: x["entry_utc"]))
     files["data/universe.json"] = json.dumps(universe, indent=1) + "\n"
+    files["data/scoreboard.json"] = json.dumps({
+        "data_asof_utc": data_asof,
+        "scoreboard": sb,
+        "min_sample": bot.MIN_SAMPLE,
+        "universe_count": len(universe),
+        "universe_asof": asof,
+        "rules": {"strategy": bot.STRATEGY, "notional": bot.NOTIONAL, "max_open": bot.MAX_OPEN,
+                  "target_pct": bot.TARGET_PCT, "stop_pct": bot.STOP_PCT, "min_confidence": bot.MIN_CONF,
+                  "max_day_up_pct": bot.MAX_DAY_UP, "lookback_hours": bot.LOOKBACK_H,
+                  "slippage_pct": round(bot.SLIP * 100, 3), "tick_seconds": bot.TICK_SECONDS,
+                  "price_band": [intel.PRICE_MIN, intel.PRICE_MAX], "mcap_max": intel.MCAP_MAX},
+    }, indent=1) + "\n"
     return files
 
 

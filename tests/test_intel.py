@@ -96,11 +96,13 @@ def test_simulated_day():
 def test_vault_render_and_git():
     files = vault.render(dt.datetime(2026, 11, 10, 17, 0, tzinfo=dt.timezone.utc))
     for k in ("README.md", "Universe.md", "Bot/Strategy.md", "Bot/Scoreboard.md", "data/filings.jsonl",
-              "data/trades.jsonl", "data/universe.json", "Tickers/AAA.md"):
+              "data/trades.jsonl", "data/universe.json", "data/scoreboard.json", "Tickers/AAA.md"):
         assert k in files, k
     assert any(k.startswith("Filings/") for k in files)
     assert any(k.startswith("Bot/Trades/") for k in files)
     assert "Sample too small" in files["Bot/Scoreboard.md"]
+    sbj = json.loads(files["data/scoreboard.json"])
+    assert sbj["scoreboard"]["closed_trades"] == 2 and sbj["rules"]["target_pct"] == 1.5 and sbj["min_sample"] == 30
     assert "[[intel/Tickers/AAA|AAA]]" in files["Universe.md"]
     assert len(files["data/filings.jsonl"].splitlines()) == 4
     allt = "".join(files.values())
