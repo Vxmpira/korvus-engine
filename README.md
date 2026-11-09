@@ -241,6 +241,11 @@ fills only. The scoreboard refuses to call a win rate meaningful before 30 trade
 
 Checks: `korvus_intel.py --dry-run`, `korvus_intel.py --stats`, `python tests/test_intel.py`.
 
+**Live status for the BlackCrown admin:** korvus-intel writes `intel_status.json` (heartbeat, per-stage
+stats, last 80 events) every few seconds. `GET /api/feed/intel-status` serves it to the admin with header
+`X-Intel-Key: $INTEL_STATUS_KEY`. Set the same random key on both boxes
+(`INTEL_STATUS_KEY` here, `KORVUS_INTEL_KEY` in blackcrown-studio). Test: `python tests/test_intel_status.py`.
+
 ## What's still ahead
 - **Phase 4:** move the engine + server to your cloud server so it runs 24/7
   without your computer being on.

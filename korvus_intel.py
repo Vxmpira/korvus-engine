@@ -60,6 +60,7 @@ except Exception:
     pass
 
 import korvus_edgar as edgar   # parsers + polite SEC session (shared rate limit)
+import korvus_intel_status as status   # live heartbeat + activity log for the admin
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "korvus_intel.db")
@@ -244,6 +245,7 @@ def refresh_universe(verbose: bool = True) -> int:
                          "sector": "", "industry": "", "exchange": "extra"})
     if not rows:
         print("  [intel] universe refresh returned nothing; keeping the previous list")
+        status.error("universe", "screener returned nothing; kept the previous list")
         return 0
     asof = utcnow().isoformat()
     conn = db()
@@ -262,6 +264,9 @@ def refresh_universe(verbose: bool = True) -> int:
     conn.commit()
     conn.close()
     meta_set("universe_asof", asof)
+    status.record("universe", last_ok_utc=asof, count=n,
+                  band=[PRICE_MIN, PRICE_MAX], mcap_max=MCAP_MAX)
+    status.event("universe", f"screened {n} stocks between ${PRICE_MIN:.0f} and ${PRICE_MAX:.0f}")
     if verbose:
         print(f"  [intel] universe: {n} stocks between ${PRICE_MIN:.0f} and ${PRICE_MAX:.0f}")
     return n
@@ -295,7 +300,9 @@ def quote(symbol: str) -> Optional[dict]:
                          params={"symbol": symbol, "token": FINNHUB_KEY}, timeout=8)
         q = r.json()
         if not q.get("c"):
+            status.record("quotes", inc_empty_today=1)
             return None
+        status.record("quotes", last_ok_utc=utcnow().isoformat(), last_symbol=symbol, inc_calls_today=1)
         snap = {"price": float(q["c"]), "chg_pct": float(q.get("dp") or 0),
                 "open": float(q.get("o") or 0), "high": float(q.get("h") or 0),
                 "low": float(q.get("l") or 0), "prev_close": float(q.get("pc") or 0)}
@@ -303,6 +310,7 @@ def quote(symbol: str) -> Optional[dict]:
         return snap
     except Exception as e:
         print(f"  [intel] quote error {symbol}: {e}")
+        status.error("quotes", f"{symbol}: {e}")
         return None
 
 
@@ -413,6 +421,7 @@ def score_filing(symbol: str, company: str, form: str, items: list, text: str) -
                 return normalize_score(d)
         except Exception as e:
             print(f"  [intel] scoring error ({attempt}): {e}")
+            status.error("scoring", f"{symbol}: {e}")
             time.sleep(4)
     return None
 
@@ -442,6 +451,7 @@ def handle_filing(e: dict, symbol: str, verbose: bool = True) -> Optional[str]:
          q["price"] if q else None, q["prev_close"] if q else None))
     conn.commit()
     conn.close()
+    status.event("edgar", f"{symbol} filed {e['form']}: {headline[:110]}", symbol=symbol)
     s = score_filing(symbol, e["company"], e["form"], e.get("items") or [], text)
     if s:
         conn = db()
@@ -451,6 +461,12 @@ def handle_filing(e: dict, symbol: str, verbose: bool = True) -> Optional[str]:
                       s["confidence"], e["accession"]))
         conn.commit()
         conn.close()
+        status.record("scoring", last_ok_utc=utcnow().isoformat(), last_symbol=symbol,
+                      last_result=f"{s['impact']} {s['direction']} {s['confidence']}% {s['catalyst']}",
+                      inc_scored_today=1)
+        status.event("scoring", f"{symbol} scored {s['impact'].upper()} {s['direction']} "
+                     f"{s['confidence']}% ({s['catalyst'].replace('_', ' ')})",
+                     symbol=symbol, impact=s["impact"], direction=s["direction"])
         if verbose:
             print(f"    ✓ [{s['impact']:>4}|{s['direction']:>4}|{s['confidence']:>3}%] {symbol} "
                   f"{s['catalyst']}: {headline[:60]}")
@@ -460,11 +476,21 @@ def handle_filing(e: dict, symbol: str, verbose: bool = True) -> Optional[str]:
 def poll_filings(verbose: bool = True) -> int:
     watch = universe_by_cik()
     if not watch:
+        status.error("edgar", "universe is empty, nothing to watch")
         return 0
-    n = 0
+    n = scanned = matched = 0
+    t0 = time.time()
+    fetched_ok = 0
     for form in edgar.FORMS:
-        for e in edgar.parse_feed(edgar._get(edgar.FEED_URL.format(form=form)) or ""):
+        raw = edgar._get(edgar.FEED_URL.format(form=form))
+        if raw:
+            fetched_ok += 1
+        entries = edgar.parse_feed(raw or "")
+        scanned += len(entries)
+        for e in entries:
             sym = watch.get(e["cik"])
+            if sym:
+                matched += 1
             if not sym or not e["accession"] or _seen(e["accession"]):
                 continue
             if not edgar.worth_it(e) or not edgar._fresh(e):
@@ -484,6 +510,20 @@ def poll_filings(verbose: bool = True) -> int:
                 n += 1
             except Exception as ex:
                 print(f"  [intel] filing error {sym}: {ex}")
+                status.error("edgar", f"{sym}: {ex}")
+    is_open = edgar._edgar_open_now()
+    interval = POLL_SECONDS if is_open else 300
+    now = utcnow()
+    status.record("edgar", last_poll_utc=now.isoformat(),
+                  next_poll_utc=(now + dt.timedelta(seconds=interval)).isoformat(),
+                  interval_s=interval, open=is_open, watching=len(watch),
+                  last_scanned=scanned, last_new=n, feeds_ok=fetched_ok, feeds=len(edgar.FORMS),
+                  last_duration_ms=int((time.time() - t0) * 1000),
+                  inc_polls_today=1, inc_scanned_today=scanned, inc_new_today=n)
+    if fetched_ok < len(edgar.FORMS):
+        status.error("edgar", f"only {fetched_ok} of {len(edgar.FORMS)} EDGAR feeds answered")
+    if n:
+        status.record("edgar", last_match_utc=now.isoformat())
     return n
 
 
@@ -507,6 +547,7 @@ def _every(seconds_fn, fn, name):
                 fn()
             except Exception as e:
                 print(f"  [intel:{name}] error: {e}")
+                status.error({"filings": "edgar", "paperbot": "bot"}.get(name, name), e)
             time.sleep(seconds_fn())
     t = threading.Thread(target=run, name=f"intel-{name}", daemon=True)
     t.start()
@@ -517,8 +558,38 @@ def run_forever():
     import korvus_paperbot as bot
     import korvus_vault as vault
     db_init()
+    status.start_flusher()
+    status.event("system", "Korvus Intel started")
     if _universe_stale():
         refresh_universe()
+    else:
+        status.record("universe", last_ok_utc=meta_get("universe_asof"), count=len(universe_by_cik()),
+                      band=[PRICE_MIN, PRICE_MAX], mcap_max=MCAP_MAX)
+
+    def bot_job():
+        out = bot.tick()
+        now = utcnow()
+        st = {"last_tick_utc": now.isoformat(), "interval_s": bot.TICK_SECONDS,
+              "session_open": out.get("session_open"), "in_window": out.get("in_window"),
+              "candidates": out.get("candidates", 0), "open_positions": out.get("open_positions", 0),
+              "inc_entries_today": out["entries"], "inc_exits_today": out["exits"]}
+        if out.get("skipped"):
+            st["last_skip"] = f"{out['skipped'][-1][0]}: {out['skipped'][-1][1]}"
+        status.record("bot", **st)
+        for kind, sym, text in out.get("log", []):
+            status.event("bot", text, symbol=sym, kind=kind)
+
+    def vault_job():
+        try:
+            r = vault.sync()
+            status.record("vault", last_sync_utc=utcnow().isoformat(), interval_s=vault.SYNC_MINUTES * 60,
+                          last_changed=r.get("changed", 0))
+            if r.get("pushed"):
+                status.record("vault", last_push_utc=utcnow().isoformat(), inc_pushes_today=1)
+                status.event("vault", f"pushed {r['changed']} note(s) to {vault.SUBDIR}/ in blackcrown-brain")
+        except Exception as e:
+            status.error("vault", e)
+            print(f"  [intel:vault] error: {e}")
 
     def universe_job():
         n = et_now()
@@ -527,8 +598,8 @@ def run_forever():
 
     _every(lambda: 300, universe_job, "universe")
     _every(lambda: POLL_SECONDS if edgar._edgar_open_now() else 300, poll_filings, "filings")
-    _every(lambda: bot.TICK_SECONDS, bot.tick, "paperbot")
-    _every(lambda: vault.SYNC_MINUTES * 60, vault.sync, "vault")
+    _every(lambda: bot.TICK_SECONDS, bot_job, "paperbot")
+    _every(lambda: vault.SYNC_MINUTES * 60, vault_job, "vault")
     print(f"  [intel] running: universe {len(universe_by_cik())} names, filings every {POLL_SECONDS}s, "
           f"paper bot every {bot.TICK_SECONDS}s, vault every {vault.SYNC_MINUTES} min")
     while True:

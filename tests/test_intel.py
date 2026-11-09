@@ -91,6 +91,7 @@ def test_simulated_day():
     assert r["exits"] == 1
     sb = bot.scoreboard()
     assert sb["closed_trades"] == 2 and sb["losses"] == 1 and sb["win_rate_pct"] == 50.0, sb
+    assert sb["max_drawdown_usd"] == 54.97 and sb["trading_days"] == 1 and sb["capital_at_work"] == 50000, sb
 
 
 def test_vault_render_and_git():
