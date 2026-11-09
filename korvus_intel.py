@@ -90,6 +90,18 @@ EXTRA_TICKERS = [t.strip().upper() for t in _env("INTEL_EXTRA_TICKERS").split(",
 POLL_SECONDS  = max(10, int(_num("INTEL_POLL_SECONDS", 20)))
 CLAUDE_MODEL  = "claude-haiku-4-5"
 
+# Which brain reads the filings:
+#   haiku  (default) Claude Haiku decides.
+#   crown  BlackCrown Intelligence (Crown, AnythingLLM) decides; if Crown is
+#          down or answers in an unusable shape, Haiku steps in for that filing.
+#   shadow Haiku decides (the bot trades on it) AND Crown reads every filing on
+#          the side, so the two can be compared before Crown is trusted.
+SCORER        = _env("INTEL_SCORER", "haiku").lower()
+CROWN_BASE    = _env("CROWN_API_BASE", "https://blackcrown-intelligence.com/api/v1").rstrip("/")
+CROWN_KEY     = _env("CROWN_API_KEY")
+CROWN_SPACE   = _env("CROWN_WORKSPACE")          # the workspace slug, e.g. the Floor's
+CROWN_TIMEOUT = int(_num("CROWN_TIMEOUT", 120))
+
 SCREENER_URLS = [
     "https://financialmodelingprep.com/stable/company-screener",   # current
     "https://financialmodelingprep.com/api/v3/stock-screener",     # legacy fallback
@@ -148,6 +160,11 @@ def db_init():
         CREATE INDEX IF NOT EXISTS idx_trades_status ON trades(status);
         CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
     """)
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(filings)")}
+    if "scorer" not in cols:
+        conn.execute("ALTER TABLE filings ADD COLUMN scorer TEXT")        # who decided: haiku | crown
+    if "shadow_json" not in cols:
+        conn.execute("ALTER TABLE filings ADD COLUMN shadow_json TEXT")   # Crown's read in shadow mode
     conn.commit()
     conn.close()
 
@@ -404,13 +421,59 @@ def normalize_score(d: dict) -> dict:
     }
 
 
-def score_filing(symbol: str, company: str, form: str, items: list, text: str) -> Optional[dict]:
+def _filing_blob(symbol, company, form, items, text, limit=12000) -> str:
+    return (f"TICKER: {symbol}\nCOMPANY: {company}\nFORM: {form}\n"
+            f"ITEMS: {', '.join(items) or 'n/a'} ({edgar.describe_items(items) or 'n/a'})\n\n"
+            f"FILING TEXT:\n{text[:limit]}")
+
+
+def crown_ready() -> bool:
+    return bool(CROWN_KEY and CROWN_SPACE)
+
+
+def score_with_crown(symbol: str, company: str, form: str, items: list, text: str) -> Optional[dict]:
+    """Ask Crown (AnythingLLM developer API) for the same JSON read Haiku gives.
+    A fresh sessionId per filing keeps one filing's chat out of the next.
+    Reasoning models wrap their thinking in <think> tags; those are stripped."""
+    if not crown_ready():
+        return None
+    import re as _re
+    msg = (STOCK_PROMPT + "\n\nReturn ONLY the JSON object, nothing before or after it.\n\n"
+           + _filing_blob(symbol, company, form, items, text, limit=8000))
+    t0 = time.time()
+    try:
+        r = requests.post(f"{CROWN_BASE}/workspace/{CROWN_SPACE}/chat",
+                          headers={"Authorization": f"Bearer {CROWN_KEY}", "Content-Type": "application/json",
+                                   "Accept": "application/json"},
+                          json={"message": msg, "mode": "chat",
+                                "sessionId": f"korvus-intel-{symbol}-{int(t0)}"},
+                          timeout=CROWN_TIMEOUT)
+        ms = int((time.time() - t0) * 1000)
+        if r.status_code != 200:
+            status.error("crown", f"HTTP {r.status_code} from Crown")
+            return None
+        body = r.json()
+        out = body.get("textResponse") or ""
+        if body.get("error"):
+            status.error("crown", f"Crown error: {body['error']}")
+            return None
+        out = _re.sub(r"(?is)<think>.*?</think>", "", out)
+        d = _first_json(out)
+        if not d:
+            status.error("crown", f"{symbol}: Crown answered without usable JSON")
+            return None
+        status.record("crown", last_ok_utc=utcnow().isoformat(), last_ms=ms, inc_reads_today=1)
+        return normalize_score(d)
+    except Exception as e:
+        status.error("crown", f"{symbol}: {e.__class__.__name__}: {str(e)[:160]}")
+        return None
+
+
+def score_haiku(symbol: str, company: str, form: str, items: list, text: str) -> Optional[dict]:
     client = _brain()
     if client is None:
         return None
-    blob = (f"TICKER: {symbol}\nCOMPANY: {company}\nFORM: {form}\n"
-            f"ITEMS: {', '.join(items) or 'n/a'} ({edgar.describe_items(items) or 'n/a'})\n\n"
-            f"FILING TEXT:\n{text[:12000]}")
+    blob = _filing_blob(symbol, company, form, items, text)
     for attempt in (1, 2):
         try:
             resp = client.messages.create(model=CLAUDE_MODEL, max_tokens=900, system=STOCK_PROMPT,
@@ -424,6 +487,30 @@ def score_filing(symbol: str, company: str, form: str, items: list, text: str) -
             status.error("scoring", f"{symbol}: {e}")
             time.sleep(4)
     return None
+
+
+def score_filing(symbol: str, company: str, form: str, items: list, text: str) -> Optional[dict]:
+    """Route by INTEL_SCORER. Returns the deciding read with 'scorer' set, and
+    in shadow mode Crown's read under 'shadow'."""
+    mode = SCORER if SCORER in ("haiku", "crown", "shadow") else "haiku"
+    if mode == "crown" and crown_ready():
+        d = score_with_crown(symbol, company, form, items, text)
+        if d:
+            return {**d, "scorer": "crown"}
+        status.event("crown", f"{symbol}: Crown unavailable, Haiku read it instead", level="error")
+    d = score_haiku(symbol, company, form, items, text)
+    if d is None:
+        return None
+    d["scorer"] = "haiku"
+    if mode == "shadow" and crown_ready():
+        sh = score_with_crown(symbol, company, form, items, text)
+        if sh:
+            d["shadow"] = sh
+            agree = sh["direction"] == d["direction"] and sh["impact"] == d["impact"]
+            status.record("crown", inc_agree_today=1 if agree else 0, inc_compared_today=1)
+            status.event("crown", f"{symbol} shadow read {sh['impact'].upper()} {sh['direction']} "
+                         f"{sh['confidence']}% ({'agrees' if agree else 'differs'} with Haiku)", symbol=symbol)
+    return d
 
 
 def _seen(accession: str) -> bool:
@@ -456,15 +543,18 @@ def handle_filing(e: dict, symbol: str, verbose: bool = True) -> Optional[str]:
     if s:
         conn = db()
         conn.execute("""UPDATE filings SET summary=?, read=?, catalyst=?, impact=?, direction=?,
-                        confidence=?, scored=1 WHERE accession=?""",
+                        confidence=?, scored=1, scorer=?, shadow_json=? WHERE accession=?""",
                      (s["summary"], s["read"], s["catalyst"], s["impact"], s["direction"],
-                      s["confidence"], e["accession"]))
+                      s["confidence"], s.get("scorer", "haiku"),
+                      json.dumps(s["shadow"]) if s.get("shadow") else None, e["accession"]))
         conn.commit()
         conn.close()
         status.record("scoring", last_ok_utc=utcnow().isoformat(), last_symbol=symbol,
+                      last_scorer=s.get("scorer", "haiku"),
                       last_result=f"{s['impact']} {s['direction']} {s['confidence']}% {s['catalyst']}",
                       inc_scored_today=1)
-        status.event("scoring", f"{symbol} scored {s['impact'].upper()} {s['direction']} "
+        status.event("scoring", f"{symbol} scored by {s.get('scorer', 'haiku').title()}: "
+                     f"{s['impact'].upper()} {s['direction']} "
                      f"{s['confidence']}% ({s['catalyst'].replace('_', ' ')})",
                      symbol=symbol, impact=s["impact"], direction=s["direction"])
         if verbose:
@@ -559,7 +649,9 @@ def run_forever():
     import korvus_vault as vault
     db_init()
     status.start_flusher()
-    status.event("system", "Korvus Intel started")
+    status.record("scoring", mode=SCORER, crown_configured=crown_ready())
+    status.event("system", f"Korvus Intel started (scorer: {SCORER}"
+                 f"{', Crown linked' if crown_ready() else ''})")
     if _universe_stale():
         refresh_universe()
     else:
@@ -613,6 +705,7 @@ def main():
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--loop", action="store_true")
     ap.add_argument("--stats", action="store_true")
+    ap.add_argument("--crown-test", action="store_true", help="send one sample filing to Crown and Haiku, compare")
     a = ap.parse_args()
     db_init()
     if a.universe:
@@ -634,6 +727,23 @@ def main():
         print(f"  [intel] universe {len(watch)} names; {len(hits)} of their filings in the latest EDGAR feed")
         for h in hits[:40]:
             print("   ", *h)
+        return
+    if a.crown_test:
+        sample = ("NVIDIA Announces Financial Results for Second Quarter Fiscal 2027\n"
+                  "Revenue of $96.2 billion, up 106% from a year ago\n"
+                  "Data Center revenue of $89.0 billion, up 117% from a year ago\n"
+                  "GAAP and non-GAAP gross margins were both 75.0%.\n"
+                  "Outlook: revenue is expected to be $108.0 billion, plus or minus 2%.")
+        print(f"  Crown: {CROWN_BASE}/workspace/{CROWN_SPACE or '<CROWN_WORKSPACE not set>'}/chat")
+        if not crown_ready():
+            print("  set CROWN_API_KEY and CROWN_WORKSPACE in .env first")
+            return
+        for name, fn in (("crown", score_with_crown), ("haiku", score_haiku)):
+            t0 = time.time()
+            r = fn("NVDA", "NVIDIA CORP", "8-K", ["2.02", "9.01"], sample)
+            print(f"\n  {name.upper()} ({time.time() - t0:.1f}s):")
+            print(json.dumps(r, indent=2) if r else "  no usable answer: "
+                  + str(status.snapshot()["stages"].get("crown", {}).get("last_error", "")))
         return
     if a.stats:
         import korvus_paperbot as bot
