@@ -170,6 +170,47 @@ is done, the default Korvus board is used.
 
 ---
 
+## Primary Source: SEC filings straight from EDGAR  ✅ ready
+
+Every outlet writes its earnings story from the company's SEC filing. Korvus now
+reads that filing itself (`korvus_edgar.py`), so the terminal is no longer waiting
+on a reporter, an RSS refresh, and then the 5 min news pass.
+
+```
+   EDGAR live feed (8-K / 6-K, every 20s) ─► watchlist filter (NQ/ES heavyweights)
+        ─► Exhibit 99.1 press release ─► Claude Haiku ─► korvus.db (source='filing')
+        ─► terminal card: "filed with SEC 4:21:19 PM ET · on Korvus +21s"
+```
+
+* **Runs itself.** `korvus_engine.py --loop` starts it as a background thread, so
+  the existing systemd service supervises it. No new service to install.
+* **Operator feature.** Pro sees filings live. Free sees a locked teaser with the
+  ticker and impact, which unlocks after the same ~15 min delay as quotes.
+* **Every card is a receipt.** It shows the SEC acceptance time and the time
+  Korvus had it. That is the marketing claim, and it is always true.
+* **SEC fair access.** Declares `EDGAR_USER_AGENT`, spaces requests 0.25s apart
+  (SEC cap is 10/s), and backs off on 403/429.
+
+Optional `.env` keys (all have defaults):
+
+| Key | Default | What it does |
+|-----|---------|--------------|
+| `EDGAR_ENABLED` | `1` | `0` turns the watcher off |
+| `EDGAR_USER_AGENT` | `Korvus BlackCrownVxJ LLC BlackCrownVxJ.LLC@outlook.com` | SEC requires a name + contact email |
+| `EDGAR_TICKERS` | (empty) | extra tickers on top of the built-in ~30 heavyweights |
+| `EDGAR_POLL_SECONDS` | `20` | poll speed while EDGAR is open (6 AM to 10 PM ET, weekdays) |
+| `EDGAR_DISCORD_WEBHOOK` | (off) | posts med/high filings to Discord as a delayed public receipt |
+| `EDGAR_DISCORD_DELAY_MIN` | `15` | how long Operator gets it before Discord does |
+
+Handy commands:
+```bash
+python korvus_edgar.py --dry-run           # what's on the wire right now from the watchlist
+python korvus_edgar.py --dry-run --all     # same, every 8-K/6-K filer
+python korvus_edgar.py --replay https://www.sec.gov/Archives/edgar/data/1045810/000104581026000073/0001045810-26-000073-index.htm --no-save
+                                           # score NVIDIA's Q2 FY27 earnings 8-K and print it
+python tests/test_edgar.py                 # offline parser tests
+```
+
 ## What's still ahead
 - **Phase 4:** move the engine + server to your cloud server so it runs 24/7
   without your computer being on.
