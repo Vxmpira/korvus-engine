@@ -211,6 +211,36 @@ python korvus_edgar.py --replay https://www.sec.gov/Archives/edgar/data/1045810/
 python tests/test_edgar.py                 # offline parser tests
 ```
 
+## Korvus Intel: small-stock crawler, paper bot, Obsidian vault  (separate ecosystem)
+
+Its own service (`korvus-intel`), its own database (`korvus_intel.db`), its own
+vault folder (`intel/` in the `blackcrown-brain` repo). It never writes to
+`korvus.db` or the terminal, and never touches the agents' folders.
+
+```
+FMP screener ($80-$120, under $10B) ─► universe ─► EDGAR 8-K/6-K for those CIKs (20s)
+   ─► Haiku stock-level read ─► korvus_intel.db ─► paper bot (60s, PAPER ONLY)
+   ─► korvus_vault.py renders intel/ every 10 min ─► git push ─► Obsidian Git pulls to the PC
+```
+
+**Vault layout** (`BlackCrown-Brains/intel/`): `README.md` (contract for agents),
+`Universe.md`, `Filings/YYYY-MM-DD.md`, `Tickers/SYM.md`, `Bot/Strategy.md`,
+`Bot/Scoreboard.md`, `Bot/Trades/YYYY-MM.md`, and `data/*.jsonl` for agents and backtests.
+
+**Paper bot v1** (`korvus_paperbot.py`): long on bullish med/high filings that hold
+above their pre-filing price, +1.5% target / -1.0% stop / flat 3:55 PM ET. Simulated
+fills only. The scoreboard refuses to call a win rate meaningful before 30 trades.
+
+**One-time setup**
+1. GitHub > Settings > Developer settings > Fine-grained tokens > new token, repository
+   access **only** `Vxmpira/blackcrown-brain`, permission **Contents: Read and write**.
+2. Add to the server `.env`: `VAULT_GIT_TOKEN=<token>` (optional tuning keys: `INTEL_*`, `BOT_*`, `VAULT_*`).
+3. `venv/bin/python korvus_intel.py --universe` (prints today's list; proves FMP works)
+4. `venv/bin/python korvus_vault.py` (first push; check Obsidian for `intel/` within 5 min)
+5. `sudo cp korvus-intel.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now korvus-intel`
+
+Checks: `korvus_intel.py --dry-run`, `korvus_intel.py --stats`, `python tests/test_intel.py`.
+
 ## What's still ahead
 - **Phase 4:** move the engine + server to your cloud server so it runs 24/7
   without your computer being on.

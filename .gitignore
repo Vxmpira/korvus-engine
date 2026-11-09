@@ -4,3 +4,6 @@ edgar_state.json
 edgar_state.json.tmp
 edgar_tickers.json
 edgar_tickers.json.tmp
+korvus_intel.db
+korvus_intel.db-*
+vault_clone/

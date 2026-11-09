@@ -1,0 +1,26 @@
+# ============================================================
+#  Korvus Intel: small-stock crawler + paper bot + vault sync
+#  A SEPARATE ecosystem from the terminal (own DB, own service).
+#
+#  INSTALL (on the server):
+#    sudo cp korvus-intel.service /etc/systemd/system/
+#    sudo systemctl daemon-reload
+#    sudo systemctl enable --now korvus-intel
+#    journalctl -u korvus-intel -f
+# ============================================================
+[Unit]
+Description=Korvus Intel (small-stock crawler, paper bot, Obsidian vault sync)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/korvus-engine
+ExecStart=/home/ubuntu/korvus-engine/venv/bin/python korvus_intel.py --loop
+Restart=always
+RestartSec=30
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=/home/ubuntu/korvus-engine/.env
+
+[Install]
+WantedBy=multi-user.target
