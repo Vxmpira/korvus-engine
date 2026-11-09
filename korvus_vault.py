@@ -273,7 +273,8 @@ Paper results: simulated fills on 60-second quotes, no market impact. Not real r
 
     # ---- machine-readable ----
     keep = ("accession", "symbol", "company", "form", "items", "filed_utc", "seen_utc", "url", "headline",
-            "ref_price", "prev_close", "summary", "read", "catalyst", "impact", "direction", "confidence")
+            "ref_price", "prev_close", "summary", "read", "catalyst", "impact", "direction", "confidence",
+            "scorer")
     files["data/filings.jsonl"] = "".join(
         json.dumps({k: (json.loads(f[k] or "[]") if k == "items" else f.get(k)) for k in keep}) + "\n"
         for f in sorted(filings, key=lambda x: x["seen_utc"]))
