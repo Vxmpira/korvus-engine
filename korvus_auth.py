@@ -348,6 +348,58 @@ def change_password(user_id, current_pw, new_pw):
 # EMAIL  (pluggable; stubbed until EMAIL_PROVIDER is configured)
 # ----------------------------------------------------------------------------
 # ----------------------------------------------------------------------------
+# ACCOUNT DELETION  (self-serve; the billing gate runs in the server first)
+# ----------------------------------------------------------------------------
+def check_password(user_id, password):
+    conn = get_db()
+    row = conn.execute("SELECT password_hash FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    return bool(row) and check_password_hash(row["password_hash"], password or "")
+
+
+def delete_user(user_id):
+    """Permanently remove the account row and its personal timeline. A single
+    audit row (username only, no email) records that the deletion happened,
+    so the admin console can tell a deleted member from a missing one.
+    Returns the deleted user dict, or None if nothing matched."""
+    user = get_user_by_id(user_id)
+    if not user:
+        return None
+    conn = get_db()
+    conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.execute("DELETE FROM member_events WHERE username = ?", (user["username"],))
+    conn.commit()
+    conn.close()
+    log_member_event(user["username"], "account_deleted", "self-serve deletion")
+    return user
+
+
+def send_account_deleted_email(email, username):
+    """Confirmation that the account is gone and nothing will bill."""
+    subject = "Your Korvus account has been deleted"
+    body = (f"Hi {username},\n\n"
+            "Your Korvus account has been permanently deleted, as you requested.\n\n"
+            "There is no active subscription on it and no saved card, so you will "
+            "not be charged again. Past receipts stay available from Stripe.\n\n"
+            f"You're welcome back any time: {SITE_URL}/signup\n\n"
+            "If you didn't do this, reply to this email right away.\n\n- BlackCrownVxJ.LLC")
+    html = _email_html(
+        preheader="Your Korvus account is deleted. No further charges.",
+        heading="Your account has been deleted",
+        intro_lines=[
+            f"Hi {username}, your Korvus account has been permanently deleted, as you requested.",
+            "There is no active subscription on it and no saved card, so you will not be charged again.",
+        ],
+        button_label="Come back any time",
+        button_url=f"{SITE_URL}/signup",
+        after_note="If you didn't do this, reply to this email right away.")
+    if EMAIL_PROVIDER == "ses":
+        return _send_ses(email, subject, body, html)
+    print(f"  [email:stub] account-deleted confirmation for {username} <{email}>")
+    return True
+
+
+# ----------------------------------------------------------------------------
 # PASSWORD RESET + EMAIL VERIFICATION POLISH
 # ----------------------------------------------------------------------------
 RESET_TTL_MIN = 60   # reset links are valid for one hour

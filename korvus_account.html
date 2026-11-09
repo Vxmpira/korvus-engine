@@ -65,6 +65,20 @@
 
   .msg{font-family:var(--mono);font-size:11.5px;margin-top:6px;min-height:15px;line-height:1.4;}
   .msg.ok{color:#9fe9bd;} .msg.err{color:#ffb3af;}
+  /* 06, delete account */
+  .card.danger{border-color:rgba(255,46,77,.32);}
+  .card.danger .eyebrow{color:#ff5c72;}
+  .delstate{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;border-radius:11px;margin-bottom:18px;font-size:13px;line-height:1.55;}
+  .delstate.ok{background:rgba(70,209,127,.06);border:1px solid rgba(70,209,127,.25);color:#bdf0d2;}
+  .delstate.block{background:rgba(255,181,71,.06);border:1px solid rgba(255,181,71,.28);color:#ffd9a3;}
+  .delstate.wait{background:rgba(255,255,255,.03);border:1px solid var(--line-bright);color:var(--ink-dim);}
+  .delstate .dico{font-family:var(--mono);font-weight:700;flex:0 0 auto;}
+  .dellist{margin:0 0 18px 18px;color:var(--ink-dim);font-size:12.5px;line-height:1.75;}
+  .btn.del{background:#ff2e4d;color:#fff;box-shadow:0 0 20px -7px rgba(255,46,77,.8);}
+  .btn.del:hover:not(:disabled){background:#ff4a66;box-shadow:0 0 26px -6px rgba(255,46,77,.9);}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line-bright);box-shadow:none;}
+  .btn.ghost:hover:not(:disabled){background:rgba(255,255,255,.05);border-color:var(--crimson);box-shadow:none;}
+  #delForm[hidden]{display:none;}
   .hr{height:1px;background:var(--line);margin:22px 0;}
   .btnrow{display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
 
@@ -231,6 +245,33 @@
       </div>
     </div>
 
+    <!-- Delete account -->
+    <div class="card danger" style="--d:.33s" id="delCard">
+      <div class="eyebrow">06, Leave Korvus</div>
+      <h2>Delete account</h2>
+      <p class="desc">You can leave any time. To make sure nothing ever bills an account that no longer exists,
+        deletion only unlocks once there is no active subscription on it. We check Stripe directly, not just our own records.</p>
+      <div class="delstate wait" id="delState"><span class="dico">&middot;&middot;&middot;</span><span>Checking your billing status with Stripe&hellip;</span></div>
+      <div id="delBlocked" hidden>
+        <button class="btn ghost" id="delBillBtn" type="button">Manage billing</button>
+      </div>
+      <div id="delForm" hidden>
+        <p class="desc" style="margin-bottom:8px;">Deleting is permanent and can't be undone. It removes:</p>
+        <ul class="dellist">
+          <li>Your login, username, and email from Korvus</li>
+          <li>Your saved watchlist, alert settings, and TradingView username (LodeStone access ends)</li>
+          <li>Any saved card on file with Stripe, so it can never be charged again</li>
+        </ul>
+        <p class="desc" style="margin-bottom:18px;">Past receipts stay with Stripe for tax records. You'll get a confirmation email, and you're welcome to sign up again later.</p>
+        <label for="delPw">Your password</label>
+        <input id="delPw" type="password" autocomplete="current-password" />
+        <label for="delConfirm">Type DELETE to confirm</label>
+        <input id="delConfirm" type="text" autocomplete="off" spellcheck="false" placeholder="DELETE" />
+        <button class="btn del" id="delBtn" type="button" disabled>Delete my account permanently</button>
+      </div>
+      <div class="msg" id="delMsg"></div>
+    </div>
+
     <p class="foot">Payments are handled by Stripe, your card details never touch Korvus servers.<br>
       Manage billing opens the secure Stripe portal for your payment method, invoices, and cancellation.</p>
   </div>
@@ -381,7 +422,67 @@ document.getElementById('billBtn').onclick = async (e) => {
   }
 };
 
-load();
+/* ---- 06, delete account ---- */
+function delState(kind, icon, text){
+  const el = document.getElementById('delState');
+  el.className = 'delstate ' + kind;
+  el.innerHTML = '';
+  const i = document.createElement('span'); i.className='dico'; i.textContent = icon;
+  const t = document.createElement('span'); t.textContent = text;
+  el.appendChild(i); el.appendChild(t);
+}
+async function loadDelete(){
+  let r = {};
+  try{ r = await (await fetch('/api/account/delete-check',{cache:'no-store'})).json(); }
+  catch(e){ r = {allowed:false, reason:'Could not check your billing status. Refresh to try again.'}; }
+  const form = document.getElementById('delForm');
+  const blocked = document.getElementById('delBlocked');
+  if(r.allowed){
+    delState('ok', '\u2713', 'No active subscription on this account. Nothing will bill it, so it can be deleted.');
+    form.hidden = false; blocked.hidden = true;
+  } else {
+    const when = r.ends_at ? ' Current period ends ' + fmtDate(r.ends_at) + '.' : '';
+    delState('block', '!', (r.reason || 'Deletion is not available right now.') + when);
+    form.hidden = true;
+    blocked.hidden = !(ME && ME.tier === 'pro');
+  }
+}
+function delReady(){
+  const ok = document.getElementById('delConfirm').value.trim().toUpperCase() === 'DELETE'
+          && document.getElementById('delPw').value.length > 0;
+  document.getElementById('delBtn').disabled = !ok;
+}
+document.getElementById('delConfirm').oninput = delReady;
+document.getElementById('delPw').oninput = delReady;
+document.getElementById('delBillBtn').onclick = async (e) => {
+  e.currentTarget.disabled = true;
+  const {ok, data} = await post('/api/billing/portal', {});
+  if(ok && data.url){ location.href = data.url; return; }
+  setMsg('delMsg','err', data.error || 'Could not open the billing portal.');
+  e.currentTarget.disabled = false;
+};
+document.getElementById('delBtn').onclick = async (e) => {
+  const btn = e.currentTarget;
+  btn.disabled = true; btn.textContent = 'Deleting\u2026';
+  const {ok, data} = await post('/api/account/delete', {
+    password: document.getElementById('delPw').value,
+    confirm:  document.getElementById('delConfirm').value
+  });
+  if(ok){
+    document.querySelectorAll('.card').forEach(c => { if(c.id !== 'delCard') c.style.display = 'none'; });
+    document.getElementById('delForm').hidden = true;
+    delState('ok', '\u2713', 'Your account has been deleted and you are signed out. A confirmation email is on its way. Taking you home\u2026');
+    document.getElementById('hello').textContent = 'Signed out';
+    setTimeout(() => { location.href = '/'; }, 4500);
+    return;
+  }
+  btn.textContent = 'Delete my account permanently';
+  setMsg('delMsg','err', data.message || 'Could not delete the account.');
+  if(btn.dataset) delReady();
+  if(data.ends_at !== undefined) loadDelete();
+};
+
+load().then(loadDelete);
 </script>
 <script>
 (function(){
