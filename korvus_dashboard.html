@@ -488,6 +488,9 @@
   .badge.wire{color:#c9b8ff;border-color:rgba(160,140,255,.25);}
   /* primary source: SEC filings read straight from EDGAR */
   .badge.filing{color:#ffd479;border-color:rgba(255,212,121,.35);background:rgba(255,212,121,.06);box-shadow:0 0 12px -5px rgba(255,212,121,.6);}
+  .feedempty{padding:42px 28px;text-align:center;font-size:13px;line-height:1.65;color:var(--ink-dim);max-width:560px;margin:0 auto;}
+  .feedempty b{color:#ffd479;font-weight:600;}
+  .feedempty a{display:inline-block;margin-top:12px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--crimson);text-decoration:none;}
   .filingline{font-family:var(--mono);font-size:10px;color:var(--ink-faint);letter-spacing:.03em;margin:0 0 9px;}
   .filingline b{color:#ffd479;font-weight:600;}
   .item.locked{cursor:pointer;}
@@ -1284,7 +1287,9 @@ function renderNews(list){
         </div>
       </div>
     </article>`;
-  }).join('');
+  }).join('') || (_filingsOnly
+    ? `<div class="feedempty"><b>No SEC filings yet.</b> Korvus checks EDGAR every 20 seconds for 8-K and 6-K filings from the Nasdaq and S&amp;P heavyweights. They land here the moment one is accepted, mostly around the 4:00 PM ET close in earnings season.<br><a href="#" onclick="toggleFilingsOnly();return false;">Show the full feed &rsaquo;</a></div>`
+    : `<div class="feedempty">Nothing matches this filter right now.</div>`);
   document.getElementById('feedMeta').textContent=shown.length+' items';
 }
 
