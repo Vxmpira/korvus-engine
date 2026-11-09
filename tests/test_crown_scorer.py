@@ -1,5 +1,5 @@
-"""Crown routing: a local fake AnythingLLM answers /api/v1/workspace/<slug>/chat
-like the real one (textResponse, optional <think> block). Checks crown mode,
+"""Crown routing: a local fake OpenRouter answers /api/v1/chat/completions like
+the real one (OpenAI shape, optional <think> block). Checks crown mode,
 fallback to Haiku when Crown is down, shadow mode, auth header, and the DB
 columns. Offline. Run: python tests/test_crown_scorer.py"""
 import os, sys, json, threading, tempfile, shutil
@@ -25,7 +25,8 @@ class Fake(BaseHTTPRequestHandler):
                 '"impact":"high","direction":"bull","confidence":77}')
         if MODE["think"]:
             text = "<think>let me reason {not json}</think>\nHere you go:\n" + text
-        out = json.dumps({"id": "x", "type": "textResponse", "textResponse": text, "error": None}).encode()
+        out = json.dumps({"id": "gen-1", "model": body["model"],
+                          "choices": [{"message": {"role": "assistant", "content": text}}]}).encode()
         self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers()
         self.wfile.write(out)
 
@@ -34,7 +35,7 @@ srv = HTTPServer(("127.0.0.1", 0), Fake)
 threading.Thread(target=srv.serve_forever, daemon=True).start()
 intel.CROWN_BASE = f"http://127.0.0.1:{srv.server_port}/api/v1"
 intel.CROWN_KEY = "crown-key"
-intel.CROWN_SPACE = "the-floor"
+intel.CROWN_MODEL = "meta-llama/llama-3.3-70b-instruct"
 HAIKU = {"summary": "h", "read": "h", "catalyst": "earnings", "impact": "med", "direction": "bull", "confidence": 60}
 intel.score_haiku = lambda *a, **k: dict(HAIKU)
 ARGS = ("NVDA", "NVIDIA", "8-K", ["2.02"], "Revenue up 106%")
@@ -45,9 +46,10 @@ def test_crown_mode():
     d = intel.score_filing(*ARGS)
     assert d["scorer"] == "crown" and d["confidence"] == 77 and d["impact"] == "high", d
     path, auth, body = SEEN[-1]
-    assert path == "/api/v1/workspace/the-floor/chat" and auth == "Bearer crown-key"
-    assert body["mode"] == "chat" and body["sessionId"].startswith("korvus-intel-NVDA-")
-    assert "TICKER: NVDA" in body["message"] and "STRICT JSON" in body["message"]
+    assert path == "/api/v1/chat/completions" and auth == "Bearer crown-key"
+    assert body["model"] == "meta-llama/llama-3.3-70b-instruct" and body["temperature"] == 0.2
+    sysm, user = body["messages"]
+    assert sysm["role"] == "system" and "STRICT JSON" in sysm["content"] and "TICKER: NVDA" in user["content"]
 
 
 def test_crown_down_falls_back():
@@ -56,7 +58,7 @@ def test_crown_down_falls_back():
     MODE["up"] = True
     assert d["scorer"] == "haiku" and d["confidence"] == 60, d
     snap = status.snapshot()
-    assert "502" in snap["stages"]["crown"]["last_error"]
+    assert "502" in snap["stages"]["crown"]["last_error"] and "OpenRouter" in snap["stages"]["crown"]["last_error"]
     assert any("Haiku read it instead" in e["msg"] for e in snap["events"])
 
 

@@ -92,14 +92,14 @@ CLAUDE_MODEL  = "claude-haiku-4-5"
 
 # Which brain reads the filings:
 #   haiku  (default) Claude Haiku decides.
-#   crown  BlackCrown Intelligence (Crown, AnythingLLM) decides; if Crown is
+#   crown  BlackCrown Intelligence's model (Crown, on OpenRouter) decides; if it is
 #          down or answers in an unusable shape, Haiku steps in for that filing.
 #   shadow Haiku decides (the bot trades on it) AND Crown reads every filing on
 #          the side, so the two can be compared before Crown is trusted.
 SCORER        = _env("INTEL_SCORER", "haiku").lower()
-CROWN_BASE    = _env("CROWN_API_BASE", "https://blackcrown-intelligence.com/api/v1").rstrip("/")
-CROWN_KEY     = _env("CROWN_API_KEY")
-CROWN_SPACE   = _env("CROWN_WORKSPACE")          # the workspace slug, e.g. the Floor's
+CROWN_BASE    = _env("CROWN_API_BASE", "https://openrouter.ai/api/v1").rstrip("/")
+CROWN_KEY     = _env("CROWN_API_KEY") or _env("OPENROUTER_API_KEY")
+CROWN_MODEL   = _env("CROWN_MODEL")              # the OpenRouter model id Crown runs on
 CROWN_TIMEOUT = int(_num("CROWN_TIMEOUT", 120))
 
 SCREENER_URLS = [
@@ -428,41 +428,44 @@ def _filing_blob(symbol, company, form, items, text, limit=12000) -> str:
 
 
 def crown_ready() -> bool:
-    return bool(CROWN_KEY and CROWN_SPACE)
+    return bool(CROWN_KEY and CROWN_MODEL)
 
 
 def score_with_crown(symbol: str, company: str, form: str, items: list, text: str) -> Optional[dict]:
-    """Ask Crown (AnythingLLM developer API) for the same JSON read Haiku gives.
-    A fresh sessionId per filing keeps one filing's chat out of the next.
-    Reasoning models wrap their thinking in <think> tags; those are stripped."""
+    """Ask Crown's model on OpenRouter (OpenAI-compatible chat completions) for
+    the same JSON read Haiku gives. Reasoning models may wrap their thinking
+    in <think> tags; those are stripped before the JSON is read."""
     if not crown_ready():
         return None
     import re as _re
-    msg = (STOCK_PROMPT + "\n\nReturn ONLY the JSON object, nothing before or after it.\n\n"
-           + _filing_blob(symbol, company, form, items, text, limit=8000))
     t0 = time.time()
     try:
-        r = requests.post(f"{CROWN_BASE}/workspace/{CROWN_SPACE}/chat",
+        r = requests.post(f"{CROWN_BASE}/chat/completions",
                           headers={"Authorization": f"Bearer {CROWN_KEY}", "Content-Type": "application/json",
-                                   "Accept": "application/json"},
-                          json={"message": msg, "mode": "chat",
-                                "sessionId": f"korvus-intel-{symbol}-{int(t0)}"},
+                                   "HTTP-Referer": "https://korvus.industries", "X-Title": "Korvus Intel"},
+                          json={"model": CROWN_MODEL, "max_tokens": 1200, "temperature": 0.2,
+                                "messages": [
+                                    {"role": "system", "content": STOCK_PROMPT
+                                     + "\nReturn ONLY the JSON object, nothing before or after it."},
+                                    {"role": "user", "content": _filing_blob(symbol, company, form, items, text, 8000)},
+                                ]},
                           timeout=CROWN_TIMEOUT)
         ms = int((time.time() - t0) * 1000)
-        if r.status_code != 200:
-            status.error("crown", f"HTTP {r.status_code} from Crown")
+        try:
+            body = r.json()
+        except ValueError:
+            body = {}
+        if r.status_code != 200 or body.get("error"):
+            err = (body.get("error") or {}).get("message") if isinstance(body.get("error"), dict) else body.get("error")
+            status.error("crown", f"HTTP {r.status_code} from OpenRouter{': ' + str(err)[:140] if err else ''}")
             return None
-        body = r.json()
-        out = body.get("textResponse") or ""
-        if body.get("error"):
-            status.error("crown", f"Crown error: {body['error']}")
-            return None
+        out = ((body.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
         out = _re.sub(r"(?is)<think>.*?</think>", "", out)
         d = _first_json(out)
         if not d:
-            status.error("crown", f"{symbol}: Crown answered without usable JSON")
+            status.error("crown", f"{symbol}: {CROWN_MODEL} answered without usable JSON")
             return None
-        status.record("crown", last_ok_utc=utcnow().isoformat(), last_ms=ms, inc_reads_today=1)
+        status.record("crown", last_ok_utc=utcnow().isoformat(), last_ms=ms, model=CROWN_MODEL, inc_reads_today=1)
         return normalize_score(d)
     except Exception as e:
         status.error("crown", f"{symbol}: {e.__class__.__name__}: {str(e)[:160]}")
@@ -649,7 +652,7 @@ def run_forever():
     import korvus_vault as vault
     db_init()
     status.start_flusher()
-    status.record("scoring", mode=SCORER, crown_configured=crown_ready())
+    status.record("scoring", mode=SCORER, crown_configured=crown_ready(), crown_model=CROWN_MODEL)
     status.event("system", f"Korvus Intel started (scorer: {SCORER}"
                  f"{', Crown linked' if crown_ready() else ''})")
     if _universe_stale():
@@ -734,9 +737,9 @@ def main():
                   "Data Center revenue of $89.0 billion, up 117% from a year ago\n"
                   "GAAP and non-GAAP gross margins were both 75.0%.\n"
                   "Outlook: revenue is expected to be $108.0 billion, plus or minus 2%.")
-        print(f"  Crown: {CROWN_BASE}/workspace/{CROWN_SPACE or '<CROWN_WORKSPACE not set>'}/chat")
+        print(f"  Crown: {CROWN_MODEL or '<CROWN_MODEL not set>'} via {CROWN_BASE}")
         if not crown_ready():
-            print("  set CROWN_API_KEY and CROWN_WORKSPACE in .env first")
+            print("  set OPENROUTER_API_KEY (or CROWN_API_KEY) and CROWN_MODEL in .env first")
             return
         for name, fn in (("crown", score_with_crown), ("haiku", score_haiku)):
             t0 = time.time()

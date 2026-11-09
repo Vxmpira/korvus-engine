@@ -241,11 +241,11 @@ fills only. The scoreboard refuses to call a win rate meaningful before 30 trade
 
 Checks: `korvus_intel.py --dry-run`, `korvus_intel.py --stats`, `python tests/test_intel.py`.
 
-**Who reads the filings (`INTEL_SCORER`):** `haiku` (default) · `crown` (BlackCrown Intelligence decides;
-Haiku covers any filing Crown can't answer) · `shadow` (Haiku decides, Crown reads every filing on the side so
-you can compare before trusting it). Crown is called through AnythingLLM's developer API:
-`CROWN_API_BASE` (default `https://blackcrown-intelligence.com/api/v1`), `CROWN_API_KEY`, `CROWN_WORKSPACE`
-(the workspace slug). Check the link with `venv/bin/python korvus_intel.py --crown-test`.
+**Who reads the filings (`INTEL_SCORER`):** `haiku` (default) · `crown` (Crown's OpenRouter model decides;
+Haiku covers any filing it can't answer) · `shadow` (Haiku decides, Crown's model reads every filing on the side
+so you can compare before trusting it). Set `OPENROUTER_API_KEY` (or `CROWN_API_KEY`) and `CROWN_MODEL` (the
+OpenRouter model id Crown uses, e.g. `meta-llama/llama-3.3-70b-instruct`). Check with
+`venv/bin/python korvus_intel.py --crown-test`.
 
 **Live status for the BlackCrown admin:** korvus-intel writes `intel_status.json` (heartbeat, per-stage
 stats, last 80 events) every few seconds. `GET /api/feed/intel-status` serves it to the admin with header
