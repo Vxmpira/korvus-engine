@@ -687,7 +687,10 @@ def main():
     a = ap.parse_args()
 
     if a.dry_run:
-        for e in fetch_matches(all_names=a.all)[:40]:
+        found = fetch_matches(all_names=a.all)
+        print(f"  [edgar] reached EDGAR; {len(found)} matching filing(s) in the latest feed"
+              + ("" if found or a.all else " (none from the watchlist right now, that is normal; try --all)"))
+        for e in found[:40]:
             print(f"  {e['updated'][11:19]}  {e['ticker']:<18} {e['form']:<6} "
                   f"{'skip' if not worth_it(e) else 'TAKE'}  {describe_items(e['items']) or e['items']}")
         return
