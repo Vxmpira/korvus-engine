@@ -7,3 +7,5 @@ edgar_tickers.json.tmp
 korvus_intel.db
 korvus_intel.db-*
 vault_clone/
+intel_status.json
+intel_status.json.tmp

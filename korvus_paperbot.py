@@ -114,7 +114,9 @@ def _close(conn, t: dict, reason: str, fill: float, now_utc: str):
                     WHERE id=?""", (now_utc, round(fill, 4), reason,
                                     round(pnl, 2), round(pct, 3), t["id"]))
     conn.commit()
-    print(f"  [paperbot] EXIT {t['symbol']} {reason} @ {fill:.2f}  {pct:+.2f}%  ${pnl:+.2f}")
+    msg = f"EXIT {t['symbol']} {reason} @ ${fill:.2f}, {pct:+.2f}% (${pnl:+.2f} paper)"
+    print(f"  [paperbot] {msg}")
+    return msg
 
 
 def tick(now_et: dt.datetime = None, quote_fn=None) -> dict:
@@ -122,9 +124,12 @@ def tick(now_et: dt.datetime = None, quote_fn=None) -> dict:
     now_et = now_et or intel.et_now()
     quote_fn = quote_fn or intel.quote
     now_utc = now_et.astimezone(dt.timezone.utc)
-    out = {"exits": 0, "entries": 0, "skipped": []}
+    out = {"exits": 0, "entries": 0, "skipped": [], "log": [], "candidates": 0,
+           "session_open": False, "in_window": False, "open_positions": 0}
     if not session_open(now_et):
         return out
+    out["session_open"] = True
+    out["in_window"] = ENTRY_START <= _hm(now_et) < ENTRY_END
     conn = intel.db()
 
     # ---- exits first ----
@@ -135,14 +140,15 @@ def tick(now_et: dt.datetime = None, quote_fn=None) -> dict:
             continue
         d = exit_decision(t, q["price"], now_et)
         if d:
-            _close(conn, t, *d, now_utc.isoformat())
+            out["log"].append(("exit", t["symbol"], _close(conn, t, *d, now_utc.isoformat())))
             out["exits"] += 1
 
     # ---- entries ----
-    if not (ENTRY_START <= _hm(now_et) < ENTRY_END):
+    n_open = conn.execute("SELECT COUNT(*) c FROM trades WHERE status='open'").fetchone()["c"]
+    out["open_positions"] = n_open
+    if not out["in_window"]:
         conn.close()
         return out
-    n_open = conn.execute("SELECT COUNT(*) c FROM trades WHERE status='open'").fetchone()["c"]
     since = (now_utc - dt.timedelta(hours=LOOKBACK_H)).isoformat()
     today_et = now_et.date().isoformat()
     cands = [dict(r) for r in conn.execute(
@@ -153,6 +159,7 @@ def tick(now_et: dt.datetime = None, quote_fn=None) -> dict:
             break
         if not is_trigger(f):
             continue
+        out["candidates"] += 1
         if conn.execute("SELECT 1 FROM trades WHERE accession=?", (f["accession"],)).fetchone():
             continue
         same_day = conn.execute(
@@ -183,8 +190,11 @@ def tick(now_et: dt.datetime = None, quote_fn=None) -> dict:
         conn.commit()
         n_open += 1
         out["entries"] += 1
-        print(f"  [paperbot] ENTRY {f['symbol']} x{qty} @ {fill:.2f} on {f['catalyst']} "
-              f"({f['impact']}/{f['confidence']}%)")
+        out["open_positions"] = n_open
+        msg = (f"ENTRY {f['symbol']} x{qty} @ ${fill:.2f} on {f['catalyst'].replace('_', ' ')} "
+               f"({f['impact']}/{f['confidence']}%)")
+        out["log"].append(("entry", f["symbol"], msg))
+        print(f"  [paperbot] {msg}")
     conn.close()
     return out
 
@@ -214,6 +224,16 @@ def scoreboard(strategy: str = STRATEGY) -> dict:
     for t in closed:
         exits[t["exit_reason"]] = exits.get(t["exit_reason"], 0) + 1
     n = len(closed)
+    # drawdown on the cumulative paper P&L curve, in dollars and as a % of the
+    # capital the rules can have at work at once (notional x max open)
+    capital = NOTIONAL * MAX_OPEN
+    peak = cum = mdd = 0.0
+    for t in closed:
+        cum += t["pnl"] or 0
+        peak = max(peak, cum)
+        mdd = max(mdd, peak - cum)
+    days = sorted({(t["exit_utc"] or "")[:10] for t in closed if t.get("exit_utc")})
+    last30 = closed[-30:]
     return {
         "strategy": strategy,
         "closed_trades": n,
@@ -229,4 +249,11 @@ def scoreboard(strategy: str = STRATEGY) -> dict:
         "paper_pnl": round(sum(t["pnl"] or 0 for t in closed), 2),
         "exits": exits,
         "by_catalyst": by_cat,
+        "capital_at_work": capital,
+        "max_drawdown_usd": round(mdd, 2),
+        "max_drawdown_pct": round(100 * mdd / capital, 2) if capital else None,
+        "first_trade_utc": closed[0]["entry_utc"] if closed else None,
+        "last_trade_utc": closed[-1]["exit_utc"] if closed else None,
+        "trading_days": len(days),
+        "last30_expectancy_pct": round(sum(t["pnl_pct"] for t in last30) / len(last30), 3) if last30 else None,
     }

@@ -293,6 +293,43 @@ def api_feed_floor():
     return jsonify({"items": items, "count": len(items)})
 
 
+@app.route("/api/feed/intel-status")
+def api_feed_intel_status():
+    """Server-to-server live status of Korvus Intel for the BlackCrown admin's
+    Paper Bot tab. Shared key (INTEL_STATUS_KEY in .env on both boxes), sent as
+    X-Intel-Key. Read-only: serves intel_status.json (written every few
+    seconds by korvus-intel) plus a few counts from korvus_intel.db."""
+    import hmac
+    want = os.getenv("INTEL_STATUS_KEY", "")
+    got = request.headers.get("X-Intel-Key", "")
+    if not want or not hmac.compare_digest(want, got):
+        return jsonify({"error": "forbidden"}), 403
+    out = {"running": False}
+    sp = os.path.join(HERE, "intel_status.json")
+    try:
+        with open(sp) as f:
+            st = json.load(f)
+        age = (dt.datetime.now(dt.timezone.utc) - dt.datetime.fromisoformat(st["updated_utc"])).total_seconds()
+        out = {"running": age < 90, "heartbeat_age_s": round(age, 1), **st}
+    except Exception as e:
+        out["error"] = f"no status yet: {e.__class__.__name__}"
+    ip = os.path.join(HERE, "korvus_intel.db")
+    if os.path.exists(ip):
+        try:
+            c = sqlite3.connect(f"file:{ip}?mode=ro", uri=True, timeout=5)
+            out["counts"] = {
+                "universe": c.execute("SELECT COUNT(*) FROM universe").fetchone()[0],
+                "filings_total": c.execute("SELECT COUNT(*) FROM filings").fetchone()[0],
+                "open_trades": c.execute("SELECT COUNT(*) FROM trades WHERE status='open'").fetchone()[0],
+                "closed_trades": c.execute("SELECT COUNT(*) FROM trades WHERE status='closed'").fetchone()[0],
+            }
+            c.close()
+        except Exception as e:
+            out["counts_error"] = str(e)[:200]
+    out["server_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
+    return jsonify(out)
+
+
 @app.route("/api/ff-calendar")
 def api_ff_calendar():
     """This-week economic calendar for the Forex / Gov News page.
