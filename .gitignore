@@ -1,2 +1,6 @@
 __pycache__/
 *.pyc
+edgar_state.json
+edgar_state.json.tmp
+edgar_tickers.json
+edgar_tickers.json.tmp

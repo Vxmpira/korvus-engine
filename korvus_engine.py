@@ -165,7 +165,7 @@ def db_init():
             id           TEXT PRIMARY KEY,   -- hash of source+headline (dedupe)
             created_at   TEXT NOT NULL,      -- when WE ingested it (UTC ISO)
             published_at TEXT,               -- when the source published it
-            source       TEXT NOT NULL,      -- 'wire' | 'reddit' | 'x'
+            source       TEXT NOT NULL,      -- 'wire' | 'reddit' | 'x' | 'filing'
             source_name  TEXT,               -- e.g. 'Reuters', 'r/options'
             url          TEXT,
             headline     TEXT NOT NULL,
@@ -566,6 +566,22 @@ event must get the same impact regardless of how the headline is worded):
   "low" = minor / single small-cap / routine filings (Form 144, 6-K, S-1),
     micro-cap news, slow-moving or already-priced-in items.
 
+PRIMARY-SOURCE FILINGS (SOURCE: filing). These are SEC filings read straight
+from EDGAR, usually minutes before any outlet reports them, from the index
+heavyweights Korvus watches. They are NOT routine paperwork:
+  - An 8-K Item 2.02 (earnings release) or a 6-K results release from a
+    mega-cap (NVDA, AAPL, MSFT, AMZN, META, GOOGL, AVGO, TSLA and peers) is
+    rated on its content like any mega-cap earnings shock: usually "high" for
+    the top weights, "med" for the rest.
+  - CEO/CFO departures, non-reliance (Item 4.02), impairments, and large
+    acquisitions at those names are usually "med" or "high".
+  - You do NOT know Wall Street consensus. Judge from year-over-year and
+    quarter-over-quarter growth, margins, guidance and its direction, and
+    management tone in the release. Say plainly in impact_desc that the
+    comparison to street estimates is not yet known and is the thing to watch.
+  - Quote the actual reported figures (revenue, EPS, guidance) in
+    article_summary. Never invent a figure the filing does not contain.
+
 DIRECTION - neutral is the HONEST default. Only assign "bull" or "bear" when the
 story has a CLEAR directional read for the tagged instruments. Do NOT force a
 direction to seem decisive - an informational item with no clear lean is "neut",
@@ -839,6 +855,14 @@ def main():
     db_init()
     if args.loop:
         print(f"Korvus engine in LOOP mode - every {POLL_MINUTES} min. Ctrl+C to stop.")
+        # Primary-source SEC filing watcher: its own fast loop (default 20s) in a
+        # daemon thread, so systemd supervises it with the engine and a filing
+        # never waits on the 5 min news pass. EDGAR_ENABLED=0 switches it off.
+        try:
+            import korvus_edgar
+            korvus_edgar.start_thread()
+        except Exception as e:
+            print(f"  [edgar] watcher failed to start: {e}")
         while True:
             try:
                 run_once()

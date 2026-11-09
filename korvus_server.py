@@ -116,6 +116,70 @@ def to_et(iso_utc: str) -> str:
         return ""
 
 
+def _parse_utc(iso: str):
+    try:
+        d = dt.datetime.fromisoformat(iso)
+        return d if d.tzinfo else d.replace(tzinfo=dt.timezone.utc)
+    except Exception:
+        return None
+
+
+def to_et_sec(iso_utc: str) -> str:
+    """Like to_et but to the second ('4:21:19 PM'), for filing receipts."""
+    d = _parse_utc(iso_utc or "")
+    if not d:
+        return ""
+    try:
+        from zoneinfo import ZoneInfo
+        et = d.astimezone(ZoneInfo("America/New_York"))
+    except Exception:
+        et = d.astimezone(dt.timezone(dt.timedelta(hours=-4)))
+    return et.strftime("%-I:%M:%S %p") if os.name != "nt" else et.strftime("%#I:%M:%S %p")
+
+
+def _filing_card(r, is_pro: bool, delay_min: int, now_utc):
+    """One SEC filing row -> feed card. Carries the SEC acceptance time and the
+    time Korvus had it, so every card is its own speed receipt. Free tier gets
+    a locked teaser (ticker + impact only) until delay_min has passed."""
+    created = _parse_utc(r["created_at"])
+    filed = _parse_utc(r["published_at"] or "")
+    lag = int((created - filed).total_seconds()) if (created and filed) else None
+    base = {
+        "time": to_et(r["created_at"]),
+        "source": "filing",
+        "source_name": r["source_name"] or "SEC filing",
+        "impact": r["impact"] or "low",
+        "url": r["url"] or "",
+        "category": "general",
+        "filed": to_et_sec(r["published_at"] or ""),
+        "seen": to_et_sec(r["created_at"]),
+        "lag_sec": lag if (lag is not None and lag >= 0) else None,
+    }
+    unlock_at = (created + dt.timedelta(minutes=delay_min)) if created else None
+    if not is_pro and unlock_at and now_utc < unlock_at:
+        tk = (r["source_name"] or "").split("·")[-1].strip() or "a watched name"
+        base.update({
+            "locked": True,
+            "headline": f"New SEC filing from {tk}, read straight from EDGAR",
+            "summary": (f"Operator members have the full Korvus breakdown of this filing right now. "
+                        f"It unlocks on the free tier at {to_et(unlock_at.isoformat())} ET."),
+            "article_summary": "", "impact_desc": "", "raw": "",
+            "dir": "neut", "inst": [], "conf": 0, "url": "",
+        })
+        return base
+    base.update({
+        "headline": r["headline"],
+        "summary": r["summary"] or "",
+        "article_summary": r["article_summary"] or "",
+        "impact_desc": r["impact_desc"] or "",
+        "raw": r["raw_text"] or "",
+        "dir": r["direction"] or "neut",
+        "inst": json.loads(r["instruments"] or "[]"),
+        "conf": r["confidence"] or 0,
+    })
+    return base
+
+
 @app.route("/api/news")
 def api_news():
     """Return the latest scored items as the dashboard's news format."""
@@ -133,11 +197,27 @@ def api_news():
     ).fetchall()
     conn.close()
 
+    # Primary-source SEC filings are an Operator feature: free / logged-out
+    # sessions see a locked teaser until the same free delay the quotes use
+    # has passed, then the full card. Owner preview-as-free is respected.
+    is_owner = current_user.username in ADMIN_USERNAMES
+    is_pro = (current_user.tier == "pro" or is_owner) and not _free_preview()
+    try:
+        from korvus_quotes import FREE_DELAY_MIN
+    except Exception:
+        FREE_DELAY_MIN = 15
+    now_utc = dt.datetime.now(dt.timezone.utc)
+
     items = []
     for r in rows:
+        if r["source"] == "filing":
+            card = _filing_card(r, is_pro, FREE_DELAY_MIN, now_utc)
+            if card:
+                items.append(card)
+            continue
         items.append({
             "time": to_et(r["created_at"]),
-            "source": r["source"],          # 'wire' | 'reddit' | 'x'
+            "source": r["source"],          # 'wire' | 'reddit' | 'x' | 'filing'
             "source_name": r["source_name"] if "source_name" in r.keys() else "",
             "headline": r["headline"],
             "summary": r["summary"] or "",
