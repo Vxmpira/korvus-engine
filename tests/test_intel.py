@@ -58,10 +58,16 @@ def seed():
 def test_filters():
     assert bot.is_trigger({"direction": "bull", "impact": "med", "confidence": 60})
     assert not bot.is_trigger({"direction": "bull", "impact": "low", "confidence": 99})
-    assert not bot.is_trigger({"direction": "bear", "impact": "high", "confidence": 99})
+    assert bot.side_for({"direction": "bear", "impact": "high", "confidence": 99}) == "short"
+    assert bot.side_for({"direction": "neut", "impact": "high", "confidence": 99}) is None
     assert bot.confirm_entry({"ref_price": 99}, {"price": 100, "chg_pct": 2})[0]
     assert not bot.confirm_entry({"ref_price": 99}, {"price": 98, "chg_pct": 2})[0]
     assert not bot.confirm_entry({"ref_price": 90}, {"price": 100, "chg_pct": 9})[0]
+    assert bot.confirm_entry({"ref_price": 100}, {"price": 99, "chg_pct": -2}, "short")[0]
+    assert not bot.confirm_entry({"ref_price": 100}, {"price": 101, "chg_pct": -2}, "short")[0]
+    assert not bot.confirm_entry({"ref_price": 100}, {"price": 90, "chg_pct": -9}, "short")[0]
+    t, s = bot.levels("short", 100.0)
+    assert round(t, 2) == 98.5 and round(s, 2) == 101.0
 
 
 def test_simulated_day():
@@ -74,6 +80,7 @@ def test_simulated_day():
     r = bot.tick(day.replace(hour=10, minute=0), q)
     assert r["entries"] == 1, r                                  # AAA only
     assert ("BBB", "below reference 82.00") in r["skipped"], r["skipped"]
+    assert ("CCC", "short: not below reference 110.00") in r["skipped"], r["skipped"]   # bear read, price not confirming
     r = bot.tick(day.replace(hour=10, minute=5), q)
     assert r["entries"] == 0                                     # one trade per filing / per day
     px["AAA"] = 101.7                                            # +1.65% from ~100.05 fill
@@ -94,6 +101,45 @@ def test_simulated_day():
     assert sb["max_drawdown_usd"] == 54.97 and sb["trading_days"] == 1 and sb["capital_at_work"] == 50000, sb
 
 
+def test_short_side():
+    """Bearish reads go short: profit when price falls, loss when it rises,
+    P&L sign mirrored, fills against us, and the switch turns shorts off."""
+    c = intel.db()
+    now = dt.datetime(2026, 11, 11, 8, 0, tzinfo=ET).astimezone(dt.timezone.utc).isoformat()
+    for a, sym, ref in (("0001-26-000010", "SHA", 50.0), ("0001-26-000011", "SHB", 60.0), ("0001-26-000012", "SHC", 40.0)):
+        c.execute("INSERT INTO universe (symbol,name,cik,price,asof) VALUES (?,?,?,?,?)", (sym, sym, 9000 + len(a), ref, now))
+        c.execute("""INSERT INTO filings (accession,symbol,form,items,filed_utc,seen_utc,url,headline,ref_price,prev_close,
+                     summary,read,catalyst,impact,direction,confidence,scored)
+                     VALUES (?,?,'8-K','[]',?,?,'u',?,?,?,'s','r','offering','high','bear',80,1)""",
+                  (a, sym, now, now, f"{sym}: offering", ref, ref))
+    c.commit(); c.close()
+    px = {"SHA": 49.5, "SHB": 59.4, "SHC": 36.0}             # SHC already down 10% -> skip
+    chg = {"SHA": -1.0, "SHB": -1.0, "SHC": -10.0}
+    q = lambda s: {"price": px[s], "chg_pct": chg[s], "prev_close": 0, "open": 0, "high": 0, "low": 0}
+    day = dt.datetime(2026, 11, 11, tzinfo=ET)
+    r = bot.tick(day.replace(hour=10, minute=0), q)
+    assert r["entries"] == 2, r
+    assert ("SHC", "short: already down 10.0% on the day") in r["skipped"], r["skipped"]
+    c = intel.db()
+    sha = dict(c.execute("SELECT * FROM trades WHERE symbol='SHA'").fetchone()); c.close()
+    assert sha["side"] == "short" and sha["entry_px"] < 49.5          # sold below the quote (slippage)
+    assert sha["target_px"] < sha["entry_px"] < sha["stop_px"]
+    px["SHA"] = 48.6                                                   # falls ~1.8% -> target
+    px["SHB"] = 60.2                                                   # rises ~1.4% -> stop
+    r = bot.tick(day.replace(hour=11, minute=0), q)
+    assert r["exits"] == 2, r
+    c = intel.db()
+    a = dict(c.execute("SELECT * FROM trades WHERE symbol='SHA'").fetchone())
+    b = dict(c.execute("SELECT * FROM trades WHERE symbol='SHB'").fetchone()); c.close()
+    assert a["exit_reason"] == "target" and a["pnl"] > 0 and a["pnl_pct"] > 1.5 and a["exit_px"] > 48.6, a
+    assert b["exit_reason"] == "stop" and b["pnl"] < 0 and b["pnl_pct"] < -1.0, b
+    sb = bot.scoreboard()
+    assert sb["by_side"]["short"]["trades"] == 2 and sb["by_side"]["short"]["wins"] == 1, sb["by_side"]
+    bot.ALLOW_SHORT = False
+    assert bot.side_for({"direction": "bear", "impact": "high", "confidence": 99}) is None
+    bot.ALLOW_SHORT = True
+
+
 def test_vault_render_and_git():
     files = vault.render(dt.datetime(2026, 11, 10, 17, 0, tzinfo=dt.timezone.utc))
     for k in ("README.md", "Universe.md", "Bot/Strategy.md", "Bot/Scoreboard.md", "data/filings.jsonl",
@@ -103,9 +149,11 @@ def test_vault_render_and_git():
     assert any(k.startswith("Bot/Trades/") for k in files)
     assert "Sample too small" in files["Bot/Scoreboard.md"]
     sbj = json.loads(files["data/scoreboard.json"])
-    assert sbj["scoreboard"]["closed_trades"] == 2 and sbj["rules"]["target_pct"] == 1.5 and sbj["min_sample"] == 30
+    assert sbj["scoreboard"]["closed_trades"] == 4 and sbj["rules"]["target_pct"] == 1.5 and sbj["min_sample"] == 30
+    assert sbj["rules"]["allow_short"] is True and "short" in sbj["scoreboard"]["by_side"]
+    assert "| short |" in files["Bot/Scoreboard.md"] and "Bearish read -> **short**" in files["Bot/Strategy.md"]
     assert "[[intel/Tickers/AAA|AAA]]" in files["Universe.md"]
-    assert len(files["data/filings.jsonl"].splitlines()) == 4
+    assert len(files["data/filings.jsonl"].splitlines()) == 7
     allt = "".join(files.values())
     assert chr(0x2014) not in allt, "em-dash in vault output"
 
@@ -150,7 +198,8 @@ def test_vault_render_and_git():
 
 if __name__ == "__main__":
     try:
-        for name in ("test_universe_parse", "test_filters", "test_simulated_day", "test_vault_render_and_git"):
+        for name in ("test_universe_parse", "test_filters", "test_simulated_day", "test_short_side",
+                     "test_vault_render_and_git"):
             globals()[name](); print("ok", name)
     finally:
         shutil.rmtree(TMP, ignore_errors=True)

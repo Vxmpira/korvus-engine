@@ -8,24 +8,32 @@
  produce an honest, measurable win rate for one written-down rule set, so the
  strategy can be judged on evidence before any real money is considered.
 
- STRATEGY v1  "Catalyst Follow-Through"  (every number below is in .env)
-   Trigger   a filing from a universe stock, scored by Korvus Intel as
-             direction=bull, impact med or high, confidence >= 60, seen
-             within the last 18 hours (so an after-hours earnings release is
-             tradable at the next morning's session).
-   Confirm   the stock is ABOVE its reference price (the last price when the
-             filing was seen; for after-hours filings that is the close), and
-             it is up less than 8% on the day (do not chase a blown-out gap).
+ STRATEGY v2  "Catalyst Follow-Through, both ways"  (every number is in .env)
+   Trigger   a filing from a universe stock scored impact med or high,
+             confidence >= 60, seen within the last 18 hours (so an
+             after-hours earnings release is tradable at the next session).
+             direction=bull -> LONG.  direction=bear -> SHORT.  neut -> no trade.
+   Confirm   LONG:  price ABOVE its reference (the last price when the filing
+                    was seen; for after-hours filings that is the close) and up
+                    less than 8% on the day (do not chase a blown-out gap).
+             SHORT: price BELOW its reference and down less than 8% on the day
+                    (do not press a collapsed gap; also stays clear of the
+                    SEC Rule 201 short-sale restriction that starts at -10%).
    Window    entries only 9:45 AM to 3:30 PM ET on regular sessions.
    Size      $10,000 paper notional per trade, max 5 open, one trade per
              filing, one entry per symbol per day.
-   Exit      +1.5% target, -1.0% stop, or flat at 3:55 PM ET, whichever first.
-   Fills     last quote +/- 0.05% slippage. Quotes are polled every 60s, so a
+   Exit      1.5% in our favor (target), 1.0% against (stop), or flat at
+             3:55 PM ET, whichever first. Same distances for both sides.
+   Fills     last quote +/- 0.05% slippage, always against us (buy higher,
+             sell lower). Quotes are polled every 60s, so a
              stop can fill worse than -1.0%; the ledger records what happened.
 
  HONESTY RULES
    - Paper results ignore market impact and use 60s-old prices; real fills
      would be worse. The scoreboard says so.
+   - Paper shorts assume the shares can be borrowed and pay no borrow fee.
+     Real shorting needs a margin account, an available borrow, and some
+     names cost a daily fee to short. Live shorts would do somewhat worse.
    - Win rate is not shown as meaningful until 30 closed trades.
    - The strategy version is stamped on every trade; changing the rules means
      a new version and a fresh scoreboard, never rewriting history.
@@ -38,13 +46,15 @@ import korvus_intel as intel
 
 _env, _num = intel._env, intel._num
 
-STRATEGY      = "v1-catalyst-follow-through"
+STRATEGY      = "v2-catalyst-both-ways"
+ALLOW_SHORT   = _env("BOT_ALLOW_SHORT", "1") not in ("0", "false", "no", "off")
 TICK_SECONDS  = max(30, int(_num("BOT_TICK_SECONDS", 60)))
 NOTIONAL      = _num("BOT_NOTIONAL", 10_000)
 MAX_OPEN      = int(_num("BOT_MAX_OPEN", 5))
 TARGET_PCT    = _num("BOT_TARGET_PCT", 1.5)
 STOP_PCT      = _num("BOT_STOP_PCT", 1.0)
-MAX_DAY_UP    = _num("BOT_MAX_DAY_UP_PCT", 8.0)
+MAX_DAY_UP    = _num("BOT_MAX_DAY_UP_PCT", 8.0)     # long: skip if already up this much
+MAX_DAY_DOWN  = _num("BOT_MAX_DAY_DOWN_PCT", 8.0)   # short: skip if already down this much
 MIN_CONF      = int(_num("BOT_MIN_CONFIDENCE", 60))
 LOOKBACK_H    = _num("BOT_LOOKBACK_HOURS", 18)
 SLIP          = _num("BOT_SLIPPAGE_PCT", 0.05) / 100.0
@@ -70,35 +80,65 @@ def session_open(now_et: dt.datetime) -> bool:
 # ----------------------------------------------------------------------------
 # pure rule checks (unit-tested)
 # ----------------------------------------------------------------------------
+def side_for(f: dict):
+    """'long' for a bullish read, 'short' for a bearish one (when shorts are
+    enabled), None when the read does not qualify."""
+    if f.get("impact") not in ("high", "med") or int(f.get("confidence") or 0) < MIN_CONF:
+        return None
+    if f.get("direction") == "bull":
+        return "long"
+    if f.get("direction") == "bear" and ALLOW_SHORT:
+        return "short"
+    return None
+
+
 def is_trigger(f: dict) -> bool:
-    return (f.get("direction") == "bull" and f.get("impact") in ("high", "med")
-            and int(f.get("confidence") or 0) >= MIN_CONF)
+    return side_for(f) is not None
 
 
-def confirm_entry(f: dict, q: dict) -> tuple:
-    """(ok, reason). Price must hold above the pre-reaction reference and the
-    day's gain must not already be a chase."""
+def confirm_entry(f: dict, q: dict, side: str = "long") -> tuple:
+    """(ok, reason). The move since the filing must agree with the read, and
+    the day's move must not already be a chase in that direction."""
     ref = f.get("ref_price") or f.get("prev_close") or q.get("prev_close")
     if not ref:
         return False, "no reference price"
+    chg = q.get("chg_pct", 0)
+    if side == "short":
+        if q["price"] >= ref:
+            return False, f"short: not below reference {ref:.2f}"
+        if chg <= -MAX_DAY_DOWN:
+            return False, f"short: already down {abs(chg):.1f}% on the day"
+        return True, "confirmed"
     if q["price"] <= ref:
         return False, f"below reference {ref:.2f}"
-    if q.get("chg_pct", 0) >= MAX_DAY_UP:
-        return False, f"already up {q['chg_pct']:.1f}% on the day"
+    if chg >= MAX_DAY_UP:
+        return False, f"already up {chg:.1f}% on the day"
     return True, "confirmed"
 
 
+def levels(side: str, fill: float) -> tuple:
+    """(target_px, stop_px) for a fill, mirrored for shorts."""
+    if side == "short":
+        return fill * (1 - TARGET_PCT / 100), fill * (1 + STOP_PCT / 100)
+    return fill * (1 + TARGET_PCT / 100), fill * (1 - STOP_PCT / 100)
+
+
 def exit_decision(t: dict, px: float, now_et: dt.datetime):
-    """Return (reason, fill_px) or None."""
-    if px >= t["target_px"]:
-        return "target", px * (1 - SLIP)
-    if px <= t["stop_px"]:
-        return "stop", px * (1 - SLIP)
+    """Return (reason, fill_px) or None. A long exits by selling (fill below
+    the quote), a short exits by buying back (fill above the quote)."""
+    short = (t.get("side") or "long") == "short"
+    fill = px * (1 + SLIP) if short else px * (1 - SLIP)
+    hit_target = px <= t["target_px"] if short else px >= t["target_px"]
+    hit_stop = px >= t["stop_px"] if short else px <= t["stop_px"]
+    if hit_target:
+        return "target", fill
+    if hit_stop:
+        return "stop", fill
     if _hm(now_et) >= FLAT_AT:
-        return "time", px * (1 - SLIP)
+        return "time", fill
     try:   # missed the 3:55 flat (service was down): close at the first chance
         if dt.datetime.fromisoformat(t["entry_utc"]).astimezone(now_et.tzinfo).date() < now_et.date():
-            return "overnight", px * (1 - SLIP)
+            return "overnight", fill
     except Exception:
         pass
     return None
@@ -108,13 +148,15 @@ def exit_decision(t: dict, px: float, now_et: dt.datetime):
 # one tick
 # ----------------------------------------------------------------------------
 def _close(conn, t: dict, reason: str, fill: float, now_utc: str):
-    pnl = (fill - t["entry_px"]) * t["qty"]
-    pct = (fill / t["entry_px"] - 1) * 100
+    sign = -1 if (t.get("side") or "long") == "short" else 1
+    pnl = sign * (fill - t["entry_px"]) * t["qty"]
+    pct = sign * (fill / t["entry_px"] - 1) * 100
     conn.execute("""UPDATE trades SET exit_utc=?, exit_px=?, exit_reason=?, pnl=?, pnl_pct=?, status='closed'
                     WHERE id=?""", (now_utc, round(fill, 4), reason,
                                     round(pnl, 2), round(pct, 3), t["id"]))
     conn.commit()
-    msg = f"EXIT {t['symbol']} {reason} @ ${fill:.2f}, {pct:+.2f}% (${pnl:+.2f} paper)"
+    verb = "COVER" if sign < 0 else "EXIT"
+    msg = f"{verb} {t['symbol']} {reason} @ ${fill:.2f}, {pct:+.2f}% (${pnl:+.2f} paper)"
     print(f"  [paperbot] {msg}")
     return msg
 
@@ -157,7 +199,8 @@ def tick(now_et: dt.datetime = None, quote_fn=None) -> dict:
     for f in cands:
         if n_open >= MAX_OPEN:
             break
-        if not is_trigger(f):
+        side = side_for(f)
+        if not side:
             continue
         out["candidates"] += 1
         if conn.execute("SELECT 1 FROM trades WHERE accession=?", (f["accession"],)).fetchone():
@@ -175,23 +218,25 @@ def tick(now_et: dt.datetime = None, quote_fn=None) -> dict:
         q = quote_fn(f["symbol"])
         if not q:
             continue
-        ok, why = confirm_entry(f, q)
+        ok, why = confirm_entry(f, q, side)
         if not ok:
             out["skipped"].append((f["symbol"], why))
             continue
-        fill = q["price"] * (1 + SLIP)
+        fill = q["price"] * (1 - SLIP) if side == "short" else q["price"] * (1 + SLIP)
         qty = int(math.floor(NOTIONAL / fill))
         if qty < 1:
             continue
-        conn.execute("""INSERT INTO trades (strategy,symbol,accession,qty,entry_utc,entry_px,target_px,stop_px,status)
-                        VALUES (?,?,?,?,?,?,?,?, 'open')""",
-                     (STRATEGY, f["symbol"], f["accession"], qty, now_utc.isoformat(), round(fill, 4),
-                      round(fill * (1 + TARGET_PCT / 100), 4), round(fill * (1 - STOP_PCT / 100), 4)))
+        tgt, stp = levels(side, fill)
+        conn.execute("""INSERT INTO trades (strategy,symbol,accession,side,qty,entry_utc,entry_px,target_px,stop_px,status)
+                        VALUES (?,?,?,?,?,?,?,?,?, 'open')""",
+                     (STRATEGY, f["symbol"], f["accession"], side, qty, now_utc.isoformat(), round(fill, 4),
+                      round(tgt, 4), round(stp, 4)))
         conn.commit()
         n_open += 1
         out["entries"] += 1
         out["open_positions"] = n_open
-        msg = (f"ENTRY {f['symbol']} x{qty} @ ${fill:.2f} on {f['catalyst'].replace('_', ' ')} "
+        msg = (f"{'SHORT' if side == 'short' else 'ENTRY'} {f['symbol']} x{qty} @ ${fill:.2f} "
+               f"on {f['catalyst'].replace('_', ' ')} "
                f"({f['impact']}/{f['confidence']}%)")
         out["log"].append(("entry", f["symbol"], msg))
         print(f"  [paperbot] {msg}")
@@ -220,6 +265,13 @@ def scoreboard(strategy: str = STRATEGY) -> dict:
         b = by_cat.setdefault(c, {"trades": 0, "wins": 0})
         b["trades"] += 1
         b["wins"] += 1 if (t["pnl"] or 0) > 0 else 0
+    by_side = {}
+    for t in closed:
+        sd = t.get("side") or "long"
+        b = by_side.setdefault(sd, {"trades": 0, "wins": 0, "pnl": 0.0})
+        b["trades"] += 1
+        b["wins"] += 1 if (t["pnl"] or 0) > 0 else 0
+        b["pnl"] = round(b["pnl"] + (t["pnl"] or 0), 2)
     exits = {}
     for t in closed:
         exits[t["exit_reason"]] = exits.get(t["exit_reason"], 0) + 1
@@ -249,6 +301,7 @@ def scoreboard(strategy: str = STRATEGY) -> dict:
         "paper_pnl": round(sum(t["pnl"] or 0 for t in closed), 2),
         "exits": exits,
         "by_catalyst": by_cat,
+        "by_side": by_side,
         "capital_at_work": capital,
         "max_drawdown_usd": round(mdd, 2),
         "max_drawdown_pct": round(100 * mdd / capital, 2) if capital else None,

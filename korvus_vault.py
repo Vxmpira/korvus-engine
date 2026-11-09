@@ -206,7 +206,8 @@ Data as of: {stamp}
             for t in ts:
                 res = (f"{t['exit_reason']} @ ${t['exit_px']:.2f}, {t['pnl_pct']:+.2f}%"
                        if t["status"] == "closed" else "open")
-                out.append(f"- {_et(t['entry_utc'], '%Y-%m-%d %I:%M %p')} · {t['qty']} @ ${t['entry_px']:.2f} · {res}")
+                out.append(f"- {_et(t['entry_utc'], '%Y-%m-%d %I:%M %p')} · {(t.get('side') or 'long').upper()} "
+                           f"{t['qty']} @ ${t['entry_px']:.2f} · {res}")
         files[f"Tickers/{s}.md"] = "\n".join(out) + "\n"
 
     # ---- Bot: strategy + scoreboard + ledgers ----
@@ -216,12 +217,14 @@ Data as of: {stamp}
 {GEN}
 **Paper only.** No broker connection, no real orders.
 
-- **Trigger:** a universe filing scored bull, impact med or high, confidence at least {bot.MIN_CONF}%, seen in the last {bot.LOOKBACK_H:.0f} hours.
-- **Confirm:** price above the reference price at the time the filing was seen, and up less than {bot.MAX_DAY_UP:.0f}% on the day.
+- **Trigger:** a universe filing scored impact med or high, confidence at least {bot.MIN_CONF}%, seen in the last {bot.LOOKBACK_H:.0f} hours. Bullish read -> **long**. Bearish read -> **short**{"" if bot.ALLOW_SHORT else " (shorts currently switched off)"}. Neutral -> no trade.
+- **Confirm (long):** price above the reference price at the time the filing was seen, and up less than {bot.MAX_DAY_UP:.0f}% on the day.
+- **Confirm (short):** price below the reference price, and down less than {bot.MAX_DAY_DOWN:.0f}% on the day (stays clear of the Rule 201 short-sale restriction at -10%).
 - **Window:** entries 9:45 AM to 3:30 PM ET on regular sessions.
 - **Size:** ${bot.NOTIONAL:,.0f} paper notional, at most {bot.MAX_OPEN} open, one entry per symbol per day.
-- **Exit:** +{bot.TARGET_PCT}% target, -{bot.STOP_PCT}% stop, or flat at 3:55 PM ET.
-- **Fills:** last quote with {bot.SLIP*100:.2f}% slippage, quotes polled every {bot.TICK_SECONDS}s. Real fills would be worse.
+- **Exit:** {bot.TARGET_PCT}% in our favor (target), {bot.STOP_PCT}% against (stop), or flat at 3:55 PM ET. Same distances long and short.
+- **Fills:** last quote with {bot.SLIP*100:.2f}% slippage against us, quotes polled every {bot.TICK_SECONDS}s. Real fills would be worse.
+- **Shorts on paper** assume shares can be borrowed with no borrow fee. Real shorts need a margin account and an available borrow, and some names charge a daily fee.
 
 Changing any rule ships as a new version with a fresh [[{SUBDIR}/Bot/Scoreboard|Scoreboard]]; history is never rewritten.
 """
@@ -230,6 +233,8 @@ Changing any rule ships as a new version with a fresh [[{SUBDIR}/Bot/Scoreboard|
               f"\n> Sample too small to judge: {sb['closed_trades']} of {bot.MIN_SAMPLE} closed trades needed before the win rate means anything.\n")
     cats = "\n".join(f"| {c} | {v['trades']} | {round(100*v['wins']/v['trades'])}% |"
                      for c, v in sorted(sb["by_catalyst"].items())) or "| none yet | 0 | n/a |"
+    sides = "\n".join(f"| {sd} | {v['trades']} | {round(100*v['wins']/v['trades'])}% | ${v['pnl']:+,.2f} |"
+                      for sd, v in sorted(sb.get("by_side", {}).items())) or "| none yet | 0 | n/a | $0.00 |"
     files["Bot/Scoreboard.md"] = _fm(type="intel-scoreboard", version=bot.STRATEGY, updated=_et_date(data_asof) or "n/a",
                                      closed=sb["closed_trades"], tags=["korvus-intel", "paper-bot"]) + f"""
 # Scoreboard · [[{SUBDIR}/Bot/Strategy|Strategy]] {bot.STRATEGY}
@@ -249,6 +254,11 @@ Data as of: {stamp}
 | Paper P&L | ${sb['paper_pnl']:,.2f} |
 | Exits | {', '.join(f'{k} {v}' for k, v in sb['exits'].items()) or 'none yet'} |
 
+## By side
+| Side | Trades | Win rate | Paper P&L |
+|---|---:|---:|---:|
+{sides}
+
 ## By catalyst
 | Catalyst | Trades | Win rate |
 |---|---:|---:|
@@ -260,13 +270,13 @@ Paper results: simulated fills on 60-second quotes, no market impact. Not real r
     for t in trades:
         by_month.setdefault(_et(t["entry_utc"], "%Y-%m"), []).append(t)
     for m, ts in by_month.items():
-        rows = ["| Entry (ET) | Symbol | Qty | Entry | Exit | Reason | P&L | % |", "|---|---|---:|---:|---:|---|---:|---:|"]
+        rows = ["| Entry (ET) | Symbol | Side | Qty | Entry | Exit | Reason | P&L | % |", "|---|---|---|---:|---:|---:|---|---:|---:|"]
         for t in sorted(ts, key=lambda x: x["entry_utc"]):
             if t["status"] == "closed":
-                rows.append(f"| {_et(t['entry_utc'], '%m-%d %I:%M %p')} | {_tl(t['symbol'])} | {t['qty']} | "
+                rows.append(f"| {_et(t['entry_utc'], '%m-%d %I:%M %p')} | {_tl(t['symbol'])} | {t.get('side') or 'long'} | {t['qty']} | "
                             f"{t['entry_px']:.2f} | {t['exit_px']:.2f} | {t['exit_reason']} | {t['pnl']:+.2f} | {t['pnl_pct']:+.2f} |")
             else:
-                rows.append(f"| {_et(t['entry_utc'], '%m-%d %I:%M %p')} | {_tl(t['symbol'])} | {t['qty']} | "
+                rows.append(f"| {_et(t['entry_utc'], '%m-%d %I:%M %p')} | {_tl(t['symbol'])} | {t.get('side') or 'long'} | {t['qty']} | "
                             f"{t['entry_px']:.2f} | open | | | |")
         files[f"Bot/Trades/{m}.md"] = _fm(type="intel-ledger", month=m, tags=["korvus-intel", "paper-bot"]) + \
             f"\n# Paper trades {m}\n\n{GEN}\n" + "\n".join(rows) + "\n"
@@ -288,7 +298,8 @@ Paper results: simulated fills on 60-second quotes, no market impact. Not real r
         "universe_asof": asof,
         "rules": {"strategy": bot.STRATEGY, "notional": bot.NOTIONAL, "max_open": bot.MAX_OPEN,
                   "target_pct": bot.TARGET_PCT, "stop_pct": bot.STOP_PCT, "min_confidence": bot.MIN_CONF,
-                  "max_day_up_pct": bot.MAX_DAY_UP, "lookback_hours": bot.LOOKBACK_H,
+                  "max_day_up_pct": bot.MAX_DAY_UP, "max_day_down_pct": bot.MAX_DAY_DOWN,
+                  "allow_short": bot.ALLOW_SHORT, "lookback_hours": bot.LOOKBACK_H,
                   "slippage_pct": round(bot.SLIP * 100, 3), "tick_seconds": bot.TICK_SECONDS,
                   "price_band": [intel.PRICE_MIN, intel.PRICE_MAX], "mcap_max": intel.MCAP_MAX},
     }, indent=1) + "\n"
