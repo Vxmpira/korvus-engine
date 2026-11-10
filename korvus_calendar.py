@@ -350,6 +350,12 @@ _TITLE_ALIASES = {
     "natural gas storage":              "eia natural gas stocks change",
     "core durable goods orders mom":    "durable goods orders ex transp mom",
     "crude oil inventories":            "eia crude oil stocks change",
+    # FF says "CPI"; FMP names the same releases "Inflation Rate" (verified from
+    # the feed, Nov 2026). Without these the CPI rows never got an Actual.
+    "cpi mom":                          "inflation rate mom",
+    "cpi yoy":                          "inflation rate yoy",
+    "core cpi mom":                     "core inflation rate mom",
+    "core cpi yoy":                     "core inflation rate yoy",
     # FF uses "UoM" / "CB" vendor labels; FMP names the same releases "Michigan"
     # / plain. The forecast/previous cross-check still guards these, so a wrong
     # counterpart would be rejected rather than filled.
