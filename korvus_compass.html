@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Korvus Compass, Long-Term Investing Board · BlackCrownVxJ</title>
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>(function(){try{if(localStorage.getItem('korvus-theme')==='light'){document.documentElement.setAttribute('data-theme','light');}}catch(e){}})();</script>
+<style>
+  :root{
+    --bg:#000; --panel:#0b0c10; --panel-2:#101218; --line:rgba(255,255,255,.10); --line-soft:rgba(255,255,255,.055);
+    --ink:#f6f8ff; --ink-dim:#aab0c0; --ink-faint:#6b7285;
+    --bull:#3ce594; --bull-soft:rgba(60,229,148,.12); --bear:#ff2e4d; --bear-soft:rgba(255,46,77,.12);
+    --neut:#8a93a8; --neut-soft:rgba(138,147,168,.13);
+    --crimson:#ff2d8f; --crimson-soft:rgba(255,45,143,.10); --crimson-line:rgba(255,45,143,.34);
+    --sec:#ffd479; --sec-soft:rgba(255,212,121,.10);
+    --mono:'IBM Plex Mono',ui-monospace,monospace; --body:'Hanken Grotesk',system-ui,sans-serif;
+    --disp:'Bricolage Grotesque',var(--body); --r:14px;
+  }
+  html[data-theme="light"]{
+    --bg:#f3f5fa; --panel:#fff; --panel-2:#f7f8fc; --line:rgba(16,22,40,.14); --line-soft:rgba(16,22,40,.07);
+    --ink:#0d1424; --ink-dim:#4a5468; --ink-faint:#8b93a7;
+    --bull:#08925a; --bull-soft:rgba(8,146,90,.10); --bear:#d51731; --bear-soft:rgba(213,23,49,.09);
+    --neut:#69728a; --neut-soft:rgba(105,114,138,.12);
+    --crimson:#d6146e; --crimson-soft:rgba(214,20,110,.08); --crimson-line:rgba(214,20,110,.32);
+    --sec:#9a6b00; --sec-soft:rgba(154,107,0,.09);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;-webkit-font-smoothing:antialiased;}
+  a{color:inherit;}
+  .wrap{max-width:1480px;margin:0 auto;padding:0 20px 60px;}
+  header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);}
+  .hbar{max-width:1480px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:14px;}
+  .brand{display:flex;align-items:center;gap:11px;text-decoration:none;}
+  .brand svg{width:30px;height:30px;color:var(--crimson);}
+  .brand b{font-family:var(--disp);font-weight:800;font-size:17px;letter-spacing:.02em;display:block;line-height:1.1;}
+  .brand small{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);}
+  .grow{flex:1;}
+  .pill{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;text-decoration:none;
+    padding:7px 13px;border-radius:999px;border:1px solid var(--line);color:var(--ink-dim);background:transparent;cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+  .pill:hover{color:var(--ink);border-color:var(--crimson-line);background:var(--crimson-soft);}
+  .pill svg{width:14px;height:14px;}
+  .ic-moon{display:none;} html[data-theme="light"] .ic-sun{display:none;} html[data-theme="light"] .ic-moon{display:block;}
+
+  .hero{padding:26px 0 8px;display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;justify-content:space-between;}
+  .hero h1{font-family:var(--disp);font-weight:800;font-size:clamp(26px,3.4vw,38px);margin:0 0 6px;letter-spacing:-.01em;}
+  .hero p{margin:0;color:var(--ink-dim);max-width:640px;line-height:1.5;}
+  .asof{font-family:var(--mono);font-size:11px;color:var(--ink-faint);text-align:right;line-height:1.7;}
+  .asof b{color:var(--ink-dim);font-weight:500;}
+
+  .tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0 12px;}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;cursor:pointer;text-align:left;
+    font:inherit;color:inherit;transition:border-color .15s;}
+  .tile:hover,.tile.on{border-color:var(--crimson-line);}
+  .tile .k{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);}
+  .tile .v{font-family:var(--disp);font-weight:700;font-size:28px;margin-top:4px;line-height:1.1;}
+  .tile .s{font-size:12px;color:var(--ink-dim);margin-top:3px;}
+  .tile.bull .v{color:var(--bull);} .tile.bear .v{color:var(--bear);} .tile.top .v{color:var(--crimson);}
+
+  .crawl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);}
+  .crawl .lab{letter-spacing:.12em;text-transform:uppercase;margin-right:2px;}
+  .chip{border:1px solid var(--line);border-radius:999px;padding:4px 10px;display:inline-flex;gap:6px;align-items:center;color:var(--ink-dim);}
+  .chip i{width:6px;height:6px;border-radius:50%;background:var(--neut);display:inline-block;}
+  .chip.ok i{background:var(--bull);} .chip.err i{background:var(--bear);}
+
+  .grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);}
+  .chead{padding:13px 16px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .chead h2{font-family:var(--disp);font-size:15px;font-weight:700;margin:0;}
+  .chead small{font-family:var(--mono);font-size:10px;color:var(--ink-faint);letter-spacing:.06em;}
+
+  .controls{padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px;border-bottom:1px solid var(--line-soft);}
+  .controls input,.controls select{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);border-radius:9px;
+    padding:8px 11px;font:inherit;font-size:13px;min-width:0;}
+  .controls input{flex:1 1 180px;}
+  .controls input:focus,.controls select:focus{outline:none;border-color:var(--crimson-line);}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;}
+  .seg button{background:transparent;border:0;color:var(--ink-dim);font:inherit;font-size:12px;padding:8px 11px;cursor:pointer;}
+  .seg button.on{background:var(--crimson-soft);color:var(--ink);}
+
+  .tblwrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);font-weight:500;
+    text-align:right;padding:10px 8px;border-bottom:1px solid var(--line-soft);white-space:nowrap;cursor:pointer;user-select:none;}
+  th.l,td.l{text-align:left;} th.on{color:var(--crimson);}
+  td{padding:10px 8px;border-bottom:1px solid var(--line-soft);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  tbody tr{cursor:pointer;} tbody tr:hover{background:var(--panel-2);}
+  .rk{color:var(--ink-faint);font-family:var(--mono);font-size:11px;width:34px;}
+  .tk b{font-family:var(--mono);font-weight:600;font-size:13px;} .tk span{display:block;color:var(--ink-faint);font-size:11.5px;
+    max-width:150px;overflow:hidden;text-overflow:ellipsis;}
+  .sc{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end;}
+  .sc b{font-family:var(--disp);font-size:16px;font-weight:700;min-width:26px;text-align:right;}
+  .bar{width:40px;height:5px;border-radius:3px;background:var(--line);overflow:hidden;display:inline-block;}
+  .bar i{display:block;height:100%;border-radius:3px;background:var(--crimson);}
+  .tier{font-size:11px;color:var(--ink-faint);display:block;}
+  .rd{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:4px 9px;border-radius:999px;display:inline-block;}
+  .rd.bull{color:var(--bull);background:var(--bull-soft);} .rd.bear{color:var(--bear);background:var(--bear-soft);}
+  .rd.neut{color:var(--neut);background:var(--neut-soft);}
+  .trd{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end;}
+  .trd span{font-size:12px;color:var(--ink-dim);}
+  .up{color:var(--bull);} .dn{color:var(--bear);} .mu{color:var(--ink-faint);}
+  .more{padding:14px;text-align:center;}
+  .empty{padding:40px 20px;text-align:center;color:var(--ink-dim);line-height:1.6;}
+
+  .feed{max-height:calc(100vh - 120px);overflow:auto;position:sticky;top:76px;}
+  .ev{padding:11px 16px;border-bottom:1px solid var(--line-soft);cursor:pointer;display:grid;grid-template-columns:8px 1fr;gap:10px;}
+  .ev:hover{background:var(--panel-2);}
+  .ev i{width:8px;height:8px;border-radius:50%;margin-top:5px;background:var(--neut);}
+  .ev.bull i{background:var(--bull);} .ev.bear i{background:var(--bear);}
+  .ev b{font-size:13px;font-weight:600;display:block;line-height:1.35;}
+  .ev p{margin:3px 0 0;color:var(--ink-dim);font-size:12px;line-height:1.4;}
+  .ev time{font-family:var(--mono);font-size:10px;color:var(--ink-faint);display:block;margin-top:4px;}
+
+  .disc{margin-top:22px;color:var(--ink-faint);font-size:12px;line-height:1.6;border-top:1px solid var(--line-soft);padding-top:16px;}
+
+  /* detail drawer */
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40;display:none;}
+  .scrim.on{display:block;}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(820px,100vw);background:var(--bg);border-left:1px solid var(--line);z-index:41;
+    transform:translateX(102%);transition:transform .22s ease;overflow-y:auto;}
+  .drawer.on{transform:none;}
+  .dhead{position:sticky;top:0;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(10px);z-index:2;
+    padding:16px 22px;border-bottom:1px solid var(--line);display:flex;gap:16px;align-items:center;}
+  .dhead h2{font-family:var(--disp);font-size:24px;font-weight:800;margin:0;line-height:1.1;}
+  .dhead .nm{color:var(--ink-dim);font-size:13px;margin-top:3px;}
+  .dhead .px{text-align:right;font-family:var(--disp);font-size:20px;font-weight:700;line-height:1.2;}
+  .dhead .px small{display:block;font-family:var(--mono);font-size:11px;font-weight:500;}
+  .x{background:transparent;border:1px solid var(--line);color:var(--ink-dim);border-radius:9px;width:34px;height:34px;cursor:pointer;font-size:16px;}
+  .x:hover{color:var(--ink);border-color:var(--crimson-line);}
+  .dbody{padding:18px 22px 50px;display:grid;gap:16px;}
+  .sect{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;}
+  .sect h3{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);font-weight:500;margin:0 0 12px;
+    display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .sect h3 em{font-style:normal;letter-spacing:.04em;text-transform:none;}
+  .verdict{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;}
+  .ring{width:104px;height:104px;position:relative;}
+  .ring svg{width:104px;height:104px;transform:rotate(-90deg);}
+  .ring div{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .ring b{font-family:var(--disp);font-size:30px;font-weight:800;line-height:1;}
+  .ring small{font-family:var(--mono);font-size:9px;color:var(--ink-faint);letter-spacing:.1em;margin-top:3px;}
+  .verdict h4{font-family:var(--disp);font-size:19px;margin:0 0 6px;font-weight:700;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .verdict p{margin:0;color:var(--ink-dim);line-height:1.5;font-size:13.5px;}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;}
+  .tag{font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-radius:6px;padding:3px 7px;color:var(--ink-dim);}
+  .part{display:grid;grid-template-columns:150px 1fr 38px;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line-soft);}
+  .part:first-of-type{border-top:0;}
+  .part .pl b{font-size:13px;font-weight:600;display:block;} .part .pl small{font-family:var(--mono);font-size:10px;color:var(--ink-faint);}
+  .part .pb{height:7px;background:var(--line);border-radius:4px;overflow:hidden;}
+  .part .pb i{display:block;height:100%;border-radius:4px;}
+  .part .pv{font-family:var(--disp);font-weight:700;text-align:right;font-size:15px;}
+  .part .pn{grid-column:2 / 4;color:var(--ink-dim);font-size:12.5px;line-height:1.5;margin-top:-4px;}
+  .stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+  .st{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:10px;padding:10px 12px;}
+  .st .k{font-size:11.5px;color:var(--ink-faint);} .st .v{font-family:var(--disp);font-weight:700;font-size:17px;margin-top:2px;}
+  .st .n{font-size:11px;color:var(--ink-dim);margin-top:1px;}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);margin-top:8px;}
+  .legend i{display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:5px;}
+  .range{margin-top:14px;}
+  .range .rb{height:6px;border-radius:3px;background:var(--line);position:relative;margin:8px 0 5px;}
+  .range .rb i{position:absolute;top:-4px;width:3px;height:14px;border-radius:2px;background:var(--crimson);}
+  .range .rl{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);}
+  .bars3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px;}
+  .bc .t{font-size:11.5px;color:var(--ink-faint);margin-bottom:6px;}
+  .abar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--line);margin:10px 0 8px;}
+  .abar i{display:block;height:100%;}
+  .row{display:grid;grid-template-columns:86px 1fr;gap:12px;padding:9px 0;border-top:1px solid var(--line-soft);font-size:13px;align-items:start;}
+  .row:first-of-type{border-top:0;}
+  .row time{font-family:var(--mono);font-size:11px;color:var(--ink-faint);padding-top:1px;}
+  .row b{font-weight:600;} .row p{margin:3px 0 0;color:var(--ink-dim);font-size:12.5px;line-height:1.45;}
+  .row a{color:var(--sec);text-decoration:none;} .row a:hover{text-decoration:underline;}
+  .fm{font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--sec);margin-right:6px;}
+  .none{color:var(--ink-faint);font-size:13px;}
+
+  @media (max-width:1560px){ .hide-l{display:none;} }
+  @media (max-width:1100px){ .grid{grid-template-columns:1fr;} .feed{position:static;max-height:420px;} }
+  @media (max-width:760px){
+    .wrap{padding:0 12px 50px;} .hbar{padding:10px 12px;} .tiles{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .hide-m{display:none;} .asof{text-align:left;} .brand small{display:none;}
+    .dbody{padding:14px 12px 40px;} .dhead{padding:12px;} .part{grid-template-columns:112px 1fr 34px;} .bars3{grid-template-columns:1fr;}
+    .verdict{grid-template-columns:1fr;} td,th{padding:9px 6px;}
+    .controls input{flex:1 1 100%;} .seg{flex:1 1 100%;} .seg button{flex:1;} .controls select{flex:1 1 30%;} .bar{display:none;} .tk span{max-width:110px;}
+  }
+</style>
+</head>
+<body>
+<header><div class="hbar">
+  <a class="brand" href="/compass">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><path d="M15.8 8.2l-2.2 5.4-5.4 2.2 2.2-5.4z" fill="currentColor" fill-opacity=".25"/></svg>
+    <span><b>KORVUS COMPASS</b><small>Long-term investing board</small></span>
+  </a>
+  <span class="grow"></span>
+  <a class="pill" href="/">← Terminal</a>
+  <button class="pill" id="themeBtn" type="button" aria-label="Toggle light or dark mode">
+    <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.4M12 19v2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M2.6 12h2.4M19 12h2.4M4.6 19.4l1.7-1.7M17.7 6.3l1.7-1.7"/></svg>
+    <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.2A7.6 7.6 0 0 1 9.8 4 7.6 7.6 0 1 0 20 14.2Z"/></svg>
+  </button>
+</div></header>
+
+<div class="wrap">
+  <section class="hero">
+    <div>
+      <h1>Find stocks worth holding.</h1>
+      <p>Every S&amp;P 500 and Nasdaq-100 company, scored on long-term price trend, growth, profitability, value and balance sheet, using what each company reports to the SEC. Built for buy-and-hold investors.</p>
+    </div>
+    <div class="asof" id="asof"></div>
+  </section>
+
+  <div class="tiles" id="tiles"></div>
+  <div class="crawl" id="crawl"></div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="controls">
+        <input id="q" type="search" placeholder="Search ticker or company" autocomplete="off" spellcheck="false">
+        <div class="seg" id="idxSeg"><button data-v="" class="on">All</button><button data-v="sp">S&amp;P 500</button><button data-v="nd">Nasdaq-100</button></div>
+        <select id="readSel" aria-label="Read"><option value="">Any read</option><option value="bull">Bullish</option><option value="neut">Neutral</option><option value="bear">Bearish</option></select>
+        <select id="tierSel" aria-label="Tier"><option value="">Any tier</option><option>Top rated</option><option>Strong</option><option>Solid</option><option>Mixed</option><option>Weak</option></select>
+        <select id="secSel" aria-label="Sector"><option value="">All sectors</option></select>
+      </div>
+      <div class="tblwrap"><table>
+        <thead><tr id="thead"></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table></div>
+      <div class="more" id="more"></div>
+    </div>
+
+    <aside class="card feed">
+      <div class="chead"><h2>Crawler updates</h2><small id="evCount"></small></div>
+      <div id="events"></div>
+    </aside>
+  </div>
+
+  <p class="disc" id="disc"></p>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="dhead" id="dhead"></div>
+  <div class="dbody" id="dbody"></div>
+</aside>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = x => (x === null || x === undefined || isNaN(x)) ? null : Number(x);
+function pct(x, d, signed){ x = num(x); if(x === null) return '<span class="mu">n/a</span>';
+  const v = (x * 100).toFixed(d === undefined ? 0 : d); return (signed === false ? v : (x > 0 ? '+' : '') + v) + '%'; }
+function pctC(x, d){ x = num(x); if(x === null) return '<span class="mu">n/a</span>';
+  return '<span class="' + (x > 0.0005 ? 'up' : x < -0.0005 ? 'dn' : 'mu') + '">' + pct(x, d) + '</span>'; }
+function money(x, cur){ x = num(x); if(x === null) return 'n/a'; const a = Math.abs(x), s = x < 0 ? '-' : '';
+  const pre = (!cur || cur === 'USD') ? '$' : '', post = (!cur || cur === 'USD') ? '' : ' ' + cur;
+  const u = a >= 1e12 ? [1e12,'T'] : a >= 1e9 ? [1e9,'B'] : a >= 1e6 ? [1e6,'M'] : a >= 1e3 ? [1e3,'K'] : [1,''];
+  return s + pre + (a / u[0]).toFixed(u[0] === 1 ? 0 : 1) + u[1] + post; }
+function px(x){ x = num(x); return x === null ? 'n/a' : '$' + x.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function mult(x){ x = num(x); return x === null ? '<span class="mu">n/a</span>' : (x <= 0 ? '<span class="mu">loss</span>' : x.toFixed(0) + 'x'); }
+function ago(iso){ if(!iso) return 'never'; const s = (Date.now() - new Date(iso).getTime()) / 1000;
+  if(isNaN(s)) return ''; if(s < 90) return 'just now'; if(s < 3600) return Math.round(s / 60) + ' min ago';
+  if(s < 86400) return Math.round(s / 3600) + ' hr ago'; return Math.round(s / 86400) + ' d ago'; }
+function day(iso){ try{ return new Date(iso.length === 10 ? iso + 'T12:00:00' : iso).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'}); }catch(e){ return iso || ''; } }
+const READ = {bull:'Bullish', bear:'Bearish', neut:'Neutral'};
+const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const scoreColor = v => v === null ? 'var(--neut)' : v >= 62 ? 'var(--bull)' : v < 38 ? 'var(--bear)' : 'var(--crimson)';
+
+let ALL = [], META = {}, sortKey = 'sc', sortDir = -1, shown = 60, filt = {q:'', idx:'', rd:'', ti:'', sec:''};
+
+const COLS = [
+  {k:'rk', t:'#', cls:'l', nosort:1},
+  {k:'s', t:'Stock', cls:'l'},
+  {k:'sc', t:'Compass', tip:'0 to 100. Higher means more of the long-term checks line up.'},
+  {k:'rd', t:'Read'},
+  {k:'tr', t:'Long-term trend', nosortnum:1},
+  {k:'p', t:'Price'},
+  {k:'r1y', t:'1 year', m:1},
+  {k:'rg', t:'Rev growth 3y', m:1, l:1, tip:'Average yearly revenue growth over 3 fiscal years (SEC filings).'},
+  {k:'nm', t:'Net margin', m:1, tip:'Share of revenue kept as profit.'},
+  {k:'pe', t:'P/E', m:1, tip:'Price divided by trailing earnings per share.'},
+  {k:'dy', t:'Div yield', m:1},
+  {k:'an', t:'Analysts', m:1},
+];
+
+function spark(a, tone){
+  if(!a || a.length < 3) return '';
+  const w = 74, h = 24, mn = Math.min.apply(null, a), mx = Math.max.apply(null, a), r = (mx - mn) || 1;
+  const pts = a.map((v, i) => (i / (a.length - 1) * w).toFixed(1) + ',' + (h - 2 - (v - mn) / r * (h - 4)).toFixed(1)).join(' ');
+  const c = tone === 'bull' ? 'var(--bull)' : tone === 'bear' ? 'var(--bear)' : 'var(--neut)';
+  return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" aria-hidden="true"><polyline points="' + pts + '" fill="none" stroke="' + c + '" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+}
+
+function filtered(){
+  const q = filt.q.trim().toLowerCase();
+  let rows = ALL.filter(x => (!q || x.s.toLowerCase().indexOf(q) === 0 || (x.n || '').toLowerCase().indexOf(q) >= 0)
+    && (!filt.idx || x[filt.idx]) && (!filt.rd || x.rd === filt.rd) && (!filt.ti || x.ti === filt.ti) && (!filt.sec || x.sec === filt.sec));
+  const k = sortKey, rdRank = {bull:2, neut:1, bear:0};
+  rows.sort((a, b) => {
+    let va = a[k], vb = b[k];
+    if(k === 'rd'){ va = rdRank[va]; vb = rdRank[vb]; }
+    if(k === 'an'){ va = a.as; vb = b.as; }
+    if(k === 's' || k === 'tr'){ return sortDir * String(va || '').localeCompare(String(vb || '')); }
+    const na = (va === null || va === undefined), nb = (vb === null || vb === undefined);
+    if(na && nb) return (b.sc || 0) - (a.sc || 0); if(na) return 1; if(nb) return -1;
+    return sortDir * (va - vb) || (b.sc || 0) - (a.sc || 0);
+  });
+  return rows;
+}
+
+function renderHead(){
+  $('thead').innerHTML = COLS.map(c => '<th class="' + (c.cls || '') + (c.m ? ' hide-m' : '') + (c.l ? ' hide-l' : '') + (sortKey === c.k ? ' on' : '') + '" data-k="' + c.k + '"'
+    + (c.tip ? ' title="' + esc(c.tip) + '"' : '') + '>' + esc(c.t) + (sortKey === c.k ? (sortDir < 0 ? ' ▾' : ' ▴') : '') + '</th>').join('');
+}
+
+function renderTable(){
+  const rows = filtered();
+  const note = '<tr><td colspan="12"><div class="empty"><b>The crawler is building the board.</b><br>It walks about 520 companies on its first pass: prices, SEC filings, then analyst data. Scores appear here as each stock fills in. Check back in a little while.</div></td></tr>';
+  if(!ALL.length){ $('tbody').innerHTML = note; $('more').innerHTML = ''; return; }
+  if(ALL.length && !rows.length){ $('tbody').innerHTML = '<tr><td colspan="12"><div class="empty">No stocks match those filters.</div></td></tr>'; $('more').innerHTML = ''; return; }
+  const html = rows.slice(0, shown).map((x, i) => {
+    const sc = num(x.sc);
+    return '<tr data-s="' + esc(x.s) + '">'
+      + '<td class="l rk">' + (i + 1) + '</td>'
+      + '<td class="l tk"><b>' + esc(x.s) + '</b><span>' + esc(x.n || '') + '</span></td>'
+      + '<td><span class="sc"><span class="bar"><i style="width:' + (sc || 0) + '%;background:' + scoreColor(sc) + '"></i></span><b>' + (sc === null ? '·' : Math.round(sc)) + '</b></span><span class="tier">' + esc(x.ti || '') + '</span></td>'
+      + '<td><span class="rd ' + esc(x.rd || 'neut') + '">' + READ[x.rd || 'neut'] + '</span></td>'
+      + '<td><span class="trd"><span class="hide-m">' + esc(x.tr || 'Pending') + '</span>' + spark(x.sp_, x.tt) + '</span></td>'
+      + '<td>' + px(x.p) + '</td>'
+      + '<td class="hide-m">' + pctC(x.r1y) + '</td>'
+      + '<td class="hide-m hide-l">' + pctC(x.rg) + '</td>'
+      + '<td class="hide-m">' + pct(x.nm, 0, false) + '</td>'
+      + '<td class="hide-m">' + mult(x.pe) + '</td>'
+      + '<td class="hide-m">' + (num(x.dy) ? pct(x.dy, 1, false) : '<span class="mu">none</span>') + '</td>'
+      + '<td class="hide-m">' + (x.an ? esc(x.an) : '<span class="mu">n/a</span>') + '</td></tr>';
+  }).join('');
+  $('tbody').innerHTML = (META.building ? note : '') + html;
+  $('more').innerHTML = rows.length > shown ? '<button class="pill" id="moreBtn" type="button">Show more (' + (rows.length - shown) + ' left)</button>'
+    : '<span class="mu" style="font-family:var(--mono);font-size:11px">' + rows.length + ' stocks</span>';
+  const mb = $('moreBtn'); if(mb) mb.onclick = () => { shown += 80; renderTable(); };
+}
+
+function renderTiles(){
+  const scored = ALL.filter(x => x.sc !== null && x.ti !== 'Building');
+  const n = k => scored.filter(x => x.rd === k).length, top = scored.filter(x => x.ti === 'Top rated').length;
+  const t = (cls, k, v, s, act) => '<button class="tile ' + cls + '" type="button" data-act="' + act + '"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="s">' + s + '</div></button>';
+  $('tiles').innerHTML = t('', 'Stocks tracked', ALL.length, scored.length + ' scored so far', 'all')
+    + t('bull', 'Bullish read', n('bull'), 'Strong score, trend not falling', 'bull')
+    + t('bear', 'Bearish read', n('bear'), 'Weak score or a downtrend', 'bear')
+    + t('top', 'Top rated', top, 'Compass score 75 or higher', 'top');
+}
+
+function renderCrawl(){
+  const st = META.status || {}, lab = {prices:'Prices', filings:'SEC filings', analysts:'Analysts', score:'Scores', universe:'Stock list'};
+  const bits = Object.keys(lab).map(k => { const j = st[k]; if(!j) return '<span class="chip"><i></i>' + lab[k] + ' pending</span>';
+    let extra = k === 'universe' && j.count ? ' · ' + j.count + ' names' : k === 'prices' && j.pending ? ' · ' + j.pending + ' queued' : '';
+    return '<span class="chip ' + (j.error ? 'err' : 'ok') + '" title="' + esc(j.error || '') + '"><i></i>' + lab[k] + ' ' + esc(ago(j.at)) + extra + '</span>'; });
+  $('crawl').innerHTML = '<span class="lab">Crawler</span>' + bits.join('');
+  $('asof').innerHTML = (META.asof ? 'Prices as of <b>' + esc(day(META.asof)) + '</b> close<br>' : '') + 'End-of-day data · not real-time';
+}
+
+function renderEvents(list){
+  $('evCount').textContent = list.length ? list.length + ' latest' : '';
+  $('events').innerHTML = list.length ? list.map(e => '<div class="ev ' + esc(e.tone || 'neut') + '" data-s="' + esc(e.symbol) + '"><i></i><div><b>' + esc(e.title) + '</b>'
+    + (e.detail ? '<p>' + esc(e.detail) + '</p>' : '') + '<time>' + esc(ago(e.ts_utc)) + '</time></div></div>').join('')
+    : '<div class="empty">No updates yet. When the crawler sees a new filing, a trend change, a new 52-week high or low, or a score move, it lands here.</div>';
+}
+
+/* ---------- detail ---------- */
+function ring(v, read){
+  const c = 2 * Math.PI * 44, col = read === 'bull' ? 'var(--bull)' : read === 'bear' ? 'var(--bear)' : 'var(--crimson)';
+  return '<div class="ring"><svg viewBox="0 0 104 104"><circle cx="52" cy="52" r="44" fill="none" stroke="var(--line)" stroke-width="8"/>'
+    + '<circle cx="52" cy="52" r="44" fill="none" stroke="' + col + '" stroke-width="8" stroke-linecap="round" stroke-dasharray="' + (c * (v || 0) / 100).toFixed(1) + ' ' + c.toFixed(1) + '"/></svg>'
+    + '<div><b>' + (v === null ? '·' : Math.round(v)) + '</b><small>OF 100</small></div></div>';
+}
+function chart(ch){
+  if(!ch || !ch.c || ch.c.length < 5) return '<div class="none">Price history is still loading.</div>';
+  const W = 760, H = 250, pl = 6, pr = 52, pt = 10, pb = 22, n = ch.c.length;
+  const vals = ch.c.concat((ch.m50 || []).filter(v => v != null), (ch.m200 || []).filter(v => v != null));
+  let mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals); const pad = (mx - mn) * 0.06 || 1; mn -= pad; mx += pad;
+  const X = i => pl + i / (n - 1) * (W - pl - pr), Y = v => pt + (1 - (v - mn) / (mx - mn)) * (H - pt - pb);
+  const line = arr => { let d = '', pen = false; arr.forEach((v, i) => { if(v == null){ pen = false; return; } d += (pen ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); pen = true; }); return d; };
+  let grid = ''; for(let g = 0; g <= 4; g++){ const v = mn + (mx - mn) * g / 4, y = Y(v);
+    grid += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="var(--line-soft)"/><text x="' + (W - pr + 6) + '" y="' + (y + 3.5).toFixed(1) + '" font-size="10" fill="var(--ink-faint)" font-family="IBM Plex Mono,monospace">' + v.toFixed(v >= 100 ? 0 : 2) + '</text>'; }
+  let xl = ''; [0, Math.floor(n / 3), Math.floor(2 * n / 3), n - 1].forEach((i, j) => { const d = new Date(ch.d[i] + 'T12:00:00');
+    xl += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 6) + '" font-size="10" fill="var(--ink-faint)" font-family="IBM Plex Mono,monospace" text-anchor="' + (j === 0 ? 'start' : j === 3 ? 'end' : 'middle') + '">' + d.toLocaleDateString(undefined, {month:'short', year:'2-digit'}) + '</text>'; });
+  const area = line(ch.c) + 'L' + X(n - 1).toFixed(1) + ' ' + (H - pb) + 'L' + X(0).toFixed(1) + ' ' + (H - pb) + 'Z';
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="One year price chart with 50 and 200 day averages">' + grid + xl
+    + '<path d="' + area + '" fill="var(--crimson)" fill-opacity=".07"/>'
+    + '<path d="' + line(ch.m200 || []) + '" fill="none" stroke="var(--sec)" stroke-width="1.5" stroke-dasharray="5 4"/>'
+    + '<path d="' + line(ch.m50 || []) + '" fill="none" stroke="var(--neut)" stroke-width="1.5"/>'
+    + '<path d="' + line(ch.c) + '" fill="none" stroke="var(--crimson)" stroke-width="2" stroke-linejoin="round"/></svg>'
+    + '<div class="legend"><span><i style="background:var(--crimson)"></i>Price</span><span><i style="background:var(--neut)"></i>50-day average</span><span><i style="background:var(--sec)"></i>200-day average</span></div>';
+}
+function bars(series, cur, title){
+  if(!series || !series.length) return '';
+  const W = 220, H = 96, vals = series.map(p => p[1]), mx = Math.max.apply(null, vals.map(Math.abs)) || 1, neg = vals.some(v => v < 0);
+  const base = neg ? H / 2 : H - 16, span = neg ? H / 2 - 16 : H - 30, bw = Math.min(30, (W - 10) / series.length - 8);
+  const b = series.map((p, i) => { const x = 6 + i * ((W - 12) / series.length) + ((W - 12) / series.length - bw) / 2, h = Math.abs(p[1]) / mx * span, y = p[1] >= 0 ? base - h : base;
+    return '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(1, h).toFixed(1) + '" rx="3" fill="' + (p[1] >= 0 ? 'var(--crimson)' : 'var(--bear)') + '" fill-opacity="' + (i === series.length - 1 ? 1 : .5) + '"><title>' + esc(p[0].slice(0, 4) + ': ' + money(p[1], cur)) + '</title></rect>'
+      + '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (H - 3) + '" font-size="9" text-anchor="middle" fill="var(--ink-faint)" font-family="IBM Plex Mono,monospace">' + esc("'" + p[0].slice(2, 4)) + '</text>'; }).join('');
+  return '<div class="bc"><div class="t">' + esc(title) + ' · latest ' + esc(money(vals[vals.length - 1], cur)) + '</div><svg viewBox="0 0 ' + W + ' ' + H + '" width="100%">' + b + '</svg></div>';
+}
+const st = (k, v, n) => '<div class="st"><div class="k">' + k + '</div><div class="v">' + v + '</div>' + (n ? '<div class="n">' + n + '</div>' : '') + '</div>';
+
+function verdictText(s){
+  const p = {}; (s.parts || []).forEach(x => p[x.key] = x);
+  const have = (s.parts || []).filter(x => x.value !== null);
+  if(!have.length || s.tier === 'Building') return 'The crawler has not gathered enough data on this stock to score it yet.';
+  const srt = have.slice().sort((a, b) => b.value - a.value), best = srt.slice(0, 2).filter(x => x.value >= 60), worst = srt.slice(-2).reverse().filter(x => x.value < 45);
+  let t = '';
+  if(best.length) t += 'Strongest on ' + best.map(x => x.label.toLowerCase()).join(' and ') + '. ';
+  if(worst.length) t += 'Weakest on ' + worst.map(x => x.label.toLowerCase()).join(' and ') + '. ';
+  if(!t) t = 'A middle-of-the-pack profile with no standout strength or weakness. ';
+  return t + 'Long-term trend: ' + (s.trend || 'pending').toLowerCase() + '.';
+}
+
+function renderDetail(s){
+  const f = s.fund || {}, v = s.val || {}, a = s.analysts || {}, m = s.metrics || {}, cur = f.currency || 'USD', sc = num(s.score);
+  $('dhead').innerHTML = '<div style="flex:1;min-width:0"><h2>' + esc(s.symbol) + '</h2><div class="nm">' + esc(s.name || '') + '</div></div>'
+    + '<div class="px">' + px(s.price) + '<small>' + pctC(s.chg_1d, 2) + ' <span class="mu">' + esc(s.price_date ? day(s.price_date) : '') + '</span></small></div>'
+    + '<button class="x" id="closeBtn" type="button" aria-label="Close">✕</button>';
+  let h = '';
+  h += '<div class="sect"><div class="verdict">' + ring(sc, s.read) + '<div><h4>' + esc(s.tier || 'Building') + ' <span class="rd ' + esc(s.read || 'neut') + '">' + READ[s.read || 'neut'] + ' read</span></h4><p>' + esc(verdictText(s)) + '</p>'
+    + '<div class="tags">' + (s.sector ? '<span class="tag">' + esc(s.sector) + '</span>' : '') + (s.industry ? '<span class="tag">' + esc(s.industry) + '</span>' : '')
+    + (s.in_sp ? '<span class="tag">S&amp;P 500</span>' : '') + (s.in_ndx ? '<span class="tag">Nasdaq-100</span>' : '')
+    + (num(s.coverage) !== null && s.coverage < 0.8 ? '<span class="tag">Data coverage ' + Math.round(s.coverage * 100) + '%</span>' : '') + '</div></div></div></div>';
+
+  h += '<div class="sect"><h3>Why this score <em>weight · how each check did</em></h3>' + (s.parts || []).map(p =>
+    '<div class="part"><div class="pl"><b>' + esc(p.label) + '</b><small>' + p.weight + '% of score</small></div><div class="pb"><i style="width:' + (p.value || 0) + '%;background:' + scoreColor(p.value) + '"></i></div><div class="pv">' + (p.value === null ? '<span class="mu">·</span>' : p.value) + '</div>'
+    + '<div class="pn">' + (p.notes || []).map(esc).join(' · ') + '</div></div>').join('') + '</div>';
+
+  h += '<div class="sect"><h3>Long-term trend <em>' + esc(s.trend || '') + '</em></h3>' + chart(s.chart);
+  if(num(s.lo52) !== null && num(s.hi52) !== null){
+    h += '<div class="range"><div class="rl"><span>52-week range</span><span>' + (num(s.drawdown) !== null && s.drawdown < -0.005 ? pct(s.drawdown) + ' from the high' : 'At the high') + '</span></div>'
+      + '<div class="rb"><i style="left:calc(' + Math.round((num(s.pos52) || 0) * 100) + '% - 1.5px)"></i></div><div class="rl"><span>' + px(s.lo52) + '</span><span>' + px(s.hi52) + '</span></div></div>';
+  }
+  h += '<div class="stats" style="margin-top:14px">' + st('1 month', pctC(s.ret_1m, 1)) + st('3 months', pctC(s.ret_3m, 1)) + st('6 months', pctC(s.ret_6m, 1)) + st('1 year', pctC(s.ret_1y, 1))
+    + st('50-day average', px(s.ma50)) + st('200-day average', px(s.ma200)) + st('Yearly swing', pct(s.vol_1y, 0, false), 'Volatility: higher means a bumpier ride') + '</div></div>';
+
+  h += '<div class="sect"><h3>What the company reports <em>from its SEC filings' + (f.fy_end ? ' · fiscal year ended ' + esc(day(f.fy_end)) : '') + '</em></h3>';
+  if(!f.revenue && !f.net_income){ h += '<div class="none">SEC financial data has not been read for this company yet.</div>'; }
+  else {
+    h += '<div class="stats">' + st('Revenue', money(f.revenue, cur), 'Last fiscal year, ' + pctC(f.revenue_yoy) + ' vs prior')
+      + st('Revenue growth, 3y', pctC(f.revenue_cagr3), 'Average per year')
+      + st('Latest quarter', money(f.q_revenue, cur), f.q_end ? pctC(f.q_revenue_yoy) + ' vs a year ago' : '')
+      + st('Net income', money(f.net_income, cur), 'Net margin ' + pct(f.net_margin, 0, false))
+      + st('Operating margin', pct(f.op_margin, 0, false)) + st('Gross margin', pct(f.gross_margin, 0, false))
+      + st('Free cash flow', money(f.fcf, cur), 'FCF margin ' + pct(f.fcf_margin, 0, false))
+      + st('Earnings per share', num(f.eps) === null ? 'n/a' : esc((cur === 'USD' ? '$' : '') + Number(f.eps).toFixed(2)), pctC(f.eps_yoy) + ' vs prior year')
+      + st('Cash', money(f.cash, cur)) + st('Debt', money(f.debt, cur), num(f.debt_to_equity) !== null ? Number(f.debt_to_equity).toFixed(1) + 'x equity' : '')
+      + st('Return on equity', pct(f.roe, 0, false))
+      + st('Share count, 3y', pctC(num(f.shares_change_3y) === null ? null : f.shares_change_3y, 1), num(f.shares_change_3y) === null ? '' : f.shares_change_3y < -0.005 ? 'Shrinking: buybacks' : f.shares_change_3y > 0.005 ? 'Growing: dilution' : 'Flat')
+      + '</div><div class="bars3">' + bars((f.history || {}).revenue, cur, 'Revenue') + bars((f.history || {}).net_income, cur, 'Net income') + bars((f.history || {}).fcf, cur, 'Free cash flow') + '</div>';
+  }
+  h += '</div>';
+
+  h += '<div class="sect"><h3>Valuation and payouts</h3><div class="stats">' + st('Market value', money(v.mcap)) + st('P/E', mult(v.pe), 'Price vs trailing earnings')
+    + st('Free cash flow yield', pct(v.fcf_yield, 1, false), 'Cash generated per dollar invested') + st('Dividend yield', num(v.div_yield) ? pct(v.div_yield, 1, false) : 'None')
+    + st('Total payout yield', pct(v.holder_yield, 1, false), 'Dividends plus buybacks') + (num(m.beta) !== null ? st('Beta', Number(m.beta).toFixed(2), 'Moves vs the market (1.0 = same)') : '') + '</div></div>';
+
+  h += '<div class="sect"><h3>Wall Street consensus' + (a.period ? ' <em>as of ' + esc(day(a.period)) + '</em>' : '') + '</h3>';
+  if(a.analysts){ const c = a.counts || {}, tot = a.analysts, seg = (n, col) => n ? '<i style="width:' + (n / tot * 100) + '%;background:' + col + '"></i>' : '';
+    h += '<div><b style="font-family:var(--disp);font-size:18px">' + esc(a.label) + '</b> <span class="mu">from ' + tot + ' analysts' + (num(a.trend) ? ', ' + (a.trend > 0 ? 'warming' : 'cooling') + ' over 3 months' : '') + '</span></div>'
+      + '<div class="abar">' + seg((c.strongBuy || 0) + (c.buy || 0), 'var(--bull)') + seg(c.hold || 0, 'var(--neut)') + seg((c.sell || 0) + (c.strongSell || 0), 'var(--bear)') + '</div>'
+      + '<div class="legend"><span><i style="background:var(--bull);height:8px;width:8px;border-radius:2px"></i>Buy ' + ((c.strongBuy || 0) + (c.buy || 0)) + '</span><span><i style="background:var(--neut);height:8px;width:8px;border-radius:2px"></i>Hold ' + (c.hold || 0) + '</span><span><i style="background:var(--bear);height:8px;width:8px;border-radius:2px"></i>Sell ' + ((c.sell || 0) + (c.strongSell || 0)) + '</span></div>';
+  } else h += '<div class="none">No analyst data yet.</div>';
+  h += '</div>';
+
+  const reads = s.reads || [];
+  h += '<div class="sect"><h3>Korvus reads <em>filings the crawler analysed, last 45 days</em></h3>' + (reads.length ? reads.map(r =>
+    '<div class="row"><time>' + esc(day(r.at)) + '</time><div><span class="rd ' + esc(r.dir || 'neut') + '" style="margin-right:6px">' + READ[r.dir || 'neut'] + '</span><b>' + esc(r.title) + '</b>'
+    + (r.summary ? '<p>' + esc(r.summary) + '</p>' : '') + (r.url ? '<p><a href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer">Open the filing on SEC.gov</a></p>' : '') + '</div></div>').join('')
+    : '<div class="none">No filings from this company have been read in the last 45 days.</div>') + '</div>';
+
+  const fl = s.filings || [];
+  h += '<div class="sect"><h3>SEC filing timeline</h3>' + (fl.length ? fl.map(x => '<div class="row"><time>' + esc(day(x.filed)) + '</time><div><span class="fm">' + esc(x.form) + '</span><b>' + esc(x.label) + '</b>'
+    + (x.url ? ' · <a href="' + esc(x.url) + '" target="_blank" rel="noopener noreferrer">open</a>' : '') + '</div></div>').join('') : '<div class="none">Filing list not loaded yet.</div>') + '</div>';
+
+  const ev = s.events || [];
+  h += '<div class="sect"><h3>Crawler updates for ' + esc(s.symbol) + '</h3>' + (ev.length ? ev.map(e => '<div class="row"><time>' + esc(day(e.ts_utc)) + '</time><div><b>' + esc(e.title) + '</b>' + (e.detail ? '<p>' + esc(e.detail) + '</p>' : '') + '</div></div>').join('')
+    : '<div class="none">Nothing has changed since the crawler started watching this stock.</div>')
+    + '<p class="mu" style="font-family:var(--mono);font-size:10.5px;margin:12px 0 0">Prices ' + esc(ago(s.price_utc)) + ' · SEC data ' + esc(ago(s.fund_utc)) + ' · analysts ' + esc(ago(s.analyst_utc)) + ' · score ' + esc(ago(s.score_utc)) + '</p></div>';
+
+  h += '<p class="disc" style="margin:0;border:0;padding:0">' + esc(s.disclaimer || '') + '</p>';
+  $('dbody').innerHTML = h;
+  $('closeBtn').onclick = closeDetail;
+}
+
+async function openDetail(sym){
+  $('scrim').classList.add('on'); $('drawer').classList.add('on'); $('drawer').setAttribute('aria-hidden', 'false'); $('drawer').scrollTop = 0;
+  $('dhead').innerHTML = '<div style="flex:1"><h2>' + esc(sym) + '</h2><div class="nm">Loading…</div></div><button class="x" id="closeBtn" type="button" aria-label="Close">✕</button>';
+  $('dbody').innerHTML = ''; $('closeBtn').onclick = closeDetail;
+  if(location.hash.slice(1) !== sym) history.replaceState(null, '', '#' + sym);
+  try{
+    const r = await fetch('/api/compass/stock/' + encodeURIComponent(sym), {cache:'no-store'});
+    if(r.status === 403 || r.status === 401){ location.href = '/upgrade?from=compass'; return; }
+    if(!r.ok) throw new Error('not found');
+    renderDetail(await r.json());
+  }catch(e){ $('dbody').innerHTML = '<div class="sect none">Could not load ' + esc(sym) + '. Try again in a moment.</div>'; }
+}
+function closeDetail(){ $('scrim').classList.remove('on'); $('drawer').classList.remove('on'); $('drawer').setAttribute('aria-hidden', 'true'); history.replaceState(null, '', location.pathname); }
+
+async function load(){
+  try{
+    const [a, b] = await Promise.all([fetch('/api/compass/list', {cache:'no-store'}), fetch('/api/compass/events?limit=60', {cache:'no-store'})]);
+    if(a.status === 403 || a.status === 401){ location.href = '/upgrade?from=compass'; return; }
+    const d = await a.json(); ALL = d.stocks || []; META = d;
+    const secs = Array.from(new Set(ALL.map(x => x.sec).filter(Boolean))).sort(), sel = $('secSel'), cur = sel.value;
+    sel.innerHTML = '<option value="">All sectors</option>' + secs.map(s => '<option>' + esc(s) + '</option>').join(''); sel.value = cur;
+    $('disc').textContent = d.disclaimer || '';
+    renderTiles(); renderCrawl(); renderHead(); renderTable();
+    renderEvents(b.ok ? ((await b.json()).events || []) : []);
+  }catch(e){ $('tbody').innerHTML = '<tr><td colspan="12"><div class="empty">Could not reach the Compass service. Refresh in a moment.</div></td></tr>'; }
+}
+
+$('thead').addEventListener('click', e => { const th = e.target.closest('th'); if(!th) return; const k = th.dataset.k; if(k === 'rk') return;
+  if(sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = (k === 's' || k === 'tr') ? 1 : -1; } renderHead(); renderTable(); });
+$('tbody').addEventListener('click', e => { const tr = e.target.closest('tr[data-s]'); if(tr) openDetail(tr.dataset.s); });
+$('events').addEventListener('click', e => { const ev = e.target.closest('.ev'); if(ev) openDetail(ev.dataset.s); });
+$('q').addEventListener('input', e => { filt.q = e.target.value; shown = 60; renderTable(); });
+$('readSel').addEventListener('change', e => { filt.rd = e.target.value; shown = 60; renderTable(); });
+$('tierSel').addEventListener('change', e => { filt.ti = e.target.value; shown = 60; renderTable(); });
+$('secSel').addEventListener('change', e => { filt.sec = e.target.value; shown = 60; renderTable(); });
+$('idxSeg').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; filt.idx = b.dataset.v;
+  Array.from($('idxSeg').children).forEach(x => x.classList.toggle('on', x === b)); shown = 60; renderTable(); });
+$('tiles').addEventListener('click', e => { const t = e.target.closest('.tile'); if(!t) return; const act = t.dataset.act;
+  filt.rd = (act === 'bull' || act === 'bear') ? act : ''; filt.ti = act === 'top' ? 'Top rated' : '';
+  $('readSel').value = filt.rd; $('tierSel').value = filt.ti; sortKey = 'sc'; sortDir = -1; shown = 60; renderHead(); renderTable(); });
+$('scrim').addEventListener('click', closeDetail);
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeDetail(); });
+$('themeBtn').addEventListener('click', () => { const light = document.documentElement.getAttribute('data-theme') === 'light';
+  if(light) document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', 'light');
+  try{ localStorage.setItem('korvus-theme', light ? 'dark' : 'light'); }catch(e){} });
+
+load().then(() => { const h = location.hash.slice(1); if(/^[A-Z0-9\-]{1,8}$/.test(h)) openDetail(h); });
+setInterval(load, 5 * 60 * 1000);
+</script>
+</body>
+</html>

@@ -15,3 +15,5 @@ intel_status.json.tmp
 *.db-journal
 *.db-wal
 *.db-shm
+compass_universe.json
+compass_universe.json.tmp

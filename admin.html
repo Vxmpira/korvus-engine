@@ -572,7 +572,6 @@ function renderToolsOnce(stats){
   h+='<div class="card pad tool"><div class="chead2"><h3>Free-tier preview</h3><p>See the terminal exactly as a free member does: delayed tape, free SMT, free labels. Applies to this browser session only; your owner access stays.</p></div>';
   h+='<button class="pvtoggle'+(pv?' on':'')+'" id="pvBtn" type="button"><span class="pvdot"></span><span class="pvlab">'+(pv?'PREVIEW ON':'PREVIEW OFF')+'</span></button>';
   h+='<div class="thint" id="pvHint">'+(pv?'Open the terminal in another tab to see it. Turn this off when done.':'')+'</div></div>';
-  h+='<div class="card pad studio"><div><h3>Promo Studio</h3><p>Generate on-brand social posts from live market context.</p></div><a class="cta" href="/agent">Open Studio ⟶</a></div>';
   h+='</section>';
   $("#tools-root").innerHTML=h;
   $("#tgo").addEventListener('click', findUser);

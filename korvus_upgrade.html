@@ -138,6 +138,7 @@
         <ul>
           <li><span class="ck">✓</span>Real-time quotes, no 15-minute delay</li>
           <li><span class="ck">✓</span>Primary-source SEC filings: earnings releases read straight from EDGAR, scored the moment they're accepted</li>
+          <li><span class="ck">✓</span>Korvus Compass: the long-term investing board. Every S&amp;P 500 and Nasdaq-100 stock scored on trend, growth, profit and value from SEC data</li>
           <li><span class="ck">✓</span>Live futures board, SMT &amp; macro confluence on fresh prints</li>
           <li><span class="ck">✓</span>Session map &amp; levels updating live</li>
           <li><span class="ck">✓</span>Everything in Free, the moment it happens</li>
@@ -164,6 +165,7 @@ function banner(kind, msg){ bannerEl.className = 'banner ' + kind; bannerEl.text
 const st = params.get('status');
 if(st === 'success') banner('ok', 'Welcome to Pro, your terminal goes live during US market hours (9:30 AM–4:00 PM ET). Outside those hours the price panels show a CLOSED state.');
 else if(st === 'cancel') banner('info', "Checkout canceled, you weren't charged.");
+else if(params.get('from') === 'compass') banner('info', 'Korvus Compass, the long-term investing board, is part of Operator. Upgrade to open it.');
 
 function fmtDate(iso){
   try{ return new Date(iso).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}); }

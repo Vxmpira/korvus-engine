@@ -89,12 +89,6 @@ def admin_required(view):
 korvus_admin = Blueprint("korvus_admin", __name__)
 
 
-@korvus_admin.route("/agent")
-@admin_required
-def agent_page():
-    return send_from_directory(HERE, "agent.html")
-
-
 @korvus_admin.route("/admin")
 @admin_required
 def admin_page():
