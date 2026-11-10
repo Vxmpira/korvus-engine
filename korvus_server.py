@@ -58,16 +58,12 @@ auth.init_auth_db()
 login_manager = LoginManager(app)
 login_manager.login_view = "login_page"
 
-# Owner v2 console + Promo Studio live in blueprints. Registering them here wires:
+# Owner v2 console lives in a blueprint. Registering it here wires:
 #   /admin               -> admin.html  (hardened v2 console)
-#   /agent               -> agent.html  (Promo Studio)
 #   /api/admin/stats     -> hardened, self-sufficient stats
-#   /api/promo-generate, /api/promo-image  -> owner-gated generation
-# Both gate themselves server-side (korvus_admin.is_admin / admin_required).
+# It gates itself server-side (korvus_admin.is_admin / admin_required).
 from korvus_admin import korvus_admin
-from korvus_promo_api import korvus_promo_api
 app.register_blueprint(korvus_admin)
-app.register_blueprint(korvus_promo_api)
 
 
 class KorvusUser(UserMixin):
@@ -790,6 +786,7 @@ def api_me():
                             (u.get("tier") == "pro")
                             or (u.get("username") in ADMIN_USERNAMES))),
                         "preview_free": _free_preview(),
+                        "compass": _is_operator(),
                         "billing_enabled": billing.billing_enabled(),
                         "price_display": billing.price_display(),
                         "yearly_enabled": billing.yearly_enabled(),
@@ -823,6 +820,75 @@ def billing_checkout():
 # ----------------------------------------------------------------------------
 # ACCOUNT / PROFILE
 # ----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# KORVUS COMPASS: the long-term investing board (Operator feature).
+# Free members see the button on the terminal, locked, pointing at /upgrade.
+# The page and every /api/compass/* route enforce the tier here, server-side.
+# ---------------------------------------------------------------------------
+def _is_operator() -> bool:
+    if not current_user.is_authenticated:
+        return False
+    is_owner = current_user.username in ADMIN_USERNAMES
+    return (current_user.tier == "pro" or is_owner) and not _free_preview()
+
+
+_compass_cache = {"at": 0.0, "data": None}
+
+
+@app.route("/compass")
+@login_required
+def compass_page():
+    if not _is_operator():
+        return redirect("/upgrade?from=compass")
+    return send_from_directory(HERE, "korvus_compass.html")
+
+
+def _compass_gate():
+    if not current_user.is_authenticated:
+        return jsonify({"error": "login_required"}), 401
+    if not _is_operator():
+        return jsonify({"error": "operator_required", "upgrade": "/upgrade?from=compass"}), 403
+    return None
+
+
+@app.route("/api/compass/list")
+def api_compass_list():
+    blocked = _compass_gate()
+    if blocked:
+        return blocked
+    import time as _t
+    import korvus_compass as compass
+    if not _compass_cache["data"] or _t.time() - _compass_cache["at"] > 60:
+        _compass_cache["data"] = compass.api_list()
+        _compass_cache["at"] = _t.time()
+    return jsonify(_compass_cache["data"])
+
+
+@app.route("/api/compass/stock/<symbol>")
+def api_compass_stock(symbol):
+    blocked = _compass_gate()
+    if blocked:
+        return blocked
+    import korvus_compass as compass
+    d = compass.api_stock(symbol)
+    if not d:
+        return jsonify({"error": "not_found"}), 404
+    return jsonify(d)
+
+
+@app.route("/api/compass/events")
+def api_compass_events():
+    blocked = _compass_gate()
+    if blocked:
+        return blocked
+    import korvus_compass as compass
+    try:
+        limit = max(1, min(200, int(request.args.get("limit", 80))))
+    except ValueError:
+        limit = 80
+    return jsonify({"events": compass.api_events(limit, request.args.get("symbol", ""))})
+
+
 @app.route("/account")
 @login_required
 def account_page():

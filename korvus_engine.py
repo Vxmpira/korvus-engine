@@ -913,6 +913,13 @@ def main():
             korvus_edgar.start_thread()
         except Exception as e:
             print(f"  [edgar] watcher failed to start: {e}")
+        # Korvus Compass: the long-term board crawler (S&P 500 + Nasdaq-100),
+        # its own slow loop and its own DB. COMPASS_ENABLED=0 switches it off.
+        try:
+            import korvus_compass
+            korvus_compass.start_thread()
+        except Exception as e:
+            print(f"  [compass] crawler failed to start: {e}")
         while True:
             try:
                 run_once()
