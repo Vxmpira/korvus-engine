@@ -655,6 +655,9 @@ def run_forever():
     import korvus_paperbot as bot
     import korvus_vault as vault
     db_init()
+    # This crawler's slice of the SEC's 10 requests a second. Korvus Compass and
+    # the terminal watcher hold the rest (4 + 4 + 2).
+    edgar.MIN_GAP = 1.0 / max(0.5, min(6.0, _num("INTEL_SEC_RPS", 4)))
     status.start_flusher()
     status.record("scoring", mode=SCORER, crown_configured=crown_ready(), crown_model=CROWN_MODEL)
     status.event("system", f"Korvus Intel started (scorer: {SCORER}"

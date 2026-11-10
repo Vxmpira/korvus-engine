@@ -56,6 +56,17 @@ def test_gate():
     assert boss.get("/api/compass/list").status_code == 403
 
 
+def test_admin_status_key():
+    os.environ["INTEL_STATUS_KEY"] = "k" * 32
+    c = as_user(None)
+    assert c.get("/api/feed/compass-status").status_code == 403
+    assert c.get("/api/feed/compass-status", headers={"X-Intel-Key": "wrong"}).status_code == 403
+    r = c.get("/api/feed/compass-status", headers={"X-Intel-Key": "k" * 32})
+    assert r.status_code == 200 and "running" in r.get_json() and "server_utc" in r.get_json()
+    os.environ["INTEL_STATUS_KEY"] = ""
+    assert c.get("/api/feed/compass-status", headers={"X-Intel-Key": ""}).status_code == 403   # no key set: closed
+
+
 def test_promo_gone():
     rules = [str(r) for r in srv.app.url_map.iter_rules()]
     assert not [r for r in rules if "agent" in r or "promo" in r], rules
@@ -68,5 +79,6 @@ def test_promo_gone():
 
 if __name__ == "__main__":
     test_gate(); print("ok  test_gate")
+    test_admin_status_key(); print("ok  test_admin_status_key")
     test_promo_gone(); print("ok  test_promo_gone")
     print("ALL GATE TESTS PASSED")

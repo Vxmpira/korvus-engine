@@ -25,10 +25,24 @@
    Korvus reads  The terminal's SEC reads (korvus.db) and Korvus Intel's reads
                  (korvus_intel.db) for the same ticker, last 45 days.
 
+ LIVE LAYERS
+   Filings       The EDGAR "latest filings" feed is polled every minute, so a
+                 new 8-K / 10-Q / 10-K from any board company shows up as an
+                 update within about a minute and its numbers are re-read.
+   Prices        COMPASS_LIVE=1 adds FMP batch quotes every minute during the
+                 session (display only; scores stay on daily closes). Off by
+                 default until the data-display terms are confirmed.
+   Index funds   SPY / QQQ / DIA / IWM ride along as trend-only tiles.
+   Analyst       korvus_compass_agent.py writes a brief for every stock so the
+                 pages are filled before anyone opens them.
+
  RUNS
-   As a daemon thread inside `korvus_engine.py --loop` (same as the SEC
-   watcher), so the existing korvus-engine service supervises it. Its own DB:
-   korvus_compass.db. COMPASS_ENABLED=0 switches it off.
+   As its own service (korvus-compass.service): the second Korvus crawler, a
+   sibling of Korvus Intel. Own DB (korvus_compass.db), own heartbeat, shown on
+   the BlackCrown admin. The two crawlers share one SEC request budget
+   (COMPASS_SEC_RPS + INTEL_SEC_RPS + the terminal watcher stay under 10/s) and
+   one vault: Intel's sync publishes both crawlers' notes to blackcrown-brain.
+   COMPASS_ENABLED=0 switches it off.
 
  CLI
    python korvus_compass.py --probe AAPL      test every data source for one name
@@ -36,6 +50,8 @@
    python korvus_compass.py --once [--limit N] run every job once (N names)
    python korvus_compass.py --stock AAPL      refresh + print one stock
    python korvus_compass.py --top 20          print the current board
+   python korvus_compass.py --backfill        fill the whole board now, start to finish
+   python korvus_compass.py --loop            what the service runs
 ==============================================================================
 """
 
@@ -83,10 +99,23 @@ def _num(key: str, default: float) -> float:
 ENABLED      = _env("COMPASS_ENABLED", "1").lower() not in ("0", "false", "no", "off")
 FMP_KEY      = _env("FMP_KEY")
 FINNHUB_KEY  = _env("FINNHUB_KEY")
-FMP_GAP      = max(0.05, _num("COMPASS_FMP_GAP", 0.3))       # seconds between FMP calls
-FINNHUB_GAP  = max(1.0, _num("COMPASS_FINNHUB_GAP", 2.5))    # ~24/min, leaves room for quotes
+FMP_GAP      = max(0.05, _num("COMPASS_FMP_GAP", 0.15))      # seconds between FMP calls
+FINNHUB_GAP  = max(1.0, _num("COMPASS_FINNHUB_GAP", 2.0))    # ~24/min, leaves room for quotes
 EXTRA        = [t.strip().upper() for t in _env("COMPASS_EXTRA_TICKERS").split(",") if t.strip()]
-TICK_SECONDS = 600
+LIVE         = _env("COMPASS_LIVE", "0").lower() in ("1", "true", "yes", "on")
+LIVE_SECONDS = max(30, int(_num("COMPASS_LIVE_SECONDS", 60)))
+SEC_RPS      = max(0.5, min(6.0, _num("COMPASS_SEC_RPS", 4)))   # this crawler's slice of the SEC's 10/s
+TICK_SECONDS = 300
+FEED_FORMS   = ["8-K", "10-Q", "10-K", "20-F", "40-F", "6-K"]
+
+# Index funds shown as trend-only tiles above the board. They have no company
+# financials, so they are never scored or ranked against the stocks.
+ETFS = {
+    "SPY": ("S&P 500", "The 500 largest US companies. The index ES futures track."),
+    "QQQ": ("Nasdaq-100", "The 100 largest Nasdaq companies, tech heavy. The index NQ futures track."),
+    "DIA": ("Dow 30", "30 blue-chip US companies. The index YM futures track."),
+    "IWM": ("Russell 2000", "2,000 smaller US companies. The index RTY futures track."),
+}
 
 UA = {"User-Agent": "Korvus Compass (BlackCrownVxJ LLC) BlackCrownVxJ.LLC@outlook.com"}
 
@@ -204,7 +233,7 @@ def pct(x, digits=0, signed=True) -> str:
 # ----------------------------------------------------------------------------
 # DATABASE (separate on purpose: korvus.db is the terminal's)
 # ----------------------------------------------------------------------------
-JSON_COLS = ("chart", "spark", "fund", "filings", "analysts", "metrics", "parts")
+JSON_COLS = ("chart", "chart5", "spark", "fund", "filings", "analysts", "metrics", "parts", "brief")
 
 
 def db():
@@ -237,9 +266,29 @@ def db_init():
         CREATE INDEX IF NOT EXISTS ev_ts ON events(ts_utc);
         CREATE INDEX IF NOT EXISTS ev_sym ON events(symbol, ts_utc);
         CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
+        CREATE TABLE IF NOT EXISTS seen_filings (
+            accession TEXT NOT NULL, symbol TEXT NOT NULL, ts_utc TEXT,
+            PRIMARY KEY (accession, symbol)
+        );
     """)
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(stocks)").fetchall()}
+    for col, ddl in (("kind", "TEXT DEFAULT 'stock'"), ("note", "TEXT"), ("chart5", "TEXT"), ("ret_5y", "REAL"),
+                     ("live_price", "REAL"), ("live_chg", "REAL"), ("live_utc", "TEXT"),
+                     ("brief", "TEXT"), ("brief_sig", "TEXT"), ("brief_utc", "TEXT")):
+        if col not in cols:
+            conn.execute(f"ALTER TABLE stocks ADD COLUMN {col} {ddl}")
     conn.commit()
     conn.close()
+
+
+def first_seen(accession: str, symbol: str, conn) -> bool:
+    """True the first time this (filing, stock) pair is seen. The feed hook and
+    the submissions sweep both call it, so a filing is announced exactly once."""
+    if not accession:
+        return False
+    cur = conn.execute("INSERT OR IGNORE INTO seen_filings(accession, symbol, ts_utc) VALUES(?,?,?)",
+                       (accession, symbol, iso()))
+    return cur.rowcount == 1
 
 
 def meta_get(k: str, default: str = "") -> str:
@@ -537,7 +586,7 @@ def refresh_universe(verbose: bool = True) -> int:
     conn = db()
     have = {r["symbol"] for r in conn.execute("SELECT symbol FROM stocks").fetchall()}
     new_syms = {r["symbol"] for r in rows}
-    seeded = bool(have)
+    seeded = bool(have - set(ETFS))
     for r in rows:
         if r["symbol"] in have:
             conn.execute("""UPDATE stocks SET name=COALESCE(NULLIF(?,''),name), cik=COALESCE(?,cik),
@@ -551,9 +600,14 @@ def refresh_universe(verbose: bool = True) -> int:
             if seeded:
                 add_event(r["symbol"], "index", "neut", f"{r['symbol']} joined the Compass board",
                           "Added to the S&P 500 or Nasdaq-100.", conn=conn)
-    gone = have - new_syms
+    gone = have - new_syms - set(ETFS)
     for s in gone:
         conn.execute("UPDATE stocks SET active=0 WHERE symbol=?", (s,))
+    for s, (name, note) in ETFS.items():
+        conn.execute("""INSERT INTO stocks(symbol,name,sector,industry,kind,note,active)
+                        VALUES(?,?,?,?,'etf',?,1) ON CONFLICT(symbol) DO UPDATE SET
+                        name=excluded.name, kind='etf', note=excluded.note, active=1""",
+                     (s, name, "Index fund", "ETF", note))
     conn.commit()
     conn.close()
     meta_set("universe_asof", iso())
@@ -564,10 +618,12 @@ def refresh_universe(verbose: bool = True) -> int:
     return len(rows)
 
 
-def active_symbols(conn=None) -> list:
+def active_symbols(conn=None, kind: str = "stock") -> list:
+    """kind: 'stock' (the ranked board), 'etf', or '' for everything."""
     own = conn is None
     conn = conn or db()
-    rows = conn.execute("SELECT symbol FROM stocks WHERE active=1 ORDER BY symbol").fetchall()
+    q = "SELECT symbol FROM stocks WHERE active=1" + (" AND COALESCE(kind,'stock')=?" if kind else "")
+    rows = conn.execute(q + " ORDER BY symbol", (kind,) if kind else ()).fetchall()
     if own:
         conn.close()
     return [r["symbol"] for r in rows]
@@ -612,6 +668,12 @@ def history_stats(series: list) -> dict:
     chart = {"d": dates[start:], "c": [round(x, 2) for x in c[start:]],
              "m50": [(_r(_sma(c, 50, i + 1), 2)) for i in range(start, len(c))],
              "m200": [(_r(_sma(c, 200, i + 1), 2)) for i in range(start, len(c))]}
+    # 5-year view: one point a week, with the same two averages
+    s5 = max(0, len(c) - 1260)
+    idx = list(range(len(c) - 1, s5 - 1, -5))[::-1]
+    chart5 = {"d": [dates[i] for i in idx], "c": [round(c[i], 2) for i in idx],
+              "m50": [_r(_sma(c, 50, i + 1), 2) for i in idx],
+              "m200": [_r(_sma(c, 200, i + 1), 2) for i in idx]}
     spark = [round(x, 2) for x in c[start:][::5]]
     if spark and spark[-1] != round(p, 2):
         spark.append(round(p, 2))
@@ -619,11 +681,12 @@ def history_stats(series: list) -> dict:
         "price": round(p, 4), "price_date": dates[-1], "chg_1d": _r(ret(1)),
         "ret_1m": _r(ret(21)), "ret_3m": _r(ret(63)), "ret_6m": _r(ret(126)),
         "ret_1y": _r(ret(252) if len(c) > 252 else (p / c[0] - 1 if len(c) > 200 else None)),
+        "ret_5y": _r(ret(1260) if len(c) > 1260 else (p / c[0] - 1 if len(c) > 1000 else None)),
         "ma50": _r(ma50, 4), "ma200": _r(ma200, 4), "ma50_slope": _r(slope),
         "hi52": round(hi, 4), "lo52": round(lo, 4),
         "pos52": _r((p - lo) / (hi - lo) if hi > lo else 0.5),
         "drawdown": _r(p / hi - 1), "vol_1y": _r(vol),
-        "chart": chart, "spark": spark,
+        "chart": chart, "chart5": (chart5 if len(idx) > 60 else None), "spark": spark,
     }
     out["trend"], out["trend_tone"] = trend_label(p, ma50, ma200, slope)
     return out
@@ -664,7 +727,7 @@ def _fmp_get(url: str, params: dict):
     return r.json()
 
 
-def fetch_history(symbol: str, days: int = 700) -> list:
+def fetch_history(symbol: str, days: int = 2000) -> list:
     """Daily closes, oldest first. FMP stable endpoint, then the legacy one."""
     if not FMP_KEY:
         return []
@@ -1394,11 +1457,15 @@ def fund_event(sym: str, f: dict, filing: dict) -> tuple:
 
 def rescore(symbols: Optional[list] = None, emit: bool = True) -> int:
     conn = db()
-    syms = symbols or active_symbols(conn)
+    syms = symbols or active_symbols(conn, kind="")
     n = 0
     for sym in syms:
         s = load_stock(sym, conn)
         if not s:
+            continue
+        if s.get("kind") == "etf":      # index funds: trend only, never ranked
+            save_fields(sym, {"score": None, "tier": "Index fund", "read": s.get("trend_tone") or "neut",
+                              "coverage": None, "parts": [], "score_utc": iso()}, conn)
             continue
         s["_reads"] = korvus_reads(sym)
         res = score_stock(s)
@@ -1474,10 +1541,11 @@ def job_prices(limit: Optional[int] = None, verbose: bool = True) -> int:
         stats = history_stats(hist)
         old = load_stock(sym, conn)
         fields = {k: stats.get(k) for k in ("price", "price_date", "chg_1d", "ret_1m", "ret_3m", "ret_6m",
-                                            "ret_1y", "ma50", "ma200", "ma50_slope", "hi52", "lo52", "pos52",
-                                            "drawdown", "vol_1y", "trend", "trend_tone", "chart", "spark")}
+                                            "ret_1y", "ret_5y", "ma50", "ma200", "ma50_slope", "hi52", "lo52",
+                                            "pos52", "drawdown", "vol_1y", "trend", "trend_tone", "chart",
+                                            "chart5", "spark")}
         fields["price_utc"] = iso()
-        if old and old.get("price"):
+        if old and old.get("price") and old.get("kind") != "etf":
             for kind, tone, title, detail in diff_events(old, dict(old, **fields, symbol=sym)):
                 if kind in ("trend", "cross", "high", "low"):
                     add_event(sym, kind, tone, title, detail, conn=conn)
@@ -1491,13 +1559,27 @@ def job_prices(limit: Optional[int] = None, verbose: bool = True) -> int:
     return done
 
 
-def job_filings(limit: Optional[int] = None, verbose: bool = True) -> int:
+_filings_lock = threading.Lock()
+
+
+def job_filings(limit: Optional[int] = None, verbose: bool = True, symbols: Optional[list] = None) -> int:
     """Submissions sweep: new filings become updates; a new periodic report
-    (or 35-day-old data) triggers a fresh companyfacts read."""
+    (or 35-day-old data) triggers a fresh companyfacts read. `symbols` runs it
+    right now for those names (the live feed hook uses that)."""
+    with _filings_lock:
+        return _job_filings(limit, verbose, symbols)
+
+
+def _job_filings(limit, verbose, symbols) -> int:
     conn = db()
-    rows = conn.execute("""SELECT symbol, cik FROM stocks WHERE active=1 AND cik IS NOT NULL AND
-                           (subs_utc IS NULL OR subs_utc < ?) ORDER BY subs_utc IS NOT NULL, subs_utc""",
-                        (iso(utcnow() - dt.timedelta(hours=6)),)).fetchall()
+    if symbols:
+        marks = ",".join("?" * len(symbols))
+        rows = conn.execute(f"SELECT symbol, cik FROM stocks WHERE active=1 AND cik IS NOT NULL "
+                            f"AND symbol IN ({marks}) ORDER BY symbol", list(symbols)).fetchall()
+    else:
+        rows = conn.execute("""SELECT symbol, cik FROM stocks WHERE active=1 AND cik IS NOT NULL AND
+                               (subs_utc IS NULL OR subs_utc < ?) ORDER BY subs_utc IS NOT NULL, subs_utc""",
+                            (iso(utcnow() - dt.timedelta(hours=6)),)).fetchall()
     conn.close()
     rows = rows[:limit] if limit else rows
     seen_cik, n_new, n_fund = {}, 0, 0
@@ -1522,13 +1604,16 @@ def job_filings(limit: Optional[int] = None, verbose: bool = True) -> int:
         filings = parse_submissions(subs)
         old_accns = {x.get("accn") for x in (old.get("filings") or [])} if old else set()
         conn = db()
-        if old and old.get("filings"):
-            for fl in filings:
-                if fl["accn"] not in old_accns:
-                    add_event(sym, "filing", "neut", f"{sym} filed a {fl['form']}: {fl['label']}",
-                              f"Filed {fl['filed']}." + (f" Items {fl['items']}." if fl.get("items") else ""),
-                              fl["url"], conn=conn)
-                    n_new += 1
+        first_fill = not (old and old.get("filings"))
+        for fl in filings:
+            # first_seen() also records the filing, so the live feed hook and
+            # this sweep never announce the same one twice
+            fresh = first_seen(fl["accn"], sym, conn)
+            if fresh and not first_fill and fl["accn"] not in old_accns:
+                add_event(sym, "filing", "neut", f"{sym} filed a {fl['form']}: {fl['label']}",
+                          f"Filed {fl['filed']}." + (f" Items {fl['items']}." if fl.get("items") else ""),
+                          fl["url"], conn=conn)
+                n_new += 1
         save_fields(sym, {"filings": filings, "subs_utc": iso()}, conn)
         conn.commit()
         conn.close()
@@ -1553,7 +1638,8 @@ def job_filings(limit: Optional[int] = None, verbose: bool = True) -> int:
             conn.commit()
             conn.close()
         seen_cik[cik] = sym
-    status_set("filings", at=iso(), checked=len(rows), new_filings=n_new, fundamentals=n_fund)
+    if not symbols:
+        status_set("filings", at=iso(), checked=len(rows), new_filings=n_new, fundamentals=n_fund)
     if verbose and rows:
         print(f"  [compass] filings: {len(rows)} checked, {n_new} new, {n_fund} fundamentals refreshed")
     return len(rows)
@@ -1564,7 +1650,7 @@ def job_analysts(limit: Optional[int] = None, verbose: bool = True) -> int:
         status_set("analysts", error="FINNHUB_KEY missing", at=iso())
         return 0
     conn = db()
-    rows = conn.execute("""SELECT symbol FROM stocks WHERE active=1 AND
+    rows = conn.execute("""SELECT symbol FROM stocks WHERE active=1 AND COALESCE(kind,'stock')='stock' AND
                            (analyst_utc IS NULL OR analyst_utc < ?) ORDER BY analyst_utc IS NOT NULL, analyst_utc""",
                         (iso(utcnow() - dt.timedelta(days=7)),)).fetchall()
     conn.close()
@@ -1599,23 +1685,189 @@ def prune_events(days: int = 120):
     conn.close()
 
 
-def tick(verbose: bool = True):
+# ----------------------------------------------------------------------------
+# LIVE LAYERS: the EDGAR feed hook (always on) and live prices (COMPASS_LIVE)
+# ----------------------------------------------------------------------------
+def market_open_now() -> bool:
+    n = et_now()
+    mins = n.hour * 60 + n.minute
+    return n.weekday() < 5 and 9 * 60 + 30 <= mins <= 16 * 60 + 5
+
+
+def parse_quotes(data) -> dict:
+    """FMP batch-quote rows -> {SYM: (price, day change as a fraction)}."""
+    out = {}
+    for x in (data if isinstance(data, list) else []):
+        sym = norm_symbol(x.get("symbol", ""))
+        price = x.get("price")
+        if not sym or price is None:
+            continue
+        chg = x.get("changePercentage", x.get("changesPercentage"))
+        try:
+            out[sym] = (float(price), (float(chg) / 100.0 if chg is not None else None))
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def fetch_quotes(symbols: list) -> dict:
+    """Current quotes for many symbols in a handful of calls (100 per call)."""
+    out = {}
+    for i in range(0, len(symbols), 100):
+        chunk = ",".join(symbols[i:i + 100])
+        data = None
+        for url, params in (("https://financialmodelingprep.com/stable/batch-quote", {"symbols": chunk}),
+                            (f"https://financialmodelingprep.com/api/v3/quote/{chunk}", {})):
+            try:
+                data = _fmp_get(url, params)
+            except PermissionError:
+                data = None
+            if data:
+                break
+        out.update(parse_quotes(data))
+        time.sleep(0.15)
+    return out
+
+
+def job_live(verbose: bool = False) -> int:
+    """Display-only live prices. Scores and trend keep using daily closes."""
+    syms = active_symbols(kind="")
+    try:
+        q = fetch_quotes(syms)
+    except RuntimeError as e:
+        status_set("live", error=str(e), at=iso())
+        return 0
+    if not q:
+        status_set("live", error="no quotes returned", at=iso())
+        return 0
+    now = iso()
+    conn = db()
+    for sym, (price, chg) in q.items():
+        conn.execute("UPDATE stocks SET live_price=?, live_chg=?, live_utc=? WHERE symbol=?", (price, chg, now, sym))
+    conn.commit()
+    conn.close()
+    status_set("live", at=now, quotes=len(q), error=None)
+    return len(q)
+
+
+def match_feed(entries: list, by_cik: dict) -> list:
+    """EDGAR feed entries -> [(symbol, entry)] for companies on the board."""
+    out = []
+    for e in entries:
+        for sym in by_cik.get(int(e.get("cik") or 0), []):
+            out.append((sym, e))
+    return out
+
+
+def job_feed(verbose: bool = True, fetch=None) -> int:
+    """Poll EDGAR's latest-filings feed. A filing from a board company becomes
+    an update right away and that company's numbers are re-read."""
+    import korvus_edgar as edgar
+    conn = db()
+    by_cik = {}
+    for r in conn.execute("SELECT symbol, cik FROM stocks WHERE active=1 AND cik IS NOT NULL").fetchall():
+        by_cik.setdefault(int(r["cik"]), []).append(r["symbol"])
+    conn.close()
+    fetch = fetch or (lambda form: edgar.parse_feed(edgar._get(edgar.FEED_URL.format(form=form)) or ""))
+    hits = []
+    for form in FEED_FORMS:
+        try:
+            hits += match_feed([e for e in fetch(form) if e.get("form") in FORM_NAMES], by_cik)
+        except Exception as e:
+            print(f"  [compass] feed {form} error: {e}")
+    seeded = meta_get("feed_seeded") == "1"
+    conn = db()
+    fresh = []
+    for sym, e in hits:
+        if first_seen(e.get("accession", ""), sym, conn) and seeded:
+            items = ", ".join(e.get("items") or [])
+            add_event(sym, "filing", "neut", f"{sym} filed a {e['form']}: {FORM_NAMES[e['form']]}",
+                      "Just accepted by the SEC." + (f" Items {items}." if items else ""), e.get("url", ""), conn=conn)
+            fresh.append(sym)
+    conn.commit()
+    conn.close()
+    if not seeded:
+        meta_set("feed_seeded", "1")      # first poll only learns what is already out
+    status_set("feed", at=iso(), matched=len(hits), new=len(fresh), error=None)
+    if fresh:
+        syms = sorted(set(fresh))
+        if verbose:
+            print(f"  [compass] live filing(s): {', '.join(syms)}")
+        job_filings(symbols=syms, verbose=False)
+        rescore(syms)
+        try:
+            import korvus_compass_agent as agent
+            agent.job_briefs(symbols=syms, verbose=False)
+        except Exception as e:
+            print(f"  [compass] brief refresh error: {e}")
+    return len(fresh)
+
+
+def tick(verbose: bool = True, backfill: bool = False):
     if age_hours(meta_get("universe_asof")) > 24 * 7 or not active_symbols():
         refresh_universe(verbose)
     job_prices(verbose=verbose)
     job_filings(verbose=verbose)
-    job_analysts(verbose=verbose)
     n = rescore()
-    prune_events()
     status_set("score", at=iso(), scored=n)
+    import korvus_compass_agent as agent
+    agent.fill_rule_briefs()                       # every page has words from the first pass
+    job_analysts(verbose=verbose, limit=(100000 if backfill else None))
+    n = rescore()
+    status_set("score", at=iso(), scored=n)
+    agent.job_briefs(limit=(100000 if backfill else None), verbose=verbose)
+    prune_events()
+
+
+def _loop(name: str, seconds_fn, fn):
+    def run():
+        while not _stop.is_set():
+            try:
+                fn()
+            except Exception as e:
+                print(f"  [compass:{name}] error: {e}")
+                try:
+                    status_set(name, error=f"{e.__class__.__name__}: {str(e)[:160]}", at=iso())
+                except Exception:
+                    pass
+            _stop.wait(seconds_fn())
+    t = threading.Thread(target=run, name=f"compass-{name}", daemon=True)
+    t.start()
+    return t
+
+
+def claim_sec_budget():
+    """This process's slice of the SEC's 10 requests a second."""
+    import korvus_edgar as edgar
+    edgar.MIN_GAP = 1.0 / SEC_RPS
 
 
 def run_forever():
+    import korvus_edgar as edgar
     db_init()
-    print("  [compass] long-term board crawler started")
+    claim_sec_budget()
+    meta_set("started_utc", iso())
+    status_set("system", at=iso(), error=None, live=LIVE, sec_rps=SEC_RPS)
+    print(f"  [compass] crawler started: SEC budget {SEC_RPS:g}/s, live prices {'ON' if LIVE else 'off'}, "
+          f"filing feed every 60s, main pass every {TICK_SECONDS}s")
+    _loop("heartbeat", lambda: 15, lambda: meta_set("heartbeat", iso()))
+    _loop("feed", lambda: 60 if edgar._edgar_open_now() else 300, job_feed)
+    if LIVE:
+        first = [True]
+
+        def live_job():
+            if market_open_now() or first[0]:      # one pull at start so tiles are never blank
+                first[0] = False
+                job_live()
+        _loop("live", lambda: LIVE_SECONDS if market_open_now() else 300, live_job)
+    first = True
     while not _stop.is_set():
         try:
-            tick(verbose=True)
+            # A mostly empty board gets one full fill, start to finish, so every
+            # stock page is ready as soon as possible; after that, small passes.
+            empty = first and (admin_status().get("counts") or {}).get("with_analysts", 0) < 0.5 * max(1, len(active_symbols()))
+            first = False
+            tick(verbose=True, backfill=empty)
         except Exception as e:
             print(f"  [compass] tick error: {e}")
             try:
@@ -1623,15 +1875,6 @@ def run_forever():
             except Exception:
                 pass
         _stop.wait(TICK_SECONDS)
-
-
-def start_thread() -> Optional[threading.Thread]:
-    """Called by korvus_engine --loop so systemd supervises it with the engine."""
-    if not ENABLED:
-        return None
-    t = threading.Thread(target=run_forever, name="korvus-compass", daemon=True)
-    t.start()
-    return t
 
 
 # ----------------------------------------------------------------------------
@@ -1654,18 +1897,31 @@ def _status(c) -> dict:
     return st
 
 
+def _live_fields(s: dict) -> dict:
+    """Live price for display, only while the switch is on and the quote is fresh."""
+    if not LIVE or s.get("live_price") is None or age_hours(s.get("live_utc") or "") > 0.25:
+        return {}
+    return {"lp": s["live_price"], "lc": s.get("live_chg"), "lt": s.get("live_utc")}
+
+
 def api_list() -> dict:
     c = _ro()
     if not c:
-        return {"stocks": [], "status": {}, "building": True, "disclaimer": DISCLAIMER}
+        return {"stocks": [], "etfs": [], "status": {}, "building": True, "disclaimer": DISCLAIMER}
     rows = c.execute("SELECT * FROM stocks WHERE active=1").fetchall()
-    out = []
+    out, etfs = [], []
     for r in rows:
         s = row_to_dict(r)
+        if s.get("kind") == "etf":
+            etfs.append(dict({"s": s["symbol"], "n": s["name"], "note": s.get("note") or "", "p": s["price"],
+                              "d1": s["chg_1d"], "r1y": s["ret_1y"], "r5y": s.get("ret_5y"), "pos": s["pos52"],
+                              "dd": s["drawdown"], "tr": s["trend"], "tt": s["trend_tone"],
+                              "sp_": s.get("spark") or [], "pd": s["price_date"]}, **_live_fields(s)))
+            continue
         f, a = s.get("fund") or {}, s.get("analysts") or {}
         val = valuation(s)
         parts = {p["key"]: p["value"] for p in (s.get("parts") or [])}
-        out.append({
+        out.append(dict({
             "s": s["symbol"], "n": s["name"], "sec": s["sector"], "ind": s["industry"],
             "sp": s["in_sp"], "nd": s["in_ndx"],
             "p": s["price"], "d1": s["chg_1d"], "r3": s["ret_3m"], "r1y": s["ret_1y"],
@@ -1678,12 +1934,16 @@ def api_list() -> dict:
             "nm": f.get("net_margin"), "fm": f.get("fcf_margin"),
             "pe": val["pe"], "fy": val["fcf_yield"], "dy": val["div_yield"], "mc": val["mcap"],
             "an": a.get("label"), "as": a.get("score"), "ac": a.get("analysts"),
+            "hl": (s.get("brief") or {}).get("headline"),
             "pd": s["price_date"],
-        })
+        }, **_live_fields(s)))
     st = _status(c)
     asof = c.execute("SELECT MAX(price_date) m FROM stocks").fetchone()["m"]
     c.close()
-    return {"stocks": out, "status": st, "asof": asof, "weights": WEIGHTS, "labels": PART_LABELS,
+    order = list(ETFS)
+    etfs.sort(key=lambda x: order.index(x["s"]) if x["s"] in order else 99)
+    return {"stocks": out, "etfs": etfs, "status": st, "asof": asof, "weights": WEIGHTS, "labels": PART_LABELS,
+            "live": bool(LIVE and any("lp" in x for x in out)),
             "building": not any(x["sc"] is not None for x in out), "disclaimer": DISCLAIMER}
 
 
@@ -1702,8 +1962,9 @@ def api_stock(symbol: str) -> Optional[dict]:
         (symbol,)).fetchall()]
     c.close()
     s["val"] = valuation(s)
-    s["reads"] = korvus_reads(symbol)
+    s["reads"] = korvus_reads(symbol) if s.get("kind") != "etf" else []
     s["events"] = ev
+    s["live"] = _live_fields(s)
     s["disclaimer"] = DISCLAIMER
     s["weights"] = WEIGHTS
     return s
@@ -1719,6 +1980,55 @@ def api_events(limit: int = 80, symbol: str = "") -> list:
     else:
         rows = c.execute("SELECT * FROM events ORDER BY ts_utc DESC, id DESC LIMIT ?", (limit,)).fetchall()
     out = [dict(x) for x in rows]
+    c.close()
+    return out
+
+
+def admin_status() -> dict:
+    """Everything the BlackCrown admin shows about this crawler. Read-only."""
+    c = _ro()
+    if not c:
+        return {"running": False, "error": "no compass database yet"}
+    g = lambda q, a=(): c.execute(q, a).fetchone()[0]
+    hb = c.execute("SELECT v FROM meta WHERE k='heartbeat'").fetchone()
+    started = c.execute("SELECT v FROM meta WHERE k='started_utc'").fetchone()
+    age = age_hours(hb["v"]) * 3600 if hb else None
+    stock = "active=1 AND COALESCE(kind,'stock')='stock'"
+    since = iso(utcnow() - dt.timedelta(hours=24))
+    by = {}
+    for r in c.execute(f"SELECT brief FROM stocks WHERE {stock} AND brief IS NOT NULL").fetchall():
+        try:
+            k = (json.loads(r["brief"]) or {}).get("by") or "rules"
+        except Exception:
+            k = "rules"
+        by[k] = by.get(k, 0) + 1
+    out = {
+        "running": bool(age is not None and age < 90),
+        "heartbeat_age_s": (round(age, 1) if age is not None else None),
+        "started_utc": started["v"] if started else None,
+        "live_prices": LIVE, "sec_rps": SEC_RPS,
+        "status": _status(c),
+        "counts": {
+            "stocks": g(f"SELECT COUNT(*) FROM stocks WHERE {stock}"),
+            "funds": g("SELECT COUNT(*) FROM stocks WHERE active=1 AND kind='etf'"),
+            "priced": g(f"SELECT COUNT(*) FROM stocks WHERE {stock} AND price IS NOT NULL"),
+            "with_financials": g(f"SELECT COUNT(*) FROM stocks WHERE {stock} AND fund IS NOT NULL"),
+            "with_analysts": g(f"SELECT COUNT(*) FROM stocks WHERE {stock} AND analysts IS NOT NULL AND analysts NOT IN ('{{}}','null')"),
+            "scored": g(f"SELECT COUNT(*) FROM stocks WHERE {stock} AND score IS NOT NULL AND tier!='Building'"),
+            "bullish": g(f"SELECT COUNT(*) FROM stocks WHERE {stock} AND read='bull' AND tier!='Building'"),
+            "bearish": g(f"SELECT COUNT(*) FROM stocks WHERE {stock} AND read='bear' AND tier!='Building'"),
+            "top_rated": g(f"SELECT COUNT(*) FROM stocks WHERE {stock} AND tier='Top rated'"),
+            "briefs": sum(by.values()), "briefs_by": by,
+            "updates_24h": g("SELECT COUNT(*) FROM events WHERE ts_utc>=?", (since,)),
+            "filings_24h": g("SELECT COUNT(*) FROM events WHERE kind='filing' AND ts_utc>=?", (since,)),
+        },
+        "price_asof": g("SELECT MAX(price_date) FROM stocks"),
+        "events": [dict(x) for x in c.execute(
+            "SELECT symbol, ts_utc, kind, tone, title, detail FROM events ORDER BY ts_utc DESC, id DESC LIMIT 25")],
+        "top": [dict(x) for x in c.execute(
+            f"SELECT symbol, name, score, tier, read, trend FROM stocks WHERE {stock} AND score IS NOT NULL "
+            "ORDER BY score DESC LIMIT 8")],
+    }
     c.close()
     return out
 
@@ -1758,6 +2068,16 @@ def probe(symbol: str):
               f"FCF {money(f.get('fcf'))}, latest Q {f.get('q_end')} {pct(f.get('q_revenue_yoy'))} YoY")
     a, m = fetch_analysts(symbol)
     print(f"  analysts  {a.get('label')} ({a.get('analysts')} analysts) | metrics keys: {len(m)}")
+    try:
+        q = fetch_quotes([symbol, "SPY", "QQQ"])
+        print(f"  live      batch quotes: {q}  (shown on the page only when COMPASS_LIVE=1)")
+    except Exception as e:
+        print(f"  live      FAILED: {e}")
+    try:
+        import korvus_compass_agent as agent
+        print(f"  agent     {agent.describe()}")
+    except Exception as e:
+        print(f"  agent     error: {e}")
 
 
 def print_board(n: int = 20):
@@ -1778,9 +2098,21 @@ def main():
     ap.add_argument("--stock", metavar="SYM")
     ap.add_argument("--top", type=int, nargs="?", const=20)
     ap.add_argument("--loop", action="store_true")
+    ap.add_argument("--backfill", action="store_true", help="fill the whole board now (prices, SEC, analysts, briefs)")
     a = ap.parse_args()
     db_init()
-    if a.probe:
+    claim_sec_budget()
+    if a.backfill:
+        t0 = time.time()
+        print("Filling the whole Compass board. Prices take a few minutes, SEC data about five,")
+        print("analyst data about thirty-five, then the analyst agent writes every brief.")
+        tick(verbose=True, backfill=True)
+        if LIVE:
+            job_live()
+        d = admin_status()["counts"]
+        print(f"Done in {int((time.time() - t0) / 60)} min: {d['scored']} of {d['stocks']} stocks scored, "
+              f"{d['briefs']} briefs ({d['briefs_by']}).")
+    elif a.probe:
         probe(a.probe)
     elif a.universe:
         refresh_universe()

@@ -355,6 +355,24 @@ def api_feed_intel_status():
     return jsonify(out)
 
 
+@app.route("/api/feed/compass-status")
+def api_feed_compass_status():
+    """Server-to-server live status of the second crawler (Korvus Compass) and
+    its analyst agent, for the BlackCrown admin. Same shared key as intel-status."""
+    import hmac
+    want = os.getenv("INTEL_STATUS_KEY", "")
+    got = request.headers.get("X-Intel-Key", "")
+    if not want or not hmac.compare_digest(want, got):
+        return jsonify({"error": "forbidden"}), 403
+    try:
+        import korvus_compass as compass
+        out = compass.admin_status()
+    except Exception as e:
+        out = {"running": False, "error": f"{e.__class__.__name__}: {str(e)[:160]}"}
+    out["server_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
+    return jsonify(out)
+
+
 @app.route("/api/ff-calendar")
 def api_ff_calendar():
     """This-week economic calendar for the Forex / Gov News page.
