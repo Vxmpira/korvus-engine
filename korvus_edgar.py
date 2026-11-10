@@ -649,11 +649,44 @@ def _jl(v):
         return []
 
 
+def _short(t: str, n: int) -> str:
+    """Trim to n chars on a word boundary (only when needed)."""
+    t = " ".join(str(t or "").split())
+    if len(t) <= n:
+        return t
+    cut = t[:n - 1].rsplit(" ", 1)[0].rstrip(",;:")
+    return cut + "\u2026"
+
+
+_FILLER = {"authorization", "authorized", "strategic", "total", "cash", "approved", "board", "amount"}
+
+
+def tidy_labels(facts: list) -> tuple:
+    """Shorter, aligned number labels: lift a period prefix shared by most
+    rows ("Q3 Revenue", "Q3 EPS" -> heading "Q3"), then drop filler words
+    from labels that are still long. Returns (period, [labels])."""
+    labels = [" ".join(str(f["label"]).split()) for f in facts]
+    first = [l.split(" ", 1)[0] for l in labels]
+    period = ""
+    for tok in set(first):
+        if (sum(1 for x in first if x == tok) >= max(2, (len(labels) + 1) // 2)
+                and any(c.isdigit() for c in tok) and len(tok) <= 6):
+            period = tok
+    out = []
+    for l in labels:
+        if period and l.startswith(period + " "):
+            l = l[len(period) + 1:]
+        if len(l) > 16:
+            l = " ".join(w for w in l.split() if w.lower() not in _FILLER) or l
+        out.append(l[:1].upper() + l[1:])
+    return period, out
+
+
 def build_sec_embed(row: dict) -> dict:
-    """The terminal's SEC card as a Discord embed: SEC band (form in plain
-    words, company, filed time), the AI title linked to the filing, the take,
-    key numbers as fields, why it matters, watch next. Respects Discord's
-    limits (title 256, description 4096, field 1024, 25 fields, 6000 total)."""
+    """The terminal's SEC card as a clean Discord embed. No thumbnail and no
+    field grid (both squeeze the text): one status line, the take as a quote,
+    key numbers as an aligned table, up to 3 short points, watch next, links.
+    Respects Discord's limits (title 256, description 4096, 6000 total)."""
     sn = row.get("source_name") or "SEC filing"                # "SEC 6-K · TSM"
     form = sn.replace("SEC", "").split("·")[0].strip() or "8-K"
     ticker = sn.split("·")[-1].strip() if "·" in sn else ""
@@ -662,47 +695,43 @@ def build_sec_embed(row: dict) -> dict:
     filed = _et(row.get("published_at") or row.get("created_at") or "", "%-I:%M %p ET")
     title = (row.get("title") or row.get("headline") or "SEC filing").strip()
 
-    parts = []
+    inst = _jl(row.get("instruments"))
+    status = (f"**{(row.get('impact') or 'low').upper()} IMPACT**  \u00B7  "
+              f"{_DIR_WORD.get(row.get('direction'), _DIR_WORD['neut'])} {row.get('confidence') or 0}%"
+              + (f"  \u00B7  {'  '.join('`' + x + '`' for x in inst[:3])}" if inst else ""))
+    parts = [status]
     if row.get("summary"):
-        parts.append(f"**The take**\n{row['summary'].strip()}")
-    pts = [p for p in _jl(row.get("key_points")) if str(p).strip()][:4]
+        parts.append("> " + _short(row["summary"], 330))
+    facts = [f for f in _jl(row.get("facts")) if isinstance(f, dict) and f.get("label") and f.get("value")][:6]
+    if facts:
+        period, labels = tidy_labels(facts)
+        labels = [_short(l, 20) for l in labels]
+        w = max(len(l) for l in labels)
+        lines = []
+        for l, f in zip(labels, facts):
+            line = f"{l:<{w}}  {_short(f['value'], 18)}"
+            if f.get("change"):
+                line += f"  {_short(f['change'], 16)}"
+            lines.append(line)
+        head = "**Key numbers" + (" \u00B7 " + period if period else "") + "**"
+        parts.append(head + "\n```\n" + "\n".join(lines) + "\n```")
+    pts = [p for p in _jl(row.get("key_points")) if str(p).strip()][:3]
     if pts:
-        parts.append("**Why it matters**\n" + "\n".join(f"\u25B8 {str(p).strip()}" for p in pts))
+        parts.append("**Why it matters**\n" + "\n".join(f"\u2022 {_short(p, 170)}" for p in pts))
     if row.get("watch"):
-        parts.append(f"**Watch next**\n{row['watch'].strip()}")
-    parts.append(f"[Read the filing on SEC.gov]({row.get('url', '')})  \u00B7  [Live on Korvus]({TERMINAL_URL})")
-    desc = "\n\n".join(parts)[:3800]
-
-    fields = []
-    for f in _jl(row.get("facts"))[:6]:
-        if not isinstance(f, dict) or not f.get("label") or not f.get("value"):
-            continue
-        val = f"**{str(f['value'])[:60]}**"
-        if f.get("change"):
-            val += f"\n{str(f['change'])[:60]}"
-        fields.append({"name": str(f["label"])[:60], "value": val[:1024], "inline": True})
-    while fields and len(fields) % 3:          # keep the numbers grid square
-        fields.append({"name": "\u200b", "value": "\u200b", "inline": True})
-    inst = ", ".join(_jl(row.get("instruments"))) or "none flagged"
-    fields += [
-        {"name": "Impact", "value": (row.get("impact") or "low").upper(), "inline": True},
-        {"name": "Read", "value": f"{_DIR_WORD.get(row.get('direction'), _DIR_WORD['neut'])} \u00B7 {row.get('confidence') or 0}%", "inline": True},
-        {"name": "Instruments", "value": inst[:1024], "inline": True},
-    ]
+        parts.append("**Watch next**\n" + _short(row["watch"], 220))
+    parts.append(f"[Read the filing]({row.get('url', '')})  \u00B7  [Open Korvus]({TERMINAL_URL})")
     embed = {
-        "author": {"name": f"SEC \u00B7 FORM {form} \u00B7 {FORM_LABELS.get(form, 'Filing').upper()}"
+        "author": {"name": f"SEC \u00B7 {form} \u00B7 {FORM_LABELS.get(form, 'Filing')}"
                            + (f" \u00B7 {who}" if who else "")},
-        "title": title[:256],
+        "title": _short(title, 256),
         "url": row.get("url") or None,
-        "description": desc,
+        "description": "\n\n".join(parts)[:4000],
         "color": _COLORS.get(row.get("direction"), _COLORS["neut"]),
-        "fields": fields[:25],
-        "footer": {"text": f"Filed {filed} \u00B7 Korvus by BlackCrownVxJ LLC \u00B7 analysis, not advice"},
+        "footer": {"text": f"Filed {filed}  \u00B7  Korvus  \u00B7  analysis, not advice"},
     }
     if row.get("published_at"):
         embed["timestamp"] = row["published_at"]
-    if LOGO_URL:
-        embed["thumbnail"] = {"url": LOGO_URL}
     if not embed["url"]:
         embed.pop("url")
     return embed

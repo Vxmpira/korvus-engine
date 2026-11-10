@@ -42,37 +42,51 @@ ROW = {
 
 def _total(e):
     return (len(e.get("title", "")) + len(e.get("description", "")) + len(e["author"]["name"])
-            + len(e["footer"]["text"]) + sum(len(f["name"]) + len(f["value"]) for f in e["fields"]))
+            + len(e["footer"]["text"]) + sum(len(f["name"]) + len(f["value"]) for f in e.get("fields", [])))
 
 
 def test_embed_shape():
     e = ke.build_sec_embed(ROW)
     assert e["title"].startswith("TSMC Q3") and "FOREIGN PRIVATE ISSUER" not in e["title"]
-    assert e["author"]["name"] == "SEC · FORM 6-K · FOREIGN ISSUER REPORT · TSMC (TSM)", e["author"]
+    assert e["author"]["name"] == "SEC · 6-K · Foreign issuer report · TSMC (TSM)", e["author"]
     assert e["url"] == ROW["url"] and e["timestamp"] == ROW["published_at"]
+    assert "fields" not in e and "thumbnail" not in e                       # nothing squeezes the text
     d = e["description"]
-    assert "**The take**" in d and "**Why it matters**" in d and "**Watch next**" in d and "SEC.gov" in d
-    names = [f["name"] for f in e["fields"]]
-    assert names[:4] == ["Q3 revenue", "Diluted EPS", "2027 capex", "Dividend"]
-    assert len([f for f in e["fields"] if f["name"] == "​"]) == 2           # 4 facts padded to 6
-    assert names[-3:] == ["Impact", "Read", "Instruments"]
-    assert "+12.5%" in e["fields"][3]["value"] and "Filed 8:41 AM ET" in e["footer"]["text"]
+    first = d.split("\n\n")[0]
+    assert first.startswith("**MED IMPACT**") and "65%" in first and "`TSM`" in first
+    assert "\n> TSMC reported" in d and "**Key numbers**\n```" in d and "**Why it matters**\n•" in d
+    assert "**Watch next**" in d and "Read the filing" in d
+    table = d.split("```")[1].strip().splitlines()
+    assert table[0].startswith("Q3 revenue") and "NT$1,494.24B" in table[0]   # only 1 of 4 starts "Q3": no lift
+    assert len({ln.index(ln.split("  ")[-1] if False else ln.split()[-1]) for ln in table[:3]}) >= 1
+    assert "+12.5%" in table[3] and "Filed 8:41 AM ET" in e["footer"]["text"]
     assert chr(0x2014) not in json.dumps(e, ensure_ascii=False)
-    assert len(e["fields"]) <= 25 and _total(e) <= 6000
+    assert _total(e) <= 6000
+
+
+def test_tidy_labels():
+    facts = [{"label": l} for l in ("Q3 Revenue", "Q3 Net Income", "Q3 Diluted EPS", "Q3 Cash Dividend",
+                                    "2027 Capex Authorization", "Strategic AI Investment Cap")]
+    period, labels = ke.tidy_labels(facts)
+    assert period == "Q3" and labels == ["Revenue", "Net Income", "Diluted EPS", "Cash Dividend",
+                                         "2027 Capex", "AI Investment Cap"], labels
+    assert ke.tidy_labels([{"label": "Revenue"}, {"label": "EPS"}]) == ("", ["Revenue", "EPS"])
 
 
 def test_limits_hold_on_huge_input():
-    big = dict(ROW, title="T" * 900, summary="S" * 5000, watch="W" * 3000,
-               key_points=json.dumps(["P" * 900] * 9), facts=json.dumps([{"label": "L" * 300, "value": "V" * 300, "change": "C" * 300}] * 12))
+    big = dict(ROW, title="T" * 900, summary="S " * 3000, watch="W " * 2000,
+               key_points=json.dumps(["P " * 600] * 9), facts=json.dumps([{"label": "L" * 300, "value": "V" * 300, "change": "C" * 300}] * 12))
     e = ke.build_sec_embed(big)
-    assert len(e["title"]) <= 256 and len(e["description"]) <= 4096 and len(e["fields"]) <= 25
-    assert all(len(f["name"]) <= 256 and len(f["value"]) <= 1024 for f in e["fields"]) and _total(e) <= 6000
+    assert len(e["title"]) <= 256 and len(e["description"]) <= 4096 and _total(e) <= 6000
+    assert e["description"].count("\n\u2022") <= 3
+    rows = e["description"].split("```")[1].strip().splitlines()
+    assert len(rows) == 6 and all(len(r) <= 60 for r in rows)
 
 
 def test_old_card_without_new_fields():
     e = ke.build_sec_embed({k: ROW[k] for k in ("source_name", "url", "headline", "summary", "impact", "direction",
                                                 "confidence", "instruments", "published_at")})
-    assert e["title"] == ROW["headline"] and [f["name"] for f in e["fields"]] == ["Impact", "Read", "Instruments"]
+    assert e["title"] == ROW["headline"] and "Key numbers" not in e["description"] and "fields" not in e
 
 
 def test_queue_builds_from_live_row():
@@ -90,8 +104,8 @@ def test_queue_builds_from_live_row():
     ke.flush_discord()
     got = [p["embeds"][0] for p in POSTS[n:]]
     assert len(got) == 2, got
-    assert got[0]["title"].startswith("TSMC Q3") and got[0]["fields"][0]["name"] == "Q3 revenue"
-    assert got[1]["title"] == "Legacy queued post" and "FORM 8-K · CURRENT REPORT · MU" in got[1]["author"]["name"]
+    assert got[0]["title"].startswith("TSMC Q3") and "Q3 revenue" in got[0]["description"]
+    assert got[1]["title"] == "Legacy queued post" and "8-K · Current report · MU" in got[1]["author"]["name"]
     assert POSTS[-1]["allowed_mentions"] == {"parse": []}
     assert [p["item_id"] for p in ke._load_state()["discord_pending"]] == ["later"]   # not-yet-due stays queued
 
@@ -104,7 +118,7 @@ def test_missing_db_is_safe():
 
 if __name__ == "__main__":
     try:
-        for n in ("test_embed_shape", "test_limits_hold_on_huge_input", "test_old_card_without_new_fields",
+        for n in ("test_embed_shape", "test_tidy_labels", "test_limits_hold_on_huge_input", "test_old_card_without_new_fields",
                   "test_queue_builds_from_live_row", "test_missing_db_is_safe"):
             globals()[n](); print("ok", n)
     finally:
