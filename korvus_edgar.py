@@ -345,11 +345,17 @@ _HEADLINE_HINT = re.compile(r"(?i)\b(announces?|reports?|results|declares?|appoi
 def pick_headline(text: str, ticker: str, company: str, items: list, form: str) -> str:
     """The press release's own title if we can find it, else a plain description."""
     for ln in text.split("\n")[:25]:
+        low = ln.lower()
+        if any(b in low for b in ("foreign private issuer", "pursuant to rule", "securities exchange act",
+                                  "commission file number", "indicate by check mark")):
+            continue
         if 25 <= len(ln) <= 180 and "|" not in ln and _HEADLINE_HINT.search(ln) \
                 and not ln.upper().startswith(("EX-99", "EXHIBIT", "FORM ", "UNITED STATES")):
             return f"{ticker}: {ln.rstrip('.')}"
     what = describe_items(items)
-    return f"{ticker} files {form}: {what}" if what else f"{ticker} files {form} with the SEC"
+    if what:
+        return f"{ticker} files {form}: {what}"
+    return f"{ticker}: new {'foreign issuer report' if form.upper().startswith('6-K') else form} filed with the SEC"
 
 
 def describe_items(items: list) -> str:
@@ -483,21 +489,13 @@ def score_and_save(item: dict, save: bool = True) -> Optional[dict]:
         return result
     conn = _db()
     try:
-        conn.execute("""
-            UPDATE items
-            SET summary=?, article_summary=?, impact_desc=?, impact=?, direction=?,
-                instruments=?, confidence=?, noise=?, processed=1
-            WHERE id=?
-        """, (result["summary"], result.get("article_summary", ""), result.get("impact_desc", ""),
-              result["impact"], result["direction"], json.dumps(result["instruments"]),
-              result["confidence"], 1 if result.get("noise") else 0, item["id"]))
-        conn.commit()
+        eng.save_score(conn, item["id"], result)
     finally:
         conn.close()
     if result["impact"] == "high" and not result.get("noise"):
         try:
             eng.auth.send_high_impact_alert({
-                "headline": item["headline"], "summary": result.get("summary", ""),
+                "headline": result.get("title") or item["headline"], "summary": result.get("summary", ""),
                 "impact_desc": result.get("impact_desc", ""), "direction": result.get("direction", ""),
                 "instruments": result.get("instruments", []), "url": item.get("url", ""),
             })
@@ -561,6 +559,40 @@ def handle_entry(e: dict, save: bool = True, verbose: bool = True) -> Optional[d
             })
             _save_state(s)
     return result
+
+
+def rescore(limit: int = 20) -> int:
+    """Re-read recent filing cards from the source document with the current
+    prompt (new titles, key numbers, key points) and update them in place."""
+    import korvus_engine as eng
+    eng.db_init()
+    client = _brain()
+    if client is None:
+        print("  [edgar] no ANTHROPIC_API_KEY")
+        return 0
+    conn = _db()
+    rows = [dict(r) for r in conn.execute(
+        "SELECT * FROM items WHERE source='filing' ORDER BY created_at DESC LIMIT ?", (int(limit),))]
+    conn.close()
+    done = 0
+    for r in rows:
+        idx = parse_index(_get(r["url"]) or "")
+        form = next((d["type"] for d in idx["docs"] if d["type"] in ("8-K", "6-K", "8-K/A", "6-K/A")), "8-K")
+        doc = pick_document(idx["docs"], form)
+        text = html_to_text(_get(doc["url"]) or "") if doc else ""
+        item = {**r, "article_text": text}
+        res = eng.score_with_claude(client, item)
+        if not res:
+            print(f"    x {r['headline'][:70]}")
+            continue
+        conn = _db()
+        try:
+            eng.save_score(conn, r["id"], res)
+        finally:
+            conn.close()
+        done += 1
+        print(f"    ✓ {res.get('title') or r['headline']}"[:110])
+    return done
 
 
 def poll_once(verbose: bool = True) -> int:
@@ -684,8 +716,14 @@ def main():
     ap.add_argument("--all", action="store_true", help="dry-run: ignore the watchlist")
     ap.add_argument("--replay", metavar="INDEX_URL")
     ap.add_argument("--no-save", action="store_true")
+    ap.add_argument("--rescore", type=int, metavar="N",
+                    help="re-read the N most recent SEC filings on the terminal with the current prompt")
     a = ap.parse_args()
 
+    if a.rescore:
+        n = rescore(a.rescore)
+        print(f"  [edgar] rescored {n} filing(s)")
+        return
     if a.dry_run:
         found = fetch_matches(all_names=a.all)
         print(f"  [edgar] reached EDGAR; {len(found)} matching filing(s) in the latest feed"

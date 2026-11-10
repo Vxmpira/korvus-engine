@@ -137,23 +137,48 @@ def to_et_sec(iso_utc: str) -> str:
     return et.strftime("%-I:%M:%S %p") if os.name != "nt" else et.strftime("%#I:%M:%S %p")
 
 
+def _jlist(v):
+    try:
+        x = json.loads(v or "[]")
+        return x if isinstance(x, list) else []
+    except (TypeError, ValueError):
+        return []
+
+
+def _structured(r) -> dict:
+    """Cards v2 fields; empty on rows scored before they existed."""
+    k = r.keys()
+    return {
+        "title": (r["title"] if "title" in k else "") or "",
+        "company": (r["company"] if "company" in k else "") or "",
+        "facts": _jlist(r["facts"] if "facts" in k else None),
+        "key_points": _jlist(r["key_points"] if "key_points" in k else None),
+        "watch": (r["watch"] if "watch" in k else "") or "",
+    }
+
+
+FORM_LABELS = {"8-K": "Current report", "8-K/A": "Amended current report",
+               "6-K": "Foreign issuer report", "6-K/A": "Amended foreign issuer report"}
+
+
 def _filing_card(r, is_pro: bool, delay_min: int, now_utc):
-    """One SEC filing row -> feed card. Carries the SEC acceptance time and the
-    time Korvus had it, so every card is its own speed receipt. Free tier gets
-    a locked teaser (ticker + impact only) until delay_min has passed."""
+    """One SEC filing row -> feed card. Free tier gets a locked teaser
+    (ticker + impact only) until delay_min has passed."""
     created = _parse_utc(r["created_at"])
-    filed = _parse_utc(r["published_at"] or "")
-    lag = int((created - filed).total_seconds()) if (created and filed) else None
+    sn = r["source_name"] or "SEC filing"                 # "SEC 6-K · TSM"
+    form = sn.replace("SEC", "").split("·")[0].strip() or "8-K"
+    ticker = sn.split("·")[-1].strip() if "·" in sn else ""
     base = {
         "time": to_et(r["created_at"]),
         "source": "filing",
-        "source_name": r["source_name"] or "SEC filing",
+        "source_name": sn,
+        "form": form,
+        "form_label": FORM_LABELS.get(form, "SEC filing"),
+        "ticker": ticker,
         "impact": r["impact"] or "low",
         "url": r["url"] or "",
         "category": "general",
-        "filed": to_et_sec(r["published_at"] or ""),
-        "seen": to_et_sec(r["created_at"]),
-        "lag_sec": lag if (lag is not None and lag >= 0) else None,
+        "filed": to_et(r["published_at"] or r["created_at"]),
     }
     unlock_at = (created + dt.timedelta(minutes=delay_min)) if created else None
     if not is_pro and unlock_at and now_utc < unlock_at:
@@ -165,10 +190,13 @@ def _filing_card(r, is_pro: bool, delay_min: int, now_utc):
                         f"It unlocks on the free tier at {to_et(unlock_at.isoformat())} ET."),
             "article_summary": "", "impact_desc": "", "raw": "",
             "dir": "neut", "inst": [], "conf": 0, "url": "",
+            "title": "", "company": "", "facts": [], "key_points": [], "watch": "",
         })
         return base
+    st = _structured(r)
+    base.update(st)
     base.update({
-        "headline": r["headline"],
+        "headline": st["title"] or r["headline"],
         "summary": r["summary"] or "",
         "article_summary": r["article_summary"] or "",
         "impact_desc": r["impact_desc"] or "",
@@ -230,6 +258,7 @@ def api_news():
             "conf": r["confidence"] or 0,
             "url": r["url"] or "",
             "category": (r["category"] if "category" in r.keys() else "general") or "general",
+            **_structured(r),
         })
     return jsonify({"items": items, "count": len(items)})
 

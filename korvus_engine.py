@@ -195,6 +195,12 @@ def db_init():
     if "article_summary" not in cols:
         conn.execute("ALTER TABLE items ADD COLUMN article_summary TEXT")
         print("  [db] migrated: added article_summary column")
+    # structured read (cards v2): clean title, company, key numbers, why-it-
+    # matters points, and the one thing to watch
+    for col in ("title", "company", "facts", "key_points", "watch"):
+        if col not in cols:
+            conn.execute(f"ALTER TABLE items ADD COLUMN {col} TEXT")
+            print(f"  [db] migrated: added {col} column")
     conn.commit()
     conn.close()
 
@@ -526,6 +532,11 @@ Return exactly this shape:
   "summary": "<=2 sentences, plain English, the quick take shown on the feed card>",
   "article_summary": "<3-6 sentences that SUMMARIZE THE ARTICLE ITSELF so the reader never has to open the link. Report what was actually announced or reported: the concrete facts, numbers, dates, names, quotes, and context the story contains. Pure reporting, no market take (that belongs in impact_desc). When ARTICLE text is provided, draw only from it. When only HEADLINE/BODY are available, summarize what they establish and say plainly what the story does not yet specify; never invent details.>",
   "impact_desc": "<3-5 sentences of desk-grade analysis for the detail view, reasoning about impact on INDEX FUTURES specifically. Work the real framework: (1) classify the event, broad macro versus single-name or sector, and whether the names involved are large enough to move the index by weight or breadth; (2) name the transmission mechanism, the concrete channel by which it reaches the tagged instruments (rates, risk sentiment, index weight, credit spreads, the dollar, positioning); (3) anchor to the base rate for this kind of event (for example, single-name M&A in mid-cap industrials is typically low-impact to broad index futures); (4) give the calibrated read plus the specific thing that would confirm or invalidate it and what to watch next. Concrete and specific to THIS story, sober, and honest about uncertainty. This is analysis and a read, never personalized advice or a trade instruction.>",
+  "title": "<a clean newsroom headline, max 90 characters. REQUIRED for SOURCE: filing (see FILINGS below). For every other source return an empty string, the original headline is kept.>",
+  "company": "<the main company by its everyday name (TSMC, Nvidia, Casella Waste), or empty string for macro/no single company>",
+  "facts": [ {"label": "Revenue", "value": "NT$1.49T", "change": "+40% y/y"} ],   // up to 6 key numbers copied exactly from the source; change may be ""; [] if the story has no hard numbers
+  "key_points": ["<why it matters, one short sentence>", "..."],                      // 2-4 points, each one sentence, max 140 characters
+  "watch": "<one sentence: the specific thing that would confirm or invalidate this read next>",
   "impact": "high" | "med" | "low",
   "direction": "bull" | "bear" | "neut",
   "instruments": ["MNQ", ...],   // subset of the watched list, [] if none
@@ -581,6 +592,15 @@ heavyweights Korvus watches. They are NOT routine paperwork:
     comparison to street estimates is not yet known and is the thing to watch.
   - Quote the actual reported figures (revenue, EPS, guidance) in
     article_summary. Never invent a figure the filing does not contain.
+  - TITLE for filings: never repeat form boilerplate ("Report of Foreign Private
+    Issuer", "Current Report", "Form 8-K", "Pursuant to Rule 13a-16"). Name the
+    company by its everyday name and lead with what actually happened and the
+    headline numbers, e.g. "TSMC Q3: Revenue NT$1.49T, EPS NT$29.43; Board Approves
+    $40.9B 2027 Capex" or "Casella Waste Q3: Revenue Up 18%, Raises Full-Year
+    Outlook". Never call a result a beat or a miss; consensus is not known.
+  - FACTS for filings: the 3-6 numbers a trader would want first (revenue, EPS,
+    margins, guidance, dividend, buyback, deal size, capex), each with its change
+    when the filing states one. Copy values exactly, keep currency symbols.
 
 DIRECTION - neutral is the HONEST default. Only assign "bull" or "bear" when the
 story has a CLEAR directional read for the tagged instruments. Do NOT force a
@@ -601,6 +621,12 @@ OTHER:
 - summary = the fast headline take. article_summary = what the story SAYS, the facts,
   so the link never needs opening. impact_desc = the deeper "why it matters / how
   it transmits / what to watch" analysis. All grounded in THIS story only.
+- key_points = the analysis distilled for a trader skimming: 2-4 crisp sentences,
+  each a distinct point (what changed, why it matters for the tagged instruments,
+  the base rate or context). No repetition of the summary. watch = ONE concrete
+  next signal (a level, a print, a reaction, a follow-up filing).
+- facts = only hard numbers present in the source, copied exactly. Never compute,
+  estimate, or invent one. [] is the right answer for a story without numbers.
 - Tag ONLY the instruments this story is a PRIMARY, direct driver for. Be strict:
   AT MOST 3, usually 1-2, ordered most-direct first. If a story wouldn't plausibly
   move an instrument on its own, do NOT tag it. A single-stock story tags that stock
@@ -659,6 +685,44 @@ def _as_int(v, default: int = 0) -> int:
         return default
 
 
+_BOILER = ("report of foreign private issuer", "current report", "pursuant to rule",
+           "form 8-k", "form 6-k", "securities exchange act")
+
+
+def _structured(data: dict, plain) -> dict:
+    """Clean the structured fields (title, company, facts, key_points, watch).
+    Facts are kept only when label and value are present; everything is
+    length-capped; boilerplate titles are dropped so the caller falls back."""
+    title = plain(str(data.get("title") or ""))[:110]
+    if any(b in title.lower() for b in _BOILER):
+        title = ""
+    facts = []
+    for f in (data.get("facts") or [])[:6]:
+        if isinstance(f, dict) and f.get("label") and f.get("value"):
+            facts.append({"label": plain(str(f["label"]))[:28], "value": plain(str(f["value"]))[:24],
+                          "change": plain(str(f.get("change") or ""))[:22]})
+    points = [plain(str(p))[:220] for p in (data.get("key_points") or []) if str(p).strip()][:4]
+    return {"title": title, "company": plain(str(data.get("company") or ""))[:40],
+            "facts": facts, "key_points": points, "watch": plain(str(data.get("watch") or ""))[:260]}
+
+
+def save_score(conn, item_id: str, result: dict):
+    """One UPDATE for every writer (news pass, SEC watcher, rescore)."""
+    conn.execute("""
+        UPDATE items
+        SET summary=?, article_summary=?, impact_desc=?, impact=?, direction=?, instruments=?, confidence=?,
+            noise=?, title=?, company=?, facts=?, key_points=?, watch=?, processed=1
+        WHERE id=?
+    """, (
+        result["summary"], result.get("article_summary", ""), result.get("impact_desc", ""),
+        result["impact"], result["direction"], json.dumps(result["instruments"]), result["confidence"],
+        1 if result.get("noise") else 0, result.get("title", ""), result.get("company", ""),
+        json.dumps(result.get("facts") or []), json.dumps(result.get("key_points") or []),
+        result.get("watch", ""), item_id,
+    ))
+    conn.commit()
+
+
 def score_with_claude(client, item: dict, _retry: bool = True) -> Optional[dict]:
     sys_prompt = SYSTEM_PROMPT.replace("{INSTRUMENTS}", ", ".join(WATCHED_INSTRUMENTS))
     user_blob = (
@@ -672,7 +736,7 @@ def score_with_claude(client, item: dict, _retry: bool = True) -> Optional[dict]
     try:
         resp = client.messages.create(
             model=CLAUDE_MODEL,
-            max_tokens=1600,
+            max_tokens=2200,
             system=sys_prompt,
             messages=[{"role": "user", "content": user_blob}],
         )
@@ -710,6 +774,7 @@ def score_with_claude(client, item: dict, _retry: bool = True) -> Optional[dict]
         data["article_summary"] = _plain(data.get("article_summary"))
         data["impact_desc"] = _plain(data.get("impact_desc"))
         data["noise"] = bool(data.get("noise", False))
+        data.update(_structured(data, _plain))
         return data
     except Exception as e:
         msg = str(e).lower()
@@ -740,22 +805,7 @@ def process_unscored(conn, client, limit: int = 40):
         result = score_with_claude(client, item)
         if result is None:
             continue
-        conn.execute("""
-            UPDATE items
-            SET summary=?, article_summary=?, impact_desc=?, impact=?, direction=?, instruments=?, confidence=?, noise=?, processed=1
-            WHERE id=?
-        """, (
-            result["summary"],
-            result.get("article_summary", ""),
-            result.get("impact_desc", ""),
-            result["impact"],
-            result["direction"],
-            json.dumps(result["instruments"]),
-            result["confidence"],
-            1 if result.get("noise") else 0,
-            item["id"],
-        ))
-        conn.commit()
+        save_score(conn, item["id"], result)
         # Fire a one-time email alert to opted-in Pro members on genuine
         # high-impact events. Wrapped so a mail hiccup never breaks scoring.
         if result["impact"] == "high" and not result.get("noise"):
