@@ -166,6 +166,10 @@
   html[data-theme="light"] .badge.wire{color:#6a4fd0;border-color:rgba(106,79,208,.30);}
   html[data-theme="light"] .badge.filing{color:#9a6a00;border-color:rgba(154,106,0,.35);background:rgba(154,106,0,.06);}
   html[data-theme="light"] .item.locked .lockcta{color:#c2185b;}
+  html[data-theme="light"] .secmark{background:#9a6a00;color:#fff;box-shadow:none;}
+  html[data-theme="light"] .secform, html[data-theme="light"] .ndwatch span{color:#9a6a00;}
+  html[data-theme="light"] .item.secitem{background:linear-gradient(90deg,rgba(154,106,0,.06),transparent 55%);}
+  html[data-theme="light"] .fact, html[data-theme="light"] .ndfact{background:rgba(16,22,40,.03);}
   html[data-theme="light"] .inst{border-color:var(--line);background:rgba(16,22,40,.03);}
   html[data-theme="light"] .inst:hover{border-color:rgba(16,22,40,.40);}
   html[data-theme="light"] .inst[data-name]:hover::after{border-color:var(--line);box-shadow:0 6px 20px -6px rgba(16,22,40,.30),0 0 16px -6px var(--crimson-glow);}
@@ -491,13 +495,55 @@
   .feedempty{padding:42px 28px;text-align:center;font-size:13px;line-height:1.65;color:var(--ink-dim);max-width:560px;margin:0 auto;}
   .feedempty b{color:#ffd479;font-weight:600;}
   .feedempty a{display:inline-block;margin-top:12px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--crimson);text-decoration:none;}
-  .filingline{font-family:var(--mono);font-size:10px;color:var(--ink-faint);letter-spacing:.03em;margin:0 0 9px;}
-  .filingline b{color:#ffd479;font-weight:600;}
+
   .item.locked{cursor:pointer;}
   .item.locked .headline{color:var(--ink-dim);}
   .item.locked .lockcta{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--crimson);}
-  .ndsource{font-family:var(--mono);font-size:11.5px;line-height:1.7;color:var(--ink-dim);margin:0 0 4px;}
-  .ndsource b{color:var(--ink);font-weight:600;}
+  /* ---- cards v2: SEC band, number chips, company tag ---- */
+  .srcco{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-dim);
+    padding-left:8px;border-left:1px solid var(--line);}
+  .secband{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:7px;font-family:var(--mono);font-size:9.5px;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);}
+  .secmark{color:#1a1206;background:#ffd479;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:.14em;
+    box-shadow:0 0 12px -4px rgba(255,212,121,.8);}
+  .secform{color:#ffd479;}
+  .secwho{color:var(--ink);font-weight:600;letter-spacing:.04em;}
+  .secTk{color:var(--ink-faint);font-weight:400;margin-left:2px;}
+  .secfiled{margin-left:auto;}
+  .item.secitem{background:linear-gradient(90deg,rgba(255,212,121,.045),transparent 55%);}
+  .factstrip{display:flex;gap:6px;flex-wrap:wrap;margin:-3px 0 11px;}
+  .fact{display:inline-flex;align-items:baseline;gap:6px;padding:4px 8px;border:1px solid var(--line);border-radius:7px;
+    background:rgba(255,255,255,.025);font-size:11.5px;}
+  .fact em{font-style:normal;font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);}
+  .fact b{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;}
+  .fact i, .ndfact i{font-style:normal;font-family:var(--mono);font-size:10px;}
+  /* change is shown as a neutral arrow: "down" is not always bad (CPI down, costs down) */
+  .fact i, .ndfact i{color:var(--ink-dim);}
+  .fact i.up::before, .ndfact i.up::before{content:"\25B2 ";font-size:.8em;opacity:.7;}
+  .fact i.down::before, .ndfact i.down::before{content:"\25BC ";font-size:.8em;opacity:.7;}
+  /* ---- detail v2 ---- */
+  .ndtake{margin:0 0 6px;padding:12px 14px;border-left:2px solid var(--crimson);background:rgba(255,45,143,.05);border-radius:0 10px 10px 0;}
+  .ndtake span, .ndwatch span{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--crimson);margin-bottom:5px;}
+  .modal .ndtake p{margin:0;font-size:14px;line-height:1.55;color:var(--ink);}
+  .ndfacts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;}
+  .ndfact{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.025);}
+  .ndfact em{font-style:normal;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);}
+  .ndfact b{font-family:var(--disp);font-size:18px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.2;}
+  .ndpoints{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+  .ndpoints li{position:relative;padding-left:16px;font-size:13.5px;line-height:1.55;color:var(--ink);}
+  .ndpoints li::before{content:"";position:absolute;left:0;top:.62em;width:7px;height:2px;border-radius:2px;background:var(--crimson);box-shadow:0 0 6px var(--crimson-glow);}
+  .ndwatch{margin:18px 0 0;padding:12px 14px;border:1px solid rgba(255,212,121,.3);border-radius:10px;background:rgba(255,212,121,.05);}
+  .ndwatch span{color:#ffd479;}
+  .modal .ndwatch p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink);}
+  .ndmore{margin-top:18px;border-top:1px solid var(--line-soft);padding-top:12px;}
+  .ndmore summary{cursor:pointer;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);list-style:none;}
+  .ndmore summary::-webkit-details-marker{display:none;}
+  .ndmore summary::before{content:"+ ";color:var(--crimson);}
+  .ndmore[open] summary::before{content:"\2212 ";}
+  .modal .ndmore p{margin:10px 0 0;}
+  .newsdetail .secband{margin:2px 40px 12px 0;font-size:10px;}
+  .ndbadges .conf{display:inline-flex;align-items:center;gap:6px;}
+  .ndbadges .ndtime{margin-left:auto;}
   .headline{font-family:var(--disp);font-weight:600;font-size:15.5px;line-height:1.32;margin:0 0 6px;color:var(--ink);letter-spacing:-.005em;}
   .summary{font-size:13px;line-height:1.55;color:var(--ink-dim);margin:0 0 11px;}
   .summary b{color:var(--ink);font-weight:600;}
@@ -1198,11 +1244,26 @@ function renderRibbon(list){
 /* ----------------------------- render: news ----------------------------- */
 const dirMeta={bull:['▲','bull','Bullish'],bear:['▼','bear','Bearish'],neut:['◆','neut','Neutral']};
 const srcLabel=s=>({x:'X / SOCIAL',reddit:'REDDIT',wire:'NEWSWIRE',filing:'SEC FILING'}[s]||s);
-/* "filed 4:21:19 PM ET, on Korvus +21s": each filing card is its own speed receipt */
-function filingLine(n){
-  if(n.source!=='filing' || !n.filed) return '';
-  const lag = (n.lag_sec!=null) ? ` · on Korvus <b>+${n.lag_sec<120 ? n.lag_sec+'s' : Math.round(n.lag_sec/60)+'m'}</b>` : '';
-  return `<p class="filingline">filed with SEC ${n.filed} ET${lag}</p>`;
+/* escape model/feed text before it goes into HTML */
+const esc = t => String(t==null?'':t).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* change text -> up / down / flat tone for the numbers */
+function chgTone(c){
+  const t=String(c||'').trim();
+  if(/^\+|\bup\b|\braise|\bhigher|\bincreas/i.test(t)) return 'up';
+  if(/^[-\u2212]|\bdown\b|\bcut|\blower|\bdecreas|\bdeclin/i.test(t)) return 'down';
+  return 'flat';
+}
+/* compact number chips on a card (first 3 facts) */
+function factChips(n, max){
+  const f=(n.facts||[]).slice(0,max||3);
+  if(!f.length) return '';
+  return `<div class="factstrip">${f.map(x=>`<span class="fact"><em>${esc(x.label)}</em><b>${esc(x.value)}</b>${x.change?`<i class="${chgTone(x.change)}">${esc(x.change)}</i>`:''}</span>`).join('')}</div>`;
+}
+/* the SEC band on filing cards: form in plain words + filed time */
+function secBand(n){
+  if(n.source!=='filing') return '';
+  const who = n.company ? `${esc(n.company)}${n.ticker?` <span class="secTk">${esc(n.ticker)}</span>`:''}` : esc(n.ticker||'');
+  return `<div class="secband"><span class="secmark">SEC</span><span class="secform">${esc(n.form||'')} · ${esc(n.form_label||'Filing')}</span><span class="secwho">${who}</span>${n.filed?`<span class="secfiled">filed ${esc(n.filed)} ET</span>`:''}</div>`;
 }
 /* full names for instrument tags, shown on hover so users know what each is */
 const INST_NAMES = {
@@ -1263,7 +1324,6 @@ function renderNews(list){
       <div class="body">
         <div class="src"><span class="badge filing">${srcLabel('filing')}</span>${n.source_name?`<span class="srcname">${n.source_name}</span>`:''}</div>
         <p class="headline">&#128274; ${n.headline}</p>
-        ${filingLine(n)}
         <p class="summary">${n.summary}</p>
         <div class="metarow"><span class="lockcta">Unlock with Operator &rsaquo;</span></div>
       </div>
@@ -1271,16 +1331,17 @@ function renderNews(list){
     }
     const [arrow,cls,label]=dirMeta[n.dir];
     const insts=(n.inst||[]).slice(0,MAX_INST).map(instTag).join('');
-    return `<article class="item" data-idx="${realIdx}" onclick="openNewsDetail(${realIdx})" title="Click for detail">
+    const isF = n.source==='filing';
+    return `<article class="item${isF?' secitem':''}" data-idx="${realIdx}" onclick="openNewsDetail(${realIdx})" title="Click for detail">
       <div class="rail">
         <div class="railtop"><span class="time">${n.time}</span><span class="impact ${n.impact}">${n.impact}</span></div>
         <div class="accent ${n.impact}"></div>
       </div>
       <div class="body">
-        <div class="src"><span class="badge ${n.source}">${srcLabel(n.source)}</span>${n.source_name?`<span class="srcname">${n.source_name}</span>`:''}</div>
-        <p class="headline">${n.headline}</p>
-        ${filingLine(n)}
-        <p class="summary">${n.summary}</p>
+        ${isF ? secBand(n) : `<div class="src"><span class="badge ${n.source}">${srcLabel(n.source)}</span>${n.source_name?`<span class="srcname">${esc(n.source_name)}</span>`:''}${n.company?`<span class="srcco">${esc(n.company)}</span>`:''}</div>`}
+        <p class="headline">${esc(n.headline)}</p>
+        <p class="summary">${esc(n.summary)}</p>
+        ${factChips(n, 3)}
         <div class="metarow">
           <span class="dir ${cls}">${arrow} ${label}</span>${insts}
           <span class="conf">conf ${n.conf}%<span class="confbar"><i style="width:${n.conf}%"></i></span></span>
@@ -1299,39 +1360,50 @@ function openNewsDetail(idx){
   if(!n) return;
   if(n.locked){ window.location.href='/upgrade'; return; }
   const [arrow,cls,label]=dirMeta[n.dir];
-  const insts = n.inst.length ? n.inst.map(instTag).join('') : '<span class="ndim">none flagged</span>';
   const isFiling = n.source==='filing';
-  const srcSec = (isFiling && n.filed)
-    ? `<div class="ndlabel">Primary source</div><p class="ndsource">Accepted by SEC EDGAR at <b>${n.filed} ET</b><br>On the Korvus terminal at <b>${n.seen} ET</b>${n.lag_sec!=null?` (${n.lag_sec}s after acceptance)`:''}<br>Read from the filing itself, not from a news write-up.</p>`
-    : '';
+  const insts = n.inst.length ? n.inst.map(instTag).join('') : '<span class="ndim">none flagged</span>';
   const linkBtn = n.url
-    ? `<a class="readfull" href="${n.url}" target="_blank" rel="noopener noreferrer">${isFiling ? 'Open the filing on SEC.gov ↗' : 'Read full article ↗'}</a>`
+    ? `<a class="readfull" href="${esc(n.url)}" target="_blank" rel="noopener noreferrer">${isFiling ? 'Read the filing on SEC.gov ↗' : 'Read full article ↗'}</a>`
     : '<span class="ndim">no source link available</span>';
-  const artSum = (n.article_summary && n.article_summary.trim()) ? n.article_summary.trim() : '';
-  const origBlurb = (!artSum && n.raw && n.raw.trim() && n.raw.trim() !== (n.summary||'').trim())
-    ? `<div class="ndlabel">Original report</div><p class="ndorig">${n.raw}</p>` : '';
-  const storySec = artSum
-    ? `<div class="ndlabel">The story</div><p class="nddetail">${artSum}</p>` : '';
-  const detail = (n.impact_desc && n.impact_desc.trim()) ? n.impact_desc : (n.summary || '-');
-  const quickTake = (!artSum && n.impact_desc && n.impact_desc.trim() && n.summary && n.summary.trim())
-    ? `<p class="ndsummary">${n.summary}</p>` : '';
+  const artSum = (n.article_summary||'').trim();
+  const pts = (n.key_points||[]).filter(Boolean);
+  const facts = (n.facts||[]);
+
+  const take = n.summary ? `<div class="ndtake"><span>The take</span><p>${esc(n.summary)}</p></div>` : '';
+  const factGrid = facts.length ? `<div class="ndlabel">${isFiling?'Key numbers from the filing':'Key numbers'}</div>
+    <div class="ndfacts">${facts.map(x=>`<div class="ndfact"><em>${esc(x.label)}</em><b>${esc(x.value)}</b>${x.change?`<i class="${chgTone(x.change)}">${esc(x.change)}</i>`:''}</div>`).join('')}</div>` : '';
+  const whyList = pts.length ? `<div class="ndlabel">Why it matters</div>
+    <ul class="ndpoints">${pts.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>` : '';
+  const watch = n.watch ? `<div class="ndwatch"><span>Watch next</span><p>${esc(n.watch)}</p></div>` : '';
+  const story = artSum ? `<div class="ndlabel">${isFiling?'What the filing says':'What happened'}</div><p class="nddetail">${esc(artSum)}</p>` : '';
+  const analysis = (n.impact_desc||'').trim();
+  /* new-style items: the full analysis folds away behind the distilled points;
+     older items without points show it open, as before */
+  const fullAnalysis = analysis ? (pts.length
+    ? `<details class="ndmore"><summary>Full Korvus analysis</summary><p class="nddetail">${esc(analysis)}</p></details>`
+    : `<div class="ndlabel">Korvus analysis</div><p class="nddetail">${esc(analysis)}</p>`) : '';
+  const origBlurb = (!artSum && n.raw && n.raw.trim() && n.raw.trim() !== (n.summary||'').trim() && !isFiling)
+    ? `<div class="ndlabel">Original report</div><p class="ndorig">${esc(n.raw)}</p>` : '';
+
   document.getElementById('newsDetailBody').innerHTML = `
-    <div class="ndhead">
+    ${isFiling ? secBand(n) : `<div class="ndhead">
       <span class="badge ${n.source}">${srcLabel(n.source)}</span>
-      ${n.source_name?`<span class="srcname">${n.source_name}</span>`:''}
-      <span class="ndtime">${n.time} ET</span>
-    </div>
-    <h2 class="ndtitle">${n.headline}</h2>
+      ${n.source_name?`<span class="srcname">${esc(n.source_name)}</span>`:''}
+      ${n.company?`<span class="srcco">${esc(n.company)}</span>`:''}
+    </div>`}
+    <h2 class="ndtitle">${esc(n.headline)}</h2>
     <div class="ndbadges">
       <span class="impact ${n.impact}">${n.impact} impact</span>
       <span class="dir ${cls}">${arrow} ${label}</span>
-      <span class="conf">conf ${n.conf}%</span>
+      <span class="conf">conf ${n.conf}%<span class="confbar"><i style="width:${n.conf}%"></i></span></span>
+      <span class="ndtime">${n.time} ET</span>
     </div>
-    ${quickTake}
-    ${srcSec}
-    ${storySec}
-    <div class="ndlabel">Korvus analysis</div>
-    <p class="nddetail">${detail}</p>
+    ${take}
+    ${factGrid}
+    ${whyList}
+    ${watch}
+    ${story}
+    ${fullAnalysis}
     ${origBlurb}
     <div class="ndlabel">Instruments in focus</div>
     <div class="ndinsts">${insts}</div>

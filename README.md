@@ -204,6 +204,7 @@ Optional `.env` keys (all have defaults):
 
 Handy commands:
 ```bash
+python korvus_edgar.py --rescore 20     # re-read the latest 20 filing cards with the current prompt
 python korvus_edgar.py --dry-run           # what's on the wire right now from the watchlist
 python korvus_edgar.py --dry-run --all     # same, every 8-K/6-K filer
 python korvus_edgar.py --replay https://www.sec.gov/Archives/edgar/data/1045810/000104581026000073/0001045810-26-000073-index.htm --no-save
