@@ -153,7 +153,10 @@ _session = requests.Session()
 _session.headers.update({"User-Agent": USER_AGENT, "Accept-Encoding": "gzip, deflate"})
 _http_lock = threading.Lock()
 _last_req = [0.0]
-MIN_GAP = 0.25   # 4 req/s ceiling, well under the SEC's 10/s
+# The SEC allows 10 requests a second per user across all machines. Three
+# processes share it: the terminal watcher (this default, 2/s), Korvus Intel
+# and Korvus Compass (4/s each; they set MIN_GAP for their own process).
+MIN_GAP = 1.0 / max(0.5, min(6.0, float(_clean_env("EDGAR_MAX_RPS", "2") or 2)))
 
 
 def _get(url: str, timeout: int = 15) -> Optional[str]:

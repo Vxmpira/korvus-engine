@@ -1,0 +1,28 @@
+# ============================================================
+#  Korvus Compass: the second crawler (long-term investing board)
+#  S&P 500 + Nasdaq-100: prices, SEC financials, live filing feed,
+#  analyst consensus, Compass scores, and the analyst agent's briefs.
+#  Own DB (korvus_compass.db). Sister of korvus-intel.
+#
+#  INSTALL (on the server):
+#    sudo cp korvus-compass.service /etc/systemd/system/
+#    sudo systemctl daemon-reload
+#    sudo systemctl enable --now korvus-compass
+#    journalctl -u korvus-compass -f
+# ============================================================
+[Unit]
+Description=Korvus Compass (long-term board crawler + analyst agent)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/korvus-engine
+ExecStart=/home/ubuntu/korvus-engine/venv/bin/python korvus_compass.py --loop
+Restart=always
+RestartSec=30
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=/home/ubuntu/korvus-engine/.env
+
+[Install]
+WantedBy=multi-user.target

@@ -119,6 +119,31 @@
   .ev p{margin:3px 0 0;color:var(--ink-dim);font-size:12px;line-height:1.4;}
   .ev time{font-family:var(--mono);font-size:10px;color:var(--ink-faint);display:block;margin-top:4px;}
 
+  .funds{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0 0;}
+  .fund{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;cursor:pointer;text-align:left;
+    font:inherit;color:inherit;display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;}
+  .fund:hover{border-color:var(--crimson-line);}
+  .fund .fk{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);}
+  .fund .fn{font-family:var(--disp);font-weight:700;font-size:16px;}
+  .fund .fp{font-family:var(--disp);font-weight:700;font-size:16px;text-align:right;}
+  .fund .ft{font-size:12px;color:var(--ink-dim);} .fund .fd{font-family:var(--mono);font-size:11px;text-align:right;}
+  .fundhd{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin:18px 0 -8px;}
+  .livedot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--bull);margin-right:6px;animation:pulse 1.6s infinite;}
+  @keyframes pulse{50%{opacity:.35;}}
+  .d1{display:block;font-family:var(--mono);font-size:10.5px;}
+  .brief h4{font-family:var(--disp);font-size:18px;font-weight:700;margin:0 0 8px;line-height:1.25;}
+  .brief p{margin:0;color:var(--ink-dim);line-height:1.55;}
+  .bb{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;}
+  .bb div{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:10px;padding:12px 14px;}
+  .bb h5{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 8px;font-weight:500;}
+  .bb .g h5{color:var(--bull);} .bb .r h5{color:var(--bear);}
+  .bb ul{margin:0;padding-left:16px;} .bb li{margin:5px 0;line-height:1.45;font-size:13px;}
+  .kv{margin-top:12px;font-size:13px;line-height:1.5;} .kv b{color:var(--ink);font-weight:600;} .kv span{color:var(--ink-dim);}
+  .by{margin-top:12px;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);}
+  .tog{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;}
+  .tog button{background:transparent;border:0;color:var(--ink-faint);font-family:var(--mono);font-size:10px;padding:4px 9px;cursor:pointer;}
+  .tog button.on{background:var(--crimson-soft);color:var(--ink);}
+
   .disc{margin-top:22px;color:var(--ink-faint);font-size:12px;line-height:1.6;border-top:1px solid var(--line-soft);padding-top:16px;}
 
   /* detail drawer */
@@ -183,7 +208,7 @@
   @media (max-width:1100px){ .grid{grid-template-columns:1fr;} .feed{position:static;max-height:420px;} }
   @media (max-width:760px){
     .wrap{padding:0 12px 50px;} .hbar{padding:10px 12px;} .tiles{grid-template-columns:repeat(2,minmax(0,1fr));}
-    .hide-m{display:none;} .asof{text-align:left;} .brand small{display:none;}
+    .hide-m{display:none;} .asof{text-align:left;} .funds{grid-template-columns:repeat(2,minmax(0,1fr));} .bb{grid-template-columns:1fr;} .brand small{display:none;}
     .dbody{padding:14px 12px 40px;} .dhead{padding:12px;} .part{grid-template-columns:112px 1fr 34px;} .bars3{grid-template-columns:1fr;}
     .verdict{grid-template-columns:1fr;} td,th{padding:9px 6px;}
     .controls input{flex:1 1 100%;} .seg{flex:1 1 100%;} .seg button{flex:1;} .controls select{flex:1 1 30%;} .bar{display:none;} .tk span{max-width:110px;}
@@ -213,6 +238,7 @@
     <div class="asof" id="asof"></div>
   </section>
 
+  <div id="fundsWrap"></div>
   <div class="tiles" id="tiles"></div>
   <div class="crawl" id="crawl"></div>
 
@@ -323,13 +349,13 @@ function renderTable(){
   if(ALL.length && !rows.length){ $('tbody').innerHTML = '<tr><td colspan="12"><div class="empty">No stocks match those filters.</div></td></tr>'; $('more').innerHTML = ''; return; }
   const html = rows.slice(0, shown).map((x, i) => {
     const sc = num(x.sc);
-    return '<tr data-s="' + esc(x.s) + '">'
+    return '<tr data-s="' + esc(x.s) + '"' + (x.hl ? ' title="' + esc(x.hl) + '"' : '') + '>'
       + '<td class="l rk">' + (i + 1) + '</td>'
       + '<td class="l tk"><b>' + esc(x.s) + '</b><span>' + esc(x.n || '') + '</span></td>'
       + '<td><span class="sc"><span class="bar"><i style="width:' + (sc || 0) + '%;background:' + scoreColor(sc) + '"></i></span><b>' + (sc === null ? '·' : Math.round(sc)) + '</b></span><span class="tier">' + esc(x.ti || '') + '</span></td>'
       + '<td><span class="rd ' + esc(x.rd || 'neut') + '">' + READ[x.rd || 'neut'] + '</span></td>'
       + '<td><span class="trd"><span class="hide-m">' + esc(x.tr || 'Pending') + '</span>' + spark(x.sp_, x.tt) + '</span></td>'
-      + '<td>' + px(x.p) + '</td>'
+      + '<td>' + px(livePx(x)) + (x.lp !== undefined && x.lp !== null ? '<span class="d1">' + pctC(x.lc, 2) + '</span>' : '') + '</td>'
       + '<td class="hide-m">' + pctC(x.r1y) + '</td>'
       + '<td class="hide-m hide-l">' + pctC(x.rg) + '</td>'
       + '<td class="hide-m">' + pct(x.nm, 0, false) + '</td>'
@@ -353,13 +379,26 @@ function renderTiles(){
     + t('top', 'Top rated', top, 'Compass score 75 or higher', 'top');
 }
 
+function livePx(x){ return (x.lp !== undefined && x.lp !== null) ? x.lp : x.p; }
+function liveChg(x){ return (x.lp !== undefined && x.lp !== null) ? x.lc : x.d1; }
+function renderFunds(){
+  const f = META.etfs || [];
+  if(!f.length){ $('fundsWrap').innerHTML = ''; return; }
+  $('fundsWrap').innerHTML = '<div class="fundhd">Index funds · trend only, not scored</div><div class="funds">' + f.map(x =>
+    '<button class="fund" type="button" data-s="' + esc(x.s) + '" title="' + esc(x.note || '') + '"><span class="fk">' + esc(x.s) + '</span><span class="fp">' + px(livePx(x)) + '</span>'
+    + '<span class="fn">' + esc(x.n) + '</span><span class="fd">' + pctC(liveChg(x), 2) + '</span>'
+    + '<span class="ft">' + esc(x.tr || 'Pending') + ' · 1y ' + pctC(x.r1y) + '</span><span style="text-align:right">' + spark(x.sp_, x.tt) + '</span></button>').join('') + '</div>';
+}
+
 function renderCrawl(){
-  const st = META.status || {}, lab = {prices:'Prices', filings:'SEC filings', analysts:'Analysts', score:'Scores', universe:'Stock list'};
+  const st = META.status || {}, lab = {prices:'Prices', feed:'Live filing feed', filings:'SEC data', analysts:'Analysts', score:'Scores', agent:'Analyst agent', universe:'Stock list'};
   const bits = Object.keys(lab).map(k => { const j = st[k]; if(!j) return '<span class="chip"><i></i>' + lab[k] + ' pending</span>';
     let extra = k === 'universe' && j.count ? ' · ' + j.count + ' names' : k === 'prices' && j.pending ? ' · ' + j.pending + ' queued' : '';
     return '<span class="chip ' + (j.error ? 'err' : 'ok') + '" title="' + esc(j.error || '') + '"><i></i>' + lab[k] + ' ' + esc(ago(j.at)) + extra + '</span>'; });
   $('crawl').innerHTML = '<span class="lab">Crawler</span>' + bits.join('');
-  $('asof').innerHTML = (META.asof ? 'Prices as of <b>' + esc(day(META.asof)) + '</b> close<br>' : '') + 'End-of-day data · not real-time';
+  const lv = (META.status || {}).live;
+  $('asof').innerHTML = META.live ? '<span class="livedot"></span><b>Live prices</b> · updated ' + esc(ago(lv && lv.at)) + '<br>Scores use the ' + esc(META.asof ? day(META.asof) : 'last') + ' close'
+    : (META.asof ? 'Prices as of <b>' + esc(day(META.asof)) + '</b> close<br>' : '') + 'End-of-day data · not real-time';
 }
 
 function renderEvents(list){
@@ -376,6 +415,15 @@ function ring(v, read){
     + '<circle cx="52" cy="52" r="44" fill="none" stroke="' + col + '" stroke-width="8" stroke-linecap="round" stroke-dasharray="' + (c * (v || 0) / 100).toFixed(1) + ' ' + c.toFixed(1) + '"/></svg>'
     + '<div><b>' + (v === null ? '·' : Math.round(v)) + '</b><small>OF 100</small></div></div>';
 }
+let CUR = null, RANGE = '1y';
+function has5(s){ return !!(s.chart5 && s.chart5.c && s.chart5.c.length > 60); }
+function chartBox(s){
+  if(RANGE === '5y' && !has5(s)) RANGE = '1y';
+  return '<div id="chartBox">' + chart(RANGE === '5y' ? s.chart5 : s.chart) + '</div>';
+}
+function rangeToggle(s){
+  return has5(s) ? '<span class="tog" id="rangeTog"><button type="button" data-r="1y" class="' + (RANGE === '1y' ? 'on' : '') + '">1Y</button><button type="button" data-r="5y" class="' + (RANGE === '5y' ? 'on' : '') + '">5Y</button></span>' : '';
+}
 function chart(ch){
   if(!ch || !ch.c || ch.c.length < 5) return '<div class="none">Price history is still loading.</div>';
   const W = 760, H = 250, pl = 6, pr = 52, pt = 10, pb = 22, n = ch.c.length;
@@ -388,7 +436,7 @@ function chart(ch){
   let xl = ''; [0, Math.floor(n / 3), Math.floor(2 * n / 3), n - 1].forEach((i, j) => { const d = new Date(ch.d[i] + 'T12:00:00');
     xl += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 6) + '" font-size="10" fill="var(--ink-faint)" font-family="IBM Plex Mono,monospace" text-anchor="' + (j === 0 ? 'start' : j === 3 ? 'end' : 'middle') + '">' + d.toLocaleDateString(undefined, {month:'short', year:'2-digit'}) + '</text>'; });
   const area = line(ch.c) + 'L' + X(n - 1).toFixed(1) + ' ' + (H - pb) + 'L' + X(0).toFixed(1) + ' ' + (H - pb) + 'Z';
-  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="One year price chart with 50 and 200 day averages">' + grid + xl
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="Price chart with 50 and 200 day averages">' + grid + xl
     + '<path d="' + area + '" fill="var(--crimson)" fill-opacity=".07"/>'
     + '<path d="' + line(ch.m200 || []) + '" fill="none" stroke="var(--sec)" stroke-width="1.5" stroke-dasharray="5 4"/>'
     + '<path d="' + line(ch.m50 || []) + '" fill="none" stroke="var(--neut)" stroke-width="1.5"/>'
@@ -420,27 +468,45 @@ function verdictText(s){
 
 function renderDetail(s){
   const f = s.fund || {}, v = s.val || {}, a = s.analysts || {}, m = s.metrics || {}, cur = f.currency || 'USD', sc = num(s.score);
+  const lv = s.live || {}, isFund = s.kind === 'etf', b = s.brief || {};
+  CUR = s;
   $('dhead').innerHTML = '<div style="flex:1;min-width:0"><h2>' + esc(s.symbol) + '</h2><div class="nm">' + esc(s.name || '') + '</div></div>'
-    + '<div class="px">' + px(s.price) + '<small>' + pctC(s.chg_1d, 2) + ' <span class="mu">' + esc(s.price_date ? day(s.price_date) : '') + '</span></small></div>'
+    + '<div class="px">' + px(lv.lp != null ? lv.lp : s.price) + '<small>' + pctC(lv.lp != null ? lv.lc : s.chg_1d, 2) + ' <span class="mu">' + (lv.lp != null ? '<span class="livedot" style="margin-left:4px"></span>live' : esc(s.price_date ? day(s.price_date) : '')) + '</span></small></div>'
     + '<button class="x" id="closeBtn" type="button" aria-label="Close">✕</button>';
   let h = '';
-  h += '<div class="sect"><div class="verdict">' + ring(sc, s.read) + '<div><h4>' + esc(s.tier || 'Building') + ' <span class="rd ' + esc(s.read || 'neut') + '">' + READ[s.read || 'neut'] + ' read</span></h4><p>' + esc(verdictText(s)) + '</p>'
-    + '<div class="tags">' + (s.sector ? '<span class="tag">' + esc(s.sector) + '</span>' : '') + (s.industry ? '<span class="tag">' + esc(s.industry) + '</span>' : '')
-    + (s.in_sp ? '<span class="tag">S&amp;P 500</span>' : '') + (s.in_ndx ? '<span class="tag">Nasdaq-100</span>' : '')
-    + (num(s.coverage) !== null && s.coverage < 0.8 ? '<span class="tag">Data coverage ' + Math.round(s.coverage * 100) + '%</span>' : '') + '</div></div></div></div>';
+  if(isFund){
+    h += '<div class="sect brief"><h4>' + esc(s.name) + ' index fund <span class="rd ' + esc(s.read || 'neut') + '">' + esc(s.trend || 'Pending') + '</span></h4><p>' + esc(s.note || '')
+      + ' An index fund holds every company in its index, so there is no single company to score. Compass shows its long-term trend only.</p></div>';
+  } else {
+    h += '<div class="sect"><div class="verdict">' + ring(sc, s.read) + '<div><h4>' + esc(s.tier || 'Building') + ' <span class="rd ' + esc(s.read || 'neut') + '">' + READ[s.read || 'neut'] + ' read</span></h4><p>' + esc(verdictText(s)) + '</p>'
+      + '<div class="tags">' + (s.sector ? '<span class="tag">' + esc(s.sector) + '</span>' : '') + (s.industry ? '<span class="tag">' + esc(s.industry) + '</span>' : '')
+      + (s.in_sp ? '<span class="tag">S&amp;P 500</span>' : '') + (s.in_ndx ? '<span class="tag">Nasdaq-100</span>' : '')
+      + (num(s.coverage) !== null && s.coverage < 0.8 ? '<span class="tag">Data coverage ' + Math.round(s.coverage * 100) + '%</span>' : '') + '</div></div></div></div>';
 
-  h += '<div class="sect"><h3>Why this score <em>weight · how each check did</em></h3>' + (s.parts || []).map(p =>
-    '<div class="part"><div class="pl"><b>' + esc(p.label) + '</b><small>' + p.weight + '% of score</small></div><div class="pb"><i style="width:' + (p.value || 0) + '%;background:' + scoreColor(p.value) + '"></i></div><div class="pv">' + (p.value === null ? '<span class="mu">·</span>' : p.value) + '</div>'
-    + '<div class="pn">' + (p.notes || []).map(esc).join(' · ') + '</div></div>').join('') + '</div>';
+    if(b.headline){
+      const li = arr => (arr || []).map(x => '<li>' + esc(x) + '</li>').join('');
+      const who = b.by === 'haiku' ? 'the Compass Analyst (AI)' : b.by === 'crown' ? 'the Compass Analyst (Crown AI)' : 'Compass rules';
+      h += '<div class="sect brief"><h3>Analyst brief <em>from the crawler\'s data on this stock</em></h3><h4>' + esc(b.headline) + '</h4><p>' + esc(b.summary || '') + '</p>'
+        + ((b.bull || []).length || (b.bear || []).length ? '<div class="bb"><div class="g"><h5>What is working</h5><ul>' + li(b.bull) + '</ul></div><div class="r"><h5>What to be careful about</h5><ul>' + li(b.bear) + '</ul></div></div>' : '')
+        + (b.watch ? '<div class="kv"><b>Watch next: </b><span>' + esc(b.watch) + '</span></div>' : '')
+        + (b.fit ? '<div class="kv"><b>Tends to suit: </b><span>' + esc(b.fit) + '</span></div>' : '')
+        + '<div class="by">Written by ' + who + (b.at ? ' · ' + esc(day(b.at)) : '') + ' · research, not advice</div></div>';
+    }
 
-  h += '<div class="sect"><h3>Long-term trend <em>' + esc(s.trend || '') + '</em></h3>' + chart(s.chart);
+    h += '<div class="sect"><h3>Why this score <em>weight · how each check did</em></h3>' + (s.parts || []).map(p =>
+      '<div class="part"><div class="pl"><b>' + esc(p.label) + '</b><small>' + p.weight + '% of score</small></div><div class="pb"><i style="width:' + (p.value || 0) + '%;background:' + scoreColor(p.value) + '"></i></div><div class="pv">' + (p.value === null ? '<span class="mu">·</span>' : p.value) + '</div>'
+      + '<div class="pn">' + (p.notes || []).map(esc).join(' · ') + '</div></div>').join('') + '</div>';
+  }
+
+  h += '<div class="sect"><h3>Long-term trend <em>' + esc(s.trend || '') + ' ' + rangeToggle(s) + '</em></h3>' + chartBox(s);
   if(num(s.lo52) !== null && num(s.hi52) !== null){
     h += '<div class="range"><div class="rl"><span>52-week range</span><span>' + (num(s.drawdown) !== null && s.drawdown < -0.005 ? pct(s.drawdown) + ' from the high' : 'At the high') + '</span></div>'
       + '<div class="rb"><i style="left:calc(' + Math.round((num(s.pos52) || 0) * 100) + '% - 1.5px)"></i></div><div class="rl"><span>' + px(s.lo52) + '</span><span>' + px(s.hi52) + '</span></div></div>';
   }
-  h += '<div class="stats" style="margin-top:14px">' + st('1 month', pctC(s.ret_1m, 1)) + st('3 months', pctC(s.ret_3m, 1)) + st('6 months', pctC(s.ret_6m, 1)) + st('1 year', pctC(s.ret_1y, 1))
+  h += '<div class="stats" style="margin-top:14px">' + st('1 month', pctC(s.ret_1m, 1)) + st('3 months', pctC(s.ret_3m, 1)) + st('6 months', pctC(s.ret_6m, 1)) + st('1 year', pctC(s.ret_1y, 1)) + (num(s.ret_5y) !== null ? st('5 years', pctC(s.ret_5y, 0)) : '')
     + st('50-day average', px(s.ma50)) + st('200-day average', px(s.ma200)) + st('Yearly swing', pct(s.vol_1y, 0, false), 'Volatility: higher means a bumpier ride') + '</div></div>';
 
+  if(!isFund){
   h += '<div class="sect"><h3>What the company reports <em>from its SEC filings' + (f.fy_end ? ' · fiscal year ended ' + esc(day(f.fy_end)) : '') + '</em></h3>';
   if(!f.revenue && !f.net_income){ h += '<div class="none">SEC financial data has not been read for this company yet.</div>'; }
   else {
@@ -480,14 +546,19 @@ function renderDetail(s){
   h += '<div class="sect"><h3>SEC filing timeline</h3>' + (fl.length ? fl.map(x => '<div class="row"><time>' + esc(day(x.filed)) + '</time><div><span class="fm">' + esc(x.form) + '</span><b>' + esc(x.label) + '</b>'
     + (x.url ? ' · <a href="' + esc(x.url) + '" target="_blank" rel="noopener noreferrer">open</a>' : '') + '</div></div>').join('') : '<div class="none">Filing list not loaded yet.</div>') + '</div>';
 
+  }
   const ev = s.events || [];
   h += '<div class="sect"><h3>Crawler updates for ' + esc(s.symbol) + '</h3>' + (ev.length ? ev.map(e => '<div class="row"><time>' + esc(day(e.ts_utc)) + '</time><div><b>' + esc(e.title) + '</b>' + (e.detail ? '<p>' + esc(e.detail) + '</p>' : '') + '</div></div>').join('')
     : '<div class="none">Nothing has changed since the crawler started watching this stock.</div>')
-    + '<p class="mu" style="font-family:var(--mono);font-size:10.5px;margin:12px 0 0">Prices ' + esc(ago(s.price_utc)) + ' · SEC data ' + esc(ago(s.fund_utc)) + ' · analysts ' + esc(ago(s.analyst_utc)) + ' · score ' + esc(ago(s.score_utc)) + '</p></div>';
+    + '<p class="mu" style="font-family:var(--mono);font-size:10.5px;margin:12px 0 0">Prices ' + esc(ago(s.price_utc)) + (isFund ? '' : ' · SEC data ' + esc(ago(s.fund_utc)) + ' · analysts ' + esc(ago(s.analyst_utc)) + ' · score ' + esc(ago(s.score_utc))) + '</p></div>';
 
   h += '<p class="disc" style="margin:0;border:0;padding:0">' + esc(s.disclaimer || '') + '</p>';
   $('dbody').innerHTML = h;
   $('closeBtn').onclick = closeDetail;
+  const tg = $('rangeTog');
+  if(tg) tg.onclick = e => { const bt = e.target.closest('button'); if(!bt || !CUR) return; RANGE = bt.dataset.r;
+    Array.from(tg.children).forEach(x => x.classList.toggle('on', x === bt));
+    $('chartBox').innerHTML = chart(RANGE === '5y' ? CUR.chart5 : CUR.chart); };
 }
 
 async function openDetail(sym){
@@ -512,7 +583,7 @@ async function load(){
     const secs = Array.from(new Set(ALL.map(x => x.sec).filter(Boolean))).sort(), sel = $('secSel'), cur = sel.value;
     sel.innerHTML = '<option value="">All sectors</option>' + secs.map(s => '<option>' + esc(s) + '</option>').join(''); sel.value = cur;
     $('disc').textContent = d.disclaimer || '';
-    renderTiles(); renderCrawl(); renderHead(); renderTable();
+    renderFunds(); renderTiles(); renderCrawl(); renderHead(); renderTable();
     renderEvents(b.ok ? ((await b.json()).events || []) : []);
   }catch(e){ $('tbody').innerHTML = '<tr><td colspan="12"><div class="empty">Could not reach the Compass service. Refresh in a moment.</div></td></tr>'; }
 }
@@ -520,6 +591,7 @@ async function load(){
 $('thead').addEventListener('click', e => { const th = e.target.closest('th'); if(!th) return; const k = th.dataset.k; if(k === 'rk') return;
   if(sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = (k === 's' || k === 'tr') ? 1 : -1; } renderHead(); renderTable(); });
 $('tbody').addEventListener('click', e => { const tr = e.target.closest('tr[data-s]'); if(tr) openDetail(tr.dataset.s); });
+$('fundsWrap').addEventListener('click', e => { const b = e.target.closest('.fund'); if(b) openDetail(b.dataset.s); });
 $('events').addEventListener('click', e => { const ev = e.target.closest('.ev'); if(ev) openDetail(ev.dataset.s); });
 $('q').addEventListener('input', e => { filt.q = e.target.value; shown = 60; renderTable(); });
 $('readSel').addEventListener('change', e => { filt.rd = e.target.value; shown = 60; renderTable(); });

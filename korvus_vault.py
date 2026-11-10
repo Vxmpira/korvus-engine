@@ -186,6 +186,11 @@ Data as of: {stamp}
     tcut = (now - dt.timedelta(days=TICKER_DAYS)).isoformat()
     syms = {f["symbol"] for f in filings if f["seen_utc"] >= tcut} | {t["symbol"] for t in trades}
     uni = {u["symbol"]: u for u in universe}
+    try:
+        import korvus_compass_vault as cv          # the sister crawler's rating, when it follows the stock too
+        compass, csub = cv.lookup(), cv.SUBDIR
+    except Exception:
+        compass, csub = {}, "compass"
     for s in sorted(syms):
         u = uni.get(s, {})
         out = [_fm(type="intel-ticker", symbol=s, sector=_cell(u.get("sector")) or "n/a",
@@ -193,6 +198,10 @@ Data as of: {stamp}
                f"\n# {s}{(' · ' + u['name']) if u.get('name') else ''}\n\n{GEN}"]
         if u:
             out.append(f"In today's universe at ${u['price']:.2f}, market cap ${(u['mcap'] or 0)/1e9:.2f}B.\n")
+        if s in compass:
+            k = compass[s]
+            out.append(f"Korvus Compass rates it **{k['tier']}** ({ {'bull': 'bullish', 'bear': 'bearish'}.get(k['read'], 'neutral') } "
+                       f"read, trend: {_cell(k['trend'])}): [[{csub}/Stocks/{s}|long-term view]]\n")
         fs = [f for f in filings if f["symbol"] == s and f["seen_utc"] >= tcut]
         if fs:
             out.append("## Filings\n")
@@ -329,12 +338,13 @@ def _ensure_clone():
     _git(["clone", "--depth", "50", REPO_URL, VAULT_DIR])
 
 
-def write_files(files: dict, root: str) -> int:
-    """Write rendered files under root/SUBDIR; remove stale generated notes in
-    Filings/Tickers that are no longer rendered is NOT done (history stays)."""
+def write_files(files: dict, root: str, subdir: str = None) -> int:
+    """Write rendered files under root/subdir (default: SUBDIR); remove stale
+    generated notes in Filings/Tickers that are no longer rendered is NOT done
+    (history stays)."""
     changed = 0
     for rel, text in files.items():
-        p = os.path.join(root, SUBDIR, rel)
+        p = os.path.join(root, subdir or SUBDIR, rel)
         os.makedirs(os.path.dirname(p), exist_ok=True)
         old = None
         if os.path.exists(p):
@@ -347,25 +357,41 @@ def write_files(files: dict, root: str) -> int:
     return changed
 
 
+def render_compass() -> tuple:
+    """The sister crawler's notes (Korvus Compass). Intel's sync is the one git
+    writer for the brain repo, so both crawlers publish in a single commit.
+    Returns (subdir, files); empty when Compass has nothing yet."""
+    try:
+        import korvus_compass_vault as cv
+        return cv.SUBDIR, cv.render()
+    except Exception as e:
+        print(f"  [vault] compass notes skipped: {e}")
+        return "compass", {}
+
+
 def sync(render_only: bool = False) -> dict:
     files = render()
+    csub, cfiles = render_compass()
+    total = len(files) + len(cfiles)
     if render_only:
-        n = write_files(files, VAULT_DIR)
-        return {"rendered": len(files), "changed": n, "pushed": False}
+        n = write_files(files, VAULT_DIR) + (write_files(cfiles, VAULT_DIR, csub) if cfiles else 0)
+        return {"rendered": total, "changed": n, "pushed": False, "compass": len(cfiles)}
     _ensure_clone()
     _git(["fetch", "--depth", "50", "origin"], cwd=VAULT_DIR)
     branch = _git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=VAULT_DIR).stdout.strip() or "main"
     _git(["reset", "--hard", f"origin/{branch}"], cwd=VAULT_DIR)   # our clone holds no local work
-    n = write_files(files, VAULT_DIR)
-    _git(["add", "--", SUBDIR], cwd=VAULT_DIR)
-    if not _git(["status", "--porcelain", "--", SUBDIR], cwd=VAULT_DIR).stdout.strip():
-        return {"rendered": len(files), "changed": 0, "pushed": False}
-    _git(["commit", "-m", f"Korvus Intel sync {intel.utcnow().strftime('%Y-%m-%dT%H:%M')}"], cwd=VAULT_DIR)
+    n = write_files(files, VAULT_DIR) + (write_files(cfiles, VAULT_DIR, csub) if cfiles else 0)
+    dirs = [SUBDIR] + ([csub] if cfiles else [])
+    _git(["add", "--"] + dirs, cwd=VAULT_DIR)
+    if not _git(["status", "--porcelain", "--"] + dirs, cwd=VAULT_DIR).stdout.strip():
+        return {"rendered": total, "changed": 0, "pushed": False, "compass": len(cfiles)}
+    what = "Korvus Intel + Compass sync" if cfiles else "Korvus Intel sync"
+    _git(["commit", "-m", f"{what} {intel.utcnow().strftime('%Y-%m-%dT%H:%M')}"], cwd=VAULT_DIR)
     for attempt in (1, 2, 3):
         r = _git(["push", "origin", f"HEAD:{branch}"], cwd=VAULT_DIR, check=False)
         if r.returncode == 0:
-            print(f"  [vault] pushed {n} changed note(s) to {SUBDIR}/")
-            return {"rendered": len(files), "changed": n, "pushed": True}
+            print(f"  [vault] pushed {n} changed note(s) to {'/, '.join(dirs)}/")
+            return {"rendered": total, "changed": n, "pushed": True, "compass": len(cfiles)}
         # someone (the agents' brain sync) pushed first: replay ours on top
         _git(["pull", "--rebase", "origin", branch], cwd=VAULT_DIR, check=False)
     raise RuntimeError("vault push rejected 3 times")
