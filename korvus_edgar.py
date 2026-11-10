@@ -550,6 +550,7 @@ def handle_entry(e: dict, save: bool = True, verbose: bool = True) -> Optional[d
             s = _load_state()
             s["discord_pending"].append({
                 "post_after": time.time() + DISCORD_DELAY * 60,
+                "item_id": item["id"],
                 "headline": item["headline"], "summary": result.get("summary", ""),
                 "impact": result["impact"], "direction": result["direction"],
                 "instruments": result.get("instruments", []), "url": item["url"],
@@ -635,7 +636,112 @@ def _et(iso: str, fmt: str = "%-I:%M:%S %p") -> str:
         return ""
 
 
+FORM_LABELS = {"8-K": "Current report", "8-K/A": "Amended current report",
+               "6-K": "Foreign issuer report", "6-K/A": "Amended foreign issuer report"}
+_DIR_WORD = {"bull": "\u25B2 Bullish", "bear": "\u25BC Bearish", "neut": "\u25C6 Neutral"}
+
+
+def _jl(v):
+    try:
+        x = json.loads(v or "[]")
+        return x if isinstance(x, list) else []
+    except (TypeError, ValueError):
+        return []
+
+
+def build_sec_embed(row: dict) -> dict:
+    """The terminal's SEC card as a Discord embed: SEC band (form in plain
+    words, company, filed time), the AI title linked to the filing, the take,
+    key numbers as fields, why it matters, watch next. Respects Discord's
+    limits (title 256, description 4096, field 1024, 25 fields, 6000 total)."""
+    sn = row.get("source_name") or "SEC filing"                # "SEC 6-K · TSM"
+    form = sn.replace("SEC", "").split("·")[0].strip() or "8-K"
+    ticker = sn.split("·")[-1].strip() if "·" in sn else ""
+    company = (row.get("company") or "").strip()
+    who = f"{company} ({ticker})" if company and ticker else (company or ticker)
+    filed = _et(row.get("published_at") or row.get("created_at") or "", "%-I:%M %p ET")
+    title = (row.get("title") or row.get("headline") or "SEC filing").strip()
+
+    parts = []
+    if row.get("summary"):
+        parts.append(f"**The take**\n{row['summary'].strip()}")
+    pts = [p for p in _jl(row.get("key_points")) if str(p).strip()][:4]
+    if pts:
+        parts.append("**Why it matters**\n" + "\n".join(f"\u25B8 {str(p).strip()}" for p in pts))
+    if row.get("watch"):
+        parts.append(f"**Watch next**\n{row['watch'].strip()}")
+    parts.append(f"[Read the filing on SEC.gov]({row.get('url', '')})  \u00B7  [Live on Korvus]({TERMINAL_URL})")
+    desc = "\n\n".join(parts)[:3800]
+
+    fields = []
+    for f in _jl(row.get("facts"))[:6]:
+        if not isinstance(f, dict) or not f.get("label") or not f.get("value"):
+            continue
+        val = f"**{str(f['value'])[:60]}**"
+        if f.get("change"):
+            val += f"\n{str(f['change'])[:60]}"
+        fields.append({"name": str(f["label"])[:60], "value": val[:1024], "inline": True})
+    while fields and len(fields) % 3:          # keep the numbers grid square
+        fields.append({"name": "\u200b", "value": "\u200b", "inline": True})
+    inst = ", ".join(_jl(row.get("instruments"))) or "none flagged"
+    fields += [
+        {"name": "Impact", "value": (row.get("impact") or "low").upper(), "inline": True},
+        {"name": "Read", "value": f"{_DIR_WORD.get(row.get('direction'), _DIR_WORD['neut'])} \u00B7 {row.get('confidence') or 0}%", "inline": True},
+        {"name": "Instruments", "value": inst[:1024], "inline": True},
+    ]
+    embed = {
+        "author": {"name": f"SEC \u00B7 FORM {form} \u00B7 {FORM_LABELS.get(form, 'Filing').upper()}"
+                           + (f" \u00B7 {who}" if who else "")},
+        "title": title[:256],
+        "url": row.get("url") or None,
+        "description": desc,
+        "color": _COLORS.get(row.get("direction"), _COLORS["neut"]),
+        "fields": fields[:25],
+        "footer": {"text": f"Filed {filed} \u00B7 Korvus by BlackCrownVxJ LLC \u00B7 analysis, not advice"},
+    }
+    if row.get("published_at"):
+        embed["timestamp"] = row["published_at"]
+    if LOGO_URL:
+        embed["thumbnail"] = {"url": LOGO_URL}
+    if not embed["url"]:
+        embed.pop("url")
+    return embed
+
+
+def _row_for(item_id: str) -> Optional[dict]:
+    try:
+        conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True, timeout=10)
+        conn.row_factory = sqlite3.Row
+        r = conn.execute("SELECT * FROM items WHERE id=?", (item_id,)).fetchone()
+        conn.close()
+        return dict(r) if r else None
+    except Exception:
+        return None
+
+
+def post_embed(embed: dict) -> bool:
+    if not DISCORD_HOOK:
+        print("  [edgar] EDGAR_DISCORD_WEBHOOK not set")
+        return False
+    for attempt in (1, 2):
+        try:
+            r = requests.post(DISCORD_HOOK, json={"embeds": [embed], "allowed_mentions": {"parse": []}}, timeout=20)
+            if r.status_code in (200, 204):
+                return True
+            if r.status_code == 429 and attempt == 1:
+                time.sleep(float((r.json() or {}).get("retry_after", 2)) + 0.5)
+                continue
+            print(f"  [edgar] discord post HTTP {r.status_code}: {r.text[:200]}")
+            return False
+        except Exception as ex:
+            print(f"  [edgar] discord post failed: {ex}")
+            return False
+    return False
+
+
 def flush_discord():
+    """Post queued filings to the SEC channel once their delay is up, built
+    from the card AS IT IS NOW (so a --rescore also improves queued posts)."""
     if not DISCORD_HOOK:
         return
     with _state_lock:
@@ -646,30 +752,14 @@ def flush_discord():
         s["discord_pending"] = [p for p in s["discord_pending"] if p["post_after"] > time.time()]
         _save_state(s)
     for p in due:
-        filed, seen_at = _et(p["filed_utc"]), _et(p["korvus_utc"])
-        desc = (f"{p['summary']}\n\n"
-                f"**Filed with the SEC:** {filed} ET\n"
-                f"**Live on the Korvus terminal:** {seen_at} ET\n"
-                f"Operator members had the full breakdown {DISCORD_DELAY} min before this post.\n\n"
-                f"[Open the filing on SEC.gov]({p['url']})  ·  [Korvus terminal]({TERMINAL_URL})")
-        embed = {
-            "author": {"name": "KORVUS · PRIMARY SOURCE"},
-            "title": p["headline"][:250],
-            "description": desc[:3900],
-            "color": _COLORS.get(p["direction"], _COLORS["neut"]),
-            "fields": [
-                {"name": "Impact", "value": p["impact"].upper(), "inline": True},
-                {"name": "Instruments", "value": ", ".join(p["instruments"]) or "none", "inline": True},
-            ],
-            "footer": {"text": "Korvus by BlackCrownVxJ LLC · analysis, not advice"},
-            "timestamp": p["korvus_utc"],
-        }
-        if LOGO_URL:
-            embed["thumbnail"] = {"url": LOGO_URL}
-        try:
-            requests.post(DISCORD_HOOK, json={"embeds": [embed], "allowed_mentions": {"parse": []}}, timeout=20)
-        except Exception as ex:
-            print(f"  [edgar] discord post failed: {ex}")
+        row = _row_for(p["item_id"]) if p.get("item_id") else None
+        if row is None:   # queued before this version: build from what was saved
+            row = {"source_name": f"SEC {p.get('form', '8-K')} \u00B7 {p.get('ticker', '')}",
+                   "headline": p.get("headline"), "summary": p.get("summary"), "impact": p.get("impact"),
+                   "direction": p.get("direction"), "instruments": json.dumps(p.get("instruments") or []),
+                   "url": p.get("url"), "published_at": p.get("filed_utc")}
+        post_embed(build_sec_embed(row))
+        time.sleep(1.2)   # stay well under Discord's webhook rate limit
 
 
 # ----------------------------------------------------------------------------
@@ -716,10 +806,26 @@ def main():
     ap.add_argument("--all", action="store_true", help="dry-run: ignore the watchlist")
     ap.add_argument("--replay", metavar="INDEX_URL")
     ap.add_argument("--no-save", action="store_true")
+    ap.add_argument("--discord-test", type=int, nargs="?", const=1, metavar="N",
+                    help="post the N most recent SEC cards to the Discord channel right now (preview)")
     ap.add_argument("--rescore", type=int, metavar="N",
                     help="re-read the N most recent SEC filings on the terminal with the current prompt")
     a = ap.parse_args()
 
+    if a.discord_test:
+        conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        rows = [dict(r) for r in conn.execute(
+            "SELECT * FROM items WHERE source='filing' AND processed=1 ORDER BY created_at DESC LIMIT ?",
+            (a.discord_test,))]
+        conn.close()
+        if not rows:
+            print("  [edgar] no scored SEC cards yet")
+        for r in reversed(rows):
+            ok = post_embed(build_sec_embed(r))
+            print(f"  [edgar] {'posted' if ok else 'FAILED'}: {(r.get('title') or r['headline'])[:80]}")
+            time.sleep(1.2)
+        return
     if a.rescore:
         n = rescore(a.rescore)
         print(f"  [edgar] rescored {n} filing(s)")
