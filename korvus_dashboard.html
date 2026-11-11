@@ -457,6 +457,8 @@
   .catbtn.imp-high.active{background:var(--hi);color:#fff;box-shadow:0 0 14px -4px rgba(255,46,77,.7);}
   .catbtn.imp-med.active{background:var(--med);color:#1a1206;box-shadow:0 0 14px -4px var(--med-glow);}
   .catbtn.imp-low.active{background:var(--ink-faint);color:#fff;box-shadow:none;}
+  .catbtn.src-region{color:#7fd4ff;}
+  .catbtn.src-region.active{background:#7fd4ff;color:#06141a;box-shadow:0 0 14px -4px rgba(127,212,255,.7);}
   .catbtn.src-filing{color:#ffd479;}
   .catbtn.src-filing.active{background:#ffd479;color:#1a1206;box-shadow:0 0 14px -4px rgba(255,212,121,.7);}
   .mktstatus{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
@@ -1036,6 +1038,8 @@
           <button class="catbtn imp-med" data-imp="med" onclick="setNewsImp('med')">Med</button>
           <button class="catbtn imp-low" data-imp="low" onclick="setNewsImp('low')">Low</button>
           <button class="catbtn src-filing" id="srcFilingBtn" onclick="toggleFilingsOnly()" title="Primary source: SEC filings read straight from EDGAR, before the news writes them up">SEC</button>
+          <button class="catbtn src-region" data-region="asia" onclick="setNewsRegion('asia')" title="Asia session: Tokyo, Hong Kong, Singapore desks and the Bank of Japan">Asia</button>
+          <button class="catbtn src-region" data-region="london" onclick="setNewsRegion('london')" title="London session: UK and European desks, the Bank of England and the ECB">London</button>
         </div>
         <span class="meta" id="feedMeta">- items</span>
       </div>
@@ -1297,6 +1301,13 @@ function instTag(sym){
 
 let _newsCache = [];
 let _newsImp = new Set();   // impact filter; empty = all (multi-select: stack High+Med, etc.)
+let _newsRegion = '';       // Asia / London chips: show one session's desks ('' = everything)
+function setNewsRegion(r){
+  _newsRegion = (_newsRegion === r) ? '' : r;
+  document.querySelectorAll('.catfilter .catbtn[data-region]').forEach(b => b.classList.toggle('active', b.dataset.region === _newsRegion));
+  renderNews(_newsCache);
+  if(typeof loadLiveNews === 'function') loadLiveNews();   // refetch: the server narrows to that session's desks
+}
 let _filingsOnly = false;   // SEC chip: show only primary-source filings
 function toggleFilingsOnly(){
   _filingsOnly = !_filingsOnly;
@@ -1310,7 +1321,7 @@ function setNewsImp(v){
   if(v==='all'){ _newsImp.clear(); }
   else { _newsImp.has(v) ? _newsImp.delete(v) : _newsImp.add(v); }
   const isAll = _newsImp.size===0;
-  document.querySelectorAll('.catfilter .catbtn').forEach(b=>{
+  document.querySelectorAll('.catfilter .catbtn[data-imp]').forEach(b=>{
     const imp=b.dataset.imp;
     b.classList.toggle('active', imp==='all' ? isAll : _newsImp.has(imp));
   });
@@ -1320,6 +1331,7 @@ function renderNews(list){
   _newsCache = list;
   let shown = _newsImp.size ? list.filter(n => _newsImp.has(n.impact)) : list;
   if(_filingsOnly) shown = shown.filter(n => n.source==='filing');
+  if(_newsRegion) shown = shown.filter(n => n.region===_newsRegion);
   document.getElementById('feed').innerHTML = shown.map((n,idx)=>{
     const realIdx = _newsCache.indexOf(n);
     if(n.locked){
@@ -1589,7 +1601,7 @@ tick();setInterval(tick,1000);
    ============================================================================ */
 async function loadLiveNews(){
   try{
-    const res = await fetch('/api/news', {cache:'no-store'});
+    const res = await fetch('/api/news' + (_newsRegion ? '?region=' + _newsRegion : ''), {cache:'no-store'});
     if(!res.ok) throw new Error('no server');
     const data = await res.json();
     if(data.items && data.items.length){

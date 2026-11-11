@@ -88,7 +88,7 @@ def render() -> dict:
     files["README.md"] = _fm(type="compass-index", updated=asof or "n/a", tags=["korvus-compass"]) + f"""
 # Korvus Compass
 
-The second Korvus crawler. It follows every S&P 500 and Nasdaq-100 company for long-term
+The second Korvus crawler. It follows every S&P 500 and Nasdaq-100 company, plus the largest foreign companies listed in the US, for long-term
 investors: price trend, the financials each company reports to the SEC, analyst consensus,
 and a 0 to 100 Compass score. An analyst agent writes a plain-English brief for every stock.
 

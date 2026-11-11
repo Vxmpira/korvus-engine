@@ -86,6 +86,7 @@ PRICE_MAX     = _num("INTEL_PRICE_MAX", 120)
 MCAP_MAX      = _num("INTEL_MCAP_MAX", 10_000_000_000)
 MIN_VOLUME    = _num("INTEL_MIN_VOLUME", 300_000)
 UNIVERSE_MAX  = int(_num("INTEL_UNIVERSE_MAX", 400))
+COUNTRY       = _env("INTEL_COUNTRY", "").upper()
 EXTRA_TICKERS = [t.strip().upper() for t in _env("INTEL_EXTRA_TICKERS").split(",") if t.strip()]
 POLL_SECONDS  = max(10, int(_num("INTEL_POLL_SECONDS", 20)))
 CLAUDE_MODEL  = "claude-haiku-4-5"
@@ -234,8 +235,13 @@ def fetch_screener() -> list:
         "priceMoreThan": PRICE_MIN, "priceLowerThan": PRICE_MAX,
         "marketCapLowerThan": int(MCAP_MAX), "volumeMoreThan": int(MIN_VOLUME),
         "isEtf": "false", "isFund": "false", "isActivelyTrading": "true",
-        "country": "US", "exchange": "NASDAQ,NYSE,AMEX", "limit": 2000, "apikey": FMP_KEY,
+        "exchange": "NASDAQ,NYSE,AMEX", "limit": 2000, "apikey": FMP_KEY,
     }
+    # INTEL_COUNTRY="" (default) takes every US-listed company in the band,
+    # including foreign companies listed here (they file 6-K / 20-F with the
+    # SEC). INTEL_COUNTRY=US restores US companies only.
+    if COUNTRY:
+        params["country"] = COUNTRY
     for url in SCREENER_URLS:
         try:
             r = requests.get(url, params=params, timeout=30)
@@ -307,6 +313,45 @@ _q_lock = threading.Lock()
 _q_last = [0.0]
 
 
+def _regular_hours() -> bool:
+    n = et_now()
+    return n.weekday() < 5 and (9, 30) <= (n.hour, n.minute) < (16, 0)
+
+
+def extended_trade(symbol: str) -> Optional[tuple]:
+    """Latest pre-market / after-hours / overnight trade from FMP as
+    (price, unix_seconds), or None. Used only outside the regular session."""
+    if not FMP_KEY:
+        return None
+    try:
+        r = requests.get("https://financialmodelingprep.com/stable/aftermarket-trade",
+                         params={"symbol": symbol, "apikey": FMP_KEY}, timeout=8)
+        if r.status_code != 200:
+            return None
+        d = r.json()
+        d = d[0] if isinstance(d, list) and d else d
+        price, ts = float(d.get("price") or 0), float(d.get("timestamp") or 0)
+        if price <= 0 or ts <= 0:
+            return None
+        return price, (ts / 1000.0 if ts > 1e11 else ts)
+    except Exception:
+        return None
+
+
+def apply_extended(snap: dict, ext: Optional[tuple]) -> dict:
+    """Use the extended-hours trade when it is newer than the regular quote."""
+    if not ext:
+        return snap
+    price, ts = ext
+    if ts <= (snap.get("ts") or 0):
+        return snap
+    out = dict(snap, price=price, ts=ts)
+    pc = snap.get("prev_close") or 0
+    if pc:
+        out["chg_pct"] = round((price / pc - 1) * 100, 4)
+    return out
+
+
 def quote(symbol: str) -> Optional[dict]:
     """One Finnhub quote, spaced to stay under the free 60/min limit."""
     if not FINNHUB_KEY:
@@ -326,7 +371,10 @@ def quote(symbol: str) -> Optional[dict]:
         status.record("quotes", last_ok_utc=utcnow().isoformat(), last_symbol=symbol, inc_calls_today=1)
         snap = {"price": float(q["c"]), "chg_pct": float(q.get("dp") or 0),
                 "open": float(q.get("o") or 0), "high": float(q.get("h") or 0),
-                "low": float(q.get("l") or 0), "prev_close": float(q.get("pc") or 0)}
+                "low": float(q.get("l") or 0), "prev_close": float(q.get("pc") or 0),
+                "ts": float(q.get("t") or 0) or None}      # when the last trade printed
+        if not _regular_hours():
+            snap = apply_extended(snap, extended_trade(symbol))
         save_snapshot(symbol, snap)
         return snap
     except Exception as e:
@@ -673,6 +721,7 @@ def run_forever():
         now = utcnow()
         st = {"last_tick_utc": now.isoformat(), "interval_s": bot.TICK_SECONDS,
               "session_open": out.get("session_open"), "in_window": out.get("in_window"),
+              "phase": out.get("phase"), "session_mode": bot.SESSION,
               "candidates": out.get("candidates", 0), "open_positions": out.get("open_positions", 0),
               "inc_entries_today": out["entries"], "inc_exits_today": out["exits"]}
         if out.get("skipped"):

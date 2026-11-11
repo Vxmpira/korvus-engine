@@ -216,8 +216,21 @@ def api_news():
     # that may not have the column yet.
     cols = [r[1] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
     noise_clause = "AND COALESCE(noise,0)=0" if "noise" in cols else ""
+    # ?region=asia|london narrows to that session's desks BEFORE the limit, so
+    # the chip shows a full page of them instead of the few in the latest 60.
+    region, region_clause, region_args = (request.args.get("region") or "").lower(), "", []
+    if region in ("asia", "london"):
+        try:
+            from korvus_engine import FEED_REGION
+            names = [n for n, r in FEED_REGION.items() if r == region]
+        except Exception:
+            names = []
+        if names:
+            region_clause = f"AND source_name IN ({','.join('?' * len(names))})"
+            region_args = names
     rows = conn.execute(
-        f"SELECT * FROM items WHERE processed=1 {noise_clause} ORDER BY created_at DESC LIMIT 60"
+        f"SELECT * FROM items WHERE processed=1 {noise_clause} {region_clause} ORDER BY created_at DESC LIMIT 60",
+        region_args,
     ).fetchall()
     conn.close()
 
@@ -254,6 +267,7 @@ def api_news():
             "conf": r["confidence"] or 0,
             "url": r["url"] or "",
             "category": (r["category"] if "category" in r.keys() else "general") or "general",
+            "region": _feed_region(r["source_name"]),      # 'asia' | 'london' | '' (US desk)
             **_structured(r),
         })
     return jsonify({"items": items, "count": len(items)})
@@ -353,6 +367,14 @@ def api_feed_intel_status():
             out["counts_error"] = str(e)[:200]
     out["server_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
     return jsonify(out)
+
+
+def _feed_region(source_name) -> str:
+    try:
+        from korvus_engine import FEED_REGION
+        return FEED_REGION.get(source_name or "", "")
+    except Exception:
+        return ""
 
 
 @app.route("/api/feed/compass-status")

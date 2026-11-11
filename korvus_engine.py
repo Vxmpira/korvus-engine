@@ -418,7 +418,28 @@ RSS_FEEDS = [
     ("Investing FX",  "https://www.investing.com/rss/news_1.rss", "forex"),
     ("FXEmpire",      "https://www.fxempire.com/api/v1/en/articles/rss/news", "forex"),
     ("ActionForex",   "https://www.actionforex.com/feed/", "forex"),
+    # --- Asia session: markets and business news plus the Bank of Japan ---
+    ("CNBC Asia",     "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=19832390", "general"),
+    ("Nikkei Asia",   "https://asia.nikkei.com/rss/feed/nar", "general"),
+    ("SCMP Business", "https://www.scmp.com/rss/92/feed", "general"),
+    ("Bank of Japan", "https://www.boj.or.jp/en/rss/whatsnew.xml", "general"),
+    # --- London session: UK and European markets plus the BoE and the ECB ---
+    ("CNBC Europe",   "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=19794221", "general"),
+    ("BBC Business",  "https://feeds.bbci.co.uk/news/business/rss.xml", "general"),
+    ("Guardian Business", "https://www.theguardian.com/uk/business/rss", "general"),
+    ("City AM",       "https://www.cityam.com/feed/", "general"),
+    ("Sky Business",  "https://feeds.skynews.com/feeds/rss/business.xml", "general"),
+    ("Bank of England", "https://www.bankofengland.co.uk/rss/news", "general"),
+    ("ECB",           "https://www.ecb.europa.eu/rss/press.html", "general"),
 ]
+
+# Which trading session a source belongs to. The terminal's Asia / London
+# chips filter on this; sources not listed here are the US desk.
+FEED_REGION = {
+    "CNBC Asia": "asia", "Nikkei Asia": "asia", "SCMP Business": "asia", "Bank of Japan": "asia",
+    "CNBC Europe": "london", "BBC Business": "london", "Guardian Business": "london", "City AM": "london",
+    "Sky Business": "london", "Bank of England": "london", "ECB": "london",
+}
 
 def fetch_rss() -> list[dict]:
     import xml.etree.ElementTree as ET
