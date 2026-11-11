@@ -131,6 +131,22 @@ def test_watchlist_base():
     assert ke.BASE_WATCHLIST["XOM"] == 2115436
 
 
+def test_tidy_title():
+    import korvus_engine as eng
+    T = eng.tidy_title
+    assert T("COST: $30 Special Dividend (~$13.3B), $4B Repurchase Reauthorized Through 2030") == \
+        "$30 Special Dividend, $4B Repurchase Reauthorized Through 2030"
+    assert T("TSMC Q3 2026: Revenue NT$1.49T, EPS NT$29.43; Board Approves US$40.9B 2027 Capex") == \
+        "TSMC Q3 2026: Revenue NT$1.49T, EPS NT$29.43"
+    assert T("Apple raises $7.5B in a new bond sale") == "Apple raises $7.5B in a new bond sale"      # clean titles pass through
+    assert T("BRK-B: Berkshire adds to its Japan stakes") == "Berkshire adds to its Japan stakes"
+    long = T("Costco declares a $30 special dividend and renews its buyback program through the end of the decade, as fees climb")
+    assert len(long) <= 84 and not long.lower().endswith((" the", " and", " its", " of")), long
+    assert T("") == "" and T(None) == ""
+    assert "at most ONE number" in eng.SYSTEM_PROMPT and "NT$1.49T, EPS" in eng.SYSTEM_PROMPT   # the bad example is shown as bad
+    assert eng._structured({"title": "COST: Special dividend declared; more"}, lambda x: x)["title"] == "Special dividend declared"
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

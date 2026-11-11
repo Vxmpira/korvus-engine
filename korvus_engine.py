@@ -562,7 +562,7 @@ Return exactly this shape:
   "summary": "<=2 sentences, plain English, the quick take shown on the feed card>",
   "article_summary": "<3-6 sentences that SUMMARIZE THE ARTICLE ITSELF so the reader never has to open the link. Report what was actually announced or reported: the concrete facts, numbers, dates, names, quotes, and context the story contains. Pure reporting, no market take (that belongs in impact_desc). When ARTICLE text is provided, draw only from it. When only HEADLINE/BODY are available, summarize what they establish and say plainly what the story does not yet specify; never invent details.>",
   "impact_desc": "<3-5 sentences of desk-grade analysis for the detail view, reasoning about impact on INDEX FUTURES specifically. Work the real framework: (1) classify the event, broad macro versus single-name or sector, and whether the names involved are large enough to move the index by weight or breadth; (2) name the transmission mechanism, the concrete channel by which it reaches the tagged instruments (rates, risk sentiment, index weight, credit spreads, the dollar, positioning); (3) anchor to the base rate for this kind of event (for example, single-name M&A in mid-cap industrials is typically low-impact to broad index futures); (4) give the calibrated read plus the specific thing that would confirm or invalidate it and what to watch next. Concrete and specific to THIS story, sober, and honest about uncertainty. This is analysis and a read, never personalized advice or a trade instruction.>",
-  "title": "<a clean newsroom headline, max 90 characters. REQUIRED for SOURCE: filing (see FILINGS below). For every other source return an empty string, the original headline is kept.>",
+  "title": "<a clean plain-English headline, max 70 characters, at most ONE number. REQUIRED for SOURCE: filing (see FILINGS below). For every other source return an empty string, the original headline is kept.>",
   "company": "<the main company by its everyday name (TSMC, Nvidia, Casella Waste), or empty string for macro/no single company>",
   "facts": [ {"label": "Revenue", "value": "NT$1.49T", "change": "+40% y/y"} ],   // up to 6 key numbers copied exactly from the source; label 1-3 words (max 16 characters, e.g. "Q3 revenue", "2027 capex", "EPS"); change may be ""; [] if the story has no hard numbers
   "key_points": ["<why it matters, one short sentence>", "..."],                      // 2-3 points, each ONE plain sentence, max 110 characters, no stacked clauses
@@ -622,12 +622,23 @@ heavyweights Korvus watches. They are NOT routine paperwork:
     comparison to street estimates is not yet known and is the thing to watch.
   - Quote the actual reported figures (revenue, EPS, guidance) in
     article_summary. Never invent a figure the filing does not contain.
-  - TITLE for filings: never repeat form boilerplate ("Report of Foreign Private
-    Issuer", "Current Report", "Form 8-K", "Pursuant to Rule 13a-16"). Name the
-    company by its everyday name and lead with what actually happened and the
-    headline numbers, e.g. "TSMC Q3: Revenue NT$1.49T, EPS NT$29.43; Board Approves
-    $40.9B 2027 Capex" or "Casella Waste Q3: Revenue Up 18%, Raises Full-Year
-    Outlook". Never call a result a beat or a miss; consensus is not known.
+  - TITLE for filings: one short, plain-English headline a person can read at a
+    glance. Max 70 characters. Name the company by its everyday name, then say
+    what happened in words. At most ONE number, and only when it IS the story
+    (a growth rate, a deal size). Every other figure belongs in FACTS, which the
+    card shows right under the title, so never list figures in the title.
+    No ticker prefix ("COST:"), no semicolons, no parentheses, no stacked
+    clauses, no dates of the period unless needed ("Q3" is fine).
+    Never repeat form boilerplate ("Report of Foreign Private Issuer", "Current
+    Report", "Form 8-K"). Never call a result a beat or a miss; consensus is
+    not known.
+    Good: "TSMC third-quarter profit jumps as AI demand holds"
+          "Costco declares a $30 special dividend and renews its buyback"
+          "TSMC October revenue rises 60% from a year ago"
+          "UnitedHealth adds Madeline Bell to its board"
+          "Apple raises $7.5B in a new bond sale"
+    Bad:  "TSMC Q3 2026: Revenue NT$1.49T, EPS NT$29.43; Board Approves US$40.9B 2027 Capex"
+          "COST: $30 Special Dividend (~$13.3B), $4B Repurchase Reauthorized Through 2030"
   - FACTS for filings: the 3-6 numbers a trader would want first (revenue, EPS,
     margins, guidance, dividend, buyback, deal size, capex), each with its change
     when the filing states one. Copy values exactly, keep currency symbols.
@@ -723,7 +734,7 @@ def _structured(data: dict, plain) -> dict:
     """Clean the structured fields (title, company, facts, key_points, watch).
     Facts are kept only when label and value are present; everything is
     length-capped; boilerplate titles are dropped so the caller falls back."""
-    title = plain(str(data.get("title") or ""))[:110]
+    title = tidy_title(plain(str(data.get("title") or "")))
     if any(b in title.lower() for b in _BOILER):
         title = ""
     facts = []
@@ -734,6 +745,25 @@ def _structured(data: dict, plain) -> dict:
     points = [plain(str(p))[:220] for p in (data.get("key_points") or []) if str(p).strip()][:4]
     return {"title": title, "company": plain(str(data.get("company") or ""))[:40],
             "facts": facts, "key_points": points, "watch": plain(str(data.get("watch") or ""))[:260]}
+
+
+def tidy_title(t: str, cap: int = 84) -> str:
+    """Last line of defence for a clean card title: drop a leading ticker tag,
+    anything after a semicolon, and bracketed asides; keep it to one line."""
+    t = re.sub(r"\s+", " ", t or "").strip()
+    t = re.sub(r"^[A-Z]{1,5}(?:[.\-][A-Z])?:\s+", "", t)          # "COST: ..."
+    t = t.split(";")[0]
+    t = re.sub(r"\s*\([^)]*\)", "", t)                            # "(~$13.3B)"
+    t = re.sub(r"\s+,", ",", t).strip(" ,:-")
+    if len(t) > cap:
+        cut = t[:cap].rsplit(" ", 1)[0].rstrip(" ,:-")
+        for sep in (", ", " as ", " and "):                        # prefer ending on a clause
+            i = cut.rfind(sep)
+            if i >= 30:
+                cut = cut[:i]
+                break
+        t = re.sub(r"(?:\s+(?:the|a|an|of|to|in|its|for|and|as|on|with|by))+$", "", cut, flags=re.I)
+    return t
 
 
 def save_score(conn, item_id: str, result: dict):
