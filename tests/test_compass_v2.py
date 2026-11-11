@@ -197,6 +197,45 @@ def test_vault_and_admin():
     assert c.admin_status()["running"] is True
 
 
+def test_status_never_wiped():
+    """One job's heartbeat must never erase another's, even when the store is
+    busy or the heartbeat fails outright (the phone showed every job but the
+    filing feed as "pending")."""
+    import sqlite3, threading
+    seed()
+    conn = c.db()
+    conn.execute("DELETE FROM meta WHERE k LIKE 'status:%'")
+    # a board written by the old single-blob layout still shows up
+    conn.execute("INSERT INTO meta(k,v) VALUES('status', ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v",
+                 ('{"prices":{"ok":true,"last":"old","count":7},"universe":{"ok":true,"count":2}}',))
+    conn.commit(); conn.close()
+    c.status_set("feed", ok=True, last="now")
+    st = c.api_list()["status"]
+    assert st["prices"]["count"] == 7 and st["universe"]["count"] == 2 and st["feed"]["last"] == "now", st
+    # an update merges into the job's own row and keeps what the old layout knew
+    c.status_set("prices", last="new")
+    st = c.api_list()["status"]
+    assert st["prices"] == {"ok": True, "last": "new", "count": 7} and st["feed"]["ok"] is True, st
+    # a heartbeat that cannot reach the store is skipped, never written as a wipe
+    real = c.db
+    def broken():
+        raise sqlite3.OperationalError("database is locked")
+    c.db = broken
+    try:
+        c.status_set("scores", ok=True)
+    finally:
+        c.db = real
+    st = c.api_list()["status"]
+    assert "scores" not in st and st["prices"]["last"] == "new" and st["feed"]["last"] == "now", st
+    # many jobs reporting at once all land
+    jobs = ["prices", "filings", "analysts", "scores", "agent", "feed", "live", "universe"]
+    ts = [threading.Thread(target=lambda j=j: [c.status_set(j, ok=True, n=i) for i in range(15)]) for j in jobs]
+    [t.start() for t in ts]; [t.join() for t in ts]
+    st = c.api_list()["status"]
+    assert all(st[j]["n"] == 14 for j in jobs), st
+    assert st["prices"]["count"] == 7
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_") and callable(fn):

@@ -914,6 +914,30 @@
     .rail{width:36px;}
     .item{padding:10px 10px 10px 8px;gap:8px;}
   }
+
+
+
+
+  /* ===== phone pass: nothing wider than the screen, real tap targets, quieter cards ===== */
+  @media (max-width: 640px){
+    html,body{max-width:100%;} body{overflow-x:clip;} .chartscape,.aurora{display:none;}
+    main > *, .panel, .item > *, .phead > *{min-width:0;}
+    .panel{max-width:100%;}
+    .phead{flex-wrap:wrap;row-gap:10px;}
+    .phead h2{flex:1 1 auto;white-space:nowrap;}
+    .phead .meta{font-size:11px;}
+    /* the filter chips get their own swipeable row instead of pushing the page wide */
+    .catfilter{order:5;flex:1 1 100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;}
+    .catfilter::-webkit-scrollbar{display:none;}
+    .catbtn{flex:none;font-size:11px;padding:9px 13px;min-height:36px;}
+    .headline,.summary{overflow-wrap:anywhere;}
+    .factstrip{flex-wrap:wrap;}
+    .factstrip .fact{max-width:100%;white-space:normal;}
+    .factstrip .fact:nth-child(n+3){display:none;}     /* two key numbers on the card; the rest are in the detail view */
+    .inst,.badge,.impact,.srcname,.flat,.viaproxy,.secmark,.secform,.secTk,.secfiled,.fact em,.conf,.rail .time,.lk,.kt,.ctxnote,.feedbadge,.tagline,.lbl,.fut small,.mfac small{font-size:10.5px !important;}
+    .legal a{display:inline-block;padding:9px 2px;}
+  }
+  /* ===== end phone pass ===== */
 </style>
 <!-- apply the saved theme before first paint so light mode never flashes dark -->
 <script>(function(){try{var t=localStorage.getItem('korvus-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');}}catch(e){}})();</script>

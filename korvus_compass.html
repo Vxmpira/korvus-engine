@@ -66,6 +66,8 @@
   .tile.bull .v{color:var(--bull);} .tile.bear .v{color:var(--bear);} .tile.top .v{color:var(--crimson);}
 
   .crawl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);}
+  .crawl details{display:contents;} .crawl summary{display:none;} .crawl .jobs{display:contents;}
+  #filtBtn,.evmore{display:none;}
   .crawl .lab{letter-spacing:.12em;text-transform:uppercase;margin-right:2px;}
   .chip{border:1px solid var(--line);border-radius:999px;padding:4px 10px;display:inline-flex;gap:6px;align-items:center;color:var(--ink-dim);}
   .chip i{width:6px;height:6px;border-radius:50%;background:var(--neut);display:inline-block;}
@@ -214,6 +216,40 @@
     .verdict{grid-template-columns:1fr;} td,th{padding:9px 6px;}
     .controls input{flex:1 1 100%;} .seg{flex:1 1 100%;} .seg button{flex:1;} .controls select{flex:1 1 45%;} .bar{display:none;} .tk span{max-width:110px;}
   }
+
+
+
+
+  /* ===== phone pass: the board comes first. Funds become two swipe rows, the four
+     counters one compact row, the crawler jobs one line, extra filters fold away. ===== */
+  @media (max-width: 760px){
+    html,body{max-width:100%;} body{overflow-x:clip;} .chartscape,.aurora{display:none;}
+    .hero{padding:16px 0 2px;gap:6px;} .hero h1{font-size:24px;margin-bottom:0;} .hero p{display:none;}
+    .asof{font-size:10.5px;line-height:1.5;}
+    .fundhd{margin:12px 0 0;font-size:10.5px;} .fk,.fund .fd{font-size:10.5px !important;}
+    .funds{display:flex;overflow-x:auto;gap:8px;margin-top:8px;scroll-snap-type:x proximity;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;}
+    .funds::-webkit-scrollbar{display:none;}
+    .fund{flex:0 0 148px;scroll-snap-align:start;padding:10px 12px;}
+    .fund .ft,.fund svg{display:none;}
+    .tiles{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:12px 0 10px;}
+    .tile{padding:9px 8px;border-radius:10px;} .tile .v{font-size:19px;margin-top:2px;} .tile .s{display:none;}
+    .tile .k{font-size:10.5px;letter-spacing:.02em;text-transform:none;}
+    .crawl{margin-bottom:12px;} .crawl details{display:block;width:100%;} .crawl summary{display:inline-flex;cursor:pointer;list-style:none;min-height:34px;font-size:11px;}
+    .crawl summary::-webkit-details-marker{display:none;} .crawl .jobs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;} .crawl .jobs .lab{display:none;}
+    .grid{grid-template-columns:minmax(0,1fr);} .card{min-width:0;max-width:100%;}
+    .controls{padding:10px 12px;} .controls input{flex:1 1 100%;width:100%;min-height:42px;font-size:16px;}
+    .seg{flex:1 1 auto;overflow-x:auto;scrollbar-width:none;} .seg::-webkit-scrollbar{display:none;} .seg button{flex:1 0 auto;min-height:40px;white-space:nowrap;}
+    #filtBtn{display:inline-flex;min-height:40px;font-size:11px;}
+    .controls select{display:none;flex:1 1 45%;min-height:42px;font-size:16px;} .controls.open select{display:block;}
+    th[data-k="rk"],td.rk,th[data-k="tr"],td.trc{display:none;}
+    td,th{padding:11px 6px;} th{font-size:10.5px;letter-spacing:.04em;} td:first-of-type,th:first-of-type{padding-left:12px;}
+    .tk span{max-width:128px;} .rd{font-size:10.5px;padding:4px 7px;letter-spacing:.03em;} .cc{font-size:10.5px !important;} .tier{font-size:10.5px !important;}
+    .feed{position:static;max-height:none;} .feed:not(.all) .ev:nth-child(n+6){display:none;} .feed:not(.all) .evmore{display:block;}
+    .pill{min-height:38px;font-size:11px;} .more .mu{font-size:11px !important;}
+    .dhead{gap:10px;} .dhead h2{font-size:20px;} .x{width:42px;height:42px;}
+    .sect h3{font-size:10.5px !important;} .tag,.by,.fm,.st .k,.st .n{font-size:10.5px !important;} .tog button{min-height:34px;padding:6px 12px;font-size:11px;}
+  }
+  /* ===== end phone pass ===== */
 </style>
 </head>
 <body>
@@ -248,6 +284,7 @@
       <div class="controls">
         <input id="q" type="search" placeholder="Search ticker or company" autocomplete="off" spellcheck="false">
         <div class="seg" id="idxSeg"><button data-v="" class="on">All</button><button data-v="sp">S&amp;P 500</button><button data-v="nd">Nasdaq-100</button><button data-v="gl">International</button></div>
+        <button class="pill" id="filtBtn" type="button" aria-expanded="false">Filters</button>
         <select id="readSel" aria-label="Read"><option value="">Any read</option><option value="bull">Bullish</option><option value="neut">Neutral</option><option value="bear">Bearish</option></select>
         <select id="tierSel" aria-label="Tier"><option value="">Any tier</option><option>Top rated</option><option>Strong</option><option>Solid</option><option>Mixed</option><option>Weak</option></select>
         <select id="secSel" aria-label="Sector"><option value="">All sectors</option></select>
@@ -294,10 +331,11 @@ function ago(iso){ if(!iso) return 'never'; const s = (Date.now() - new Date(iso
   if(s < 86400) return Math.round(s / 3600) + ' hr ago'; return Math.round(s / 86400) + ' d ago'; }
 function day(iso){ try{ return new Date(iso.length === 10 ? iso + 'T12:00:00' : iso).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'}); }catch(e){ return iso || ''; } }
 const READ = {bull:'Bullish', bear:'Bearish', neut:'Neutral'};
+const MOBILE = !!(window.matchMedia && matchMedia('(max-width:760px)').matches);
 const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const scoreColor = v => v === null ? 'var(--neut)' : v >= 62 ? 'var(--bull)' : v < 38 ? 'var(--bear)' : 'var(--crimson)';
 
-let ALL = [], META = {}, sortKey = 'sc', sortDir = -1, shown = 60, filt = {q:'', idx:'', rd:'', ti:'', sec:'', co:''};
+let ALL = [], META = {}, sortKey = 'sc', sortDir = -1, PAGE = (window.matchMedia && matchMedia('(max-width:760px)').matches) ? 25 : 60, shown = PAGE, filt = {q:'', idx:'', rd:'', ti:'', sec:'', co:''};
 
 const COLS = [
   {k:'rk', t:'#', cls:'l', nosort:1},
@@ -356,7 +394,7 @@ function renderTable(){
       + '<td class="l tk"><b>' + esc(x.s) + '</b>' + (x.co && x.co !== 'US' ? '<i class="cc" title="' + esc(x.cn || x.co) + '">' + esc(x.co) + '</i>' : '') + '<span>' + esc(x.n || '') + '</span></td>'
       + '<td><span class="sc"><span class="bar"><i style="width:' + (sc || 0) + '%;background:' + scoreColor(sc) + '"></i></span><b>' + (sc === null ? '·' : Math.round(sc)) + '</b></span><span class="tier">' + esc(x.ti || '') + '</span></td>'
       + '<td><span class="rd ' + esc(x.rd || 'neut') + '">' + READ[x.rd || 'neut'] + '</span></td>'
-      + '<td><span class="trd"><span class="hide-m">' + esc(x.tr || 'Pending') + '</span>' + spark(x.sp_, x.tt) + '</span></td>'
+      + '<td class="trc"><span class="trd"><span class="hide-m">' + esc(x.tr || 'Pending') + '</span>' + spark(x.sp_, x.tt) + '</span></td>'
       + '<td>' + px(livePx(x)) + (x.lp !== undefined && x.lp !== null ? '<span class="d1">' + pctC(x.lc, 2) + '</span>' : '') + '</td>'
       + '<td class="hide-m">' + pctC(x.r1y) + '</td>'
       + '<td class="hide-m hide-l">' + pctC(x.rg) + '</td>'
@@ -399,7 +437,12 @@ function renderCrawl(){
   const bits = Object.keys(lab).map(k => { const j = st[k]; if(!j) return '<span class="chip"><i></i>' + lab[k] + ' pending</span>';
     let extra = k === 'universe' && j.count ? ' · ' + j.count + ' names' : k === 'prices' && j.pending ? ' · ' + j.pending + ' queued' : '';
     return '<span class="chip ' + (j.error ? 'err' : 'ok') + '" title="' + esc(j.error || '') + '"><i></i>' + lab[k] + ' ' + esc(ago(j.at)) + extra + '</span>'; });
-  $('crawl').innerHTML = '<span class="lab">Crawler</span>' + bits.join('');
+  // one line on a phone ("Crawler up to date"), the full row of jobs on a desktop
+  const keys = Object.keys(lab), bad = keys.filter(k => st[k] && st[k].error).length, wait = keys.filter(k => !st[k]).length;
+  const last = keys.map(k => st[k] && st[k].at).filter(Boolean).sort().pop();
+  const sum = bad ? bad + ' crawler job' + (bad > 1 ? 's' : '') + ' need attention' : wait === keys.length ? 'Crawler starting up' : 'Crawler up to date · ' + ago(last);
+  const was = ($('crawl').querySelector('details') || {}).open;
+  $('crawl').innerHTML = '<details' + (was || !MOBILE ? ' open' : '') + '><summary class="chip ' + (bad ? 'err' : 'ok') + '"><i></i>' + esc(sum) + '</summary><div class="jobs"><span class="lab">Crawler</span>' + bits.join('') + '</div></details>';
   const lv = (META.status || {}).live;
   $('asof').innerHTML = META.live ? '<span class="livedot"></span><b>Live prices</b> · updated ' + esc(ago(lv && lv.at)) + '<br>Scores use the ' + esc(META.asof ? day(META.asof) : 'last') + ' close'
     : (META.asof ? 'Prices as of <b>' + esc(day(META.asof)) + '</b> close<br>' : '') + 'End-of-day data · not real-time';
@@ -409,6 +452,7 @@ function renderEvents(list){
   $('evCount').textContent = list.length ? list.length + ' latest' : '';
   $('events').innerHTML = list.length ? list.map(e => '<div class="ev ' + esc(e.tone || 'neut') + '" data-s="' + esc(e.symbol) + '"><i></i><div><b>' + esc(e.title) + '</b>'
     + (e.detail ? '<p>' + esc(e.detail) + '</p>' : '') + '<time>' + esc(ago(e.ts_utc)) + '</time></div></div>').join('')
+      + (list.length > 5 ? '<div class="more evmore"><button class="pill" id="evMoreBtn" type="button">Show all ' + list.length + ' updates</button></div>' : '')
     : '<div class="empty">No updates yet. When the crawler sees a new filing, a trend change, a new 52-week high or low, or a score move, it lands here.</div>';
 }
 
@@ -601,16 +645,20 @@ $('thead').addEventListener('click', e => { const th = e.target.closest('th'); i
 $('tbody').addEventListener('click', e => { const tr = e.target.closest('tr[data-s]'); if(tr) openDetail(tr.dataset.s); });
 $('fundsWrap').addEventListener('click', e => { const b = e.target.closest('.fund'); if(b) openDetail(b.dataset.s); });
 $('events').addEventListener('click', e => { const ev = e.target.closest('.ev'); if(ev) openDetail(ev.dataset.s); });
-$('q').addEventListener('input', e => { filt.q = e.target.value; shown = 60; renderTable(); });
-$('readSel').addEventListener('change', e => { filt.rd = e.target.value; shown = 60; renderTable(); });
-$('tierSel').addEventListener('change', e => { filt.ti = e.target.value; shown = 60; renderTable(); });
-$('secSel').addEventListener('change', e => { filt.sec = e.target.value; shown = 60; renderTable(); });
-$('coSel').addEventListener('change', e => { filt.co = e.target.value; shown = 60; renderTable(); });
+$('q').addEventListener('input', e => { filt.q = e.target.value; shown = PAGE; renderTable(); });
+$('readSel').addEventListener('change', e => { filt.rd = e.target.value; shown = PAGE; renderTable(); });
+$('tierSel').addEventListener('change', e => { filt.ti = e.target.value; shown = PAGE; renderTable(); });
+$('secSel').addEventListener('change', e => { filt.sec = e.target.value; shown = PAGE; renderTable(); });
+$('coSel').addEventListener('change', e => { filt.co = e.target.value; shown = PAGE; renderTable(); });
 $('idxSeg').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; filt.idx = b.dataset.v;
-  Array.from($('idxSeg').children).forEach(x => x.classList.toggle('on', x === b)); shown = 60; renderTable(); });
+  Array.from($('idxSeg').children).forEach(x => x.classList.toggle('on', x === b)); shown = PAGE; renderTable(); });
 $('tiles').addEventListener('click', e => { const t = e.target.closest('.tile'); if(!t) return; const act = t.dataset.act;
   filt.rd = (act === 'bull' || act === 'bear') ? act : ''; filt.ti = act === 'top' ? 'Top rated' : '';
-  $('readSel').value = filt.rd; $('tierSel').value = filt.ti; sortKey = 'sc'; sortDir = -1; shown = 60; renderHead(); renderTable(); });
+  $('readSel').value = filt.rd; $('tierSel').value = filt.ti; filtCount(); sortKey = 'sc'; sortDir = -1; shown = PAGE; renderHead(); renderTable(); });
+$('filtBtn').addEventListener('click', () => { const c = document.querySelector('.controls'), on = c.classList.toggle('open'); $('filtBtn').setAttribute('aria-expanded', on); });
+$('events').addEventListener('click', e => { if(e.target.closest('#evMoreBtn')){ e.stopPropagation(); document.querySelector('.feed').classList.add('all'); } }, true);
+function filtCount(){ const n = ['rd', 'ti', 'sec', 'co'].filter(k => filt[k]).length; $('filtBtn').textContent = n ? 'Filters (' + n + ')' : 'Filters'; }
+['readSel', 'tierSel', 'secSel', 'coSel'].forEach(id => $(id).addEventListener('change', () => setTimeout(filtCount, 0)));
 $('scrim').addEventListener('click', closeDetail);
 document.addEventListener('keydown', e => { if(e.key === 'Escape') closeDetail(); });
 $('themeBtn').addEventListener('click', () => { const light = document.documentElement.getAttribute('data-theme') === 'light';
