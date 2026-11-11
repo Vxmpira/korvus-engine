@@ -218,7 +218,8 @@
 
   /* pricing */
   .plans{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;max-width:920px;}
-  .plan{border:1px solid var(--line);border-radius:20px;padding:30px;}
+  .plan{border:1px solid var(--line);border-radius:20px;padding:30px;display:flex;flex-direction:column;}
+  .plan ul{flex:1;align-content:start;}
   .plan.op{border-color:var(--bloom);background:radial-gradient(120% 90% at 100% 0%,rgba(244,63,143,.16),transparent 60%);}
   .plan .who{font-size:15px;color:var(--ash);}
   .plan h3{font-size:32px;margin-top:2px;}
@@ -226,8 +227,8 @@
   .price span{font-family:var(--sans);font-size:16px;color:var(--ash);letter-spacing:0;}
   .pnote{font-size:14.5px;color:var(--ash);min-height:22px;}
   .plan ul{list-style:none;margin:22px 0 26px;padding:0;display:grid;gap:10px;font-size:15.5px;color:var(--soft);}
-  .plan li{display:grid;grid-template-columns:20px 1fr;gap:10px;}
-  .plan li::before{content:"✓";color:var(--bloom);font-weight:700;}
+  .plan li{position:relative;padding-left:30px;}
+  .plan li::before{content:"✓";color:var(--bloom);font-weight:700;position:absolute;left:0;top:0;}
   .plan li.no{color:#6d6a72;} .plan li.no::before{content:"–";color:#6d6a72;}
   .plan li b{color:var(--ink);font-weight:600;}
   .plan .btn{width:100%;}
