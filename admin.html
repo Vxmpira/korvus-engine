@@ -277,6 +277,25 @@
   .pvtoggle.on .pvdot{background:var(--crimson);box-shadow:0 0 10px var(--crimson);}
   .pvtoggle:hover{border-color:var(--line-3);}
   @media(max-width:640px){ .urow{flex-wrap:wrap;} .urow .uem{flex-basis:100%;order:3;} .udetail .slink{margin-left:0;} }
+
+
+
+
+  /* ===== phone pass: tables scroll inside their cards, two-up stats, wrapped header ===== */
+  @media (max-width: 640px){
+    html,body{max-width:100%;} body{overflow-x:clip;} .chartscape,.aurora{display:none;}
+    .console,.main,.content{min-width:0;max-width:100%;}
+    .topbar{flex-wrap:wrap;gap:10px;padding:12px 14px;}
+    .topbar .right{flex-wrap:wrap;gap:8px;}
+    .content{padding:18px 14px 60px;}
+    .kpis{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .kpi{padding:14px;} .kpi .v{font-size:26px;margin-top:6px;}
+    .card{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%;}
+    .card table{min-width:560px;}
+    .fmk,.kpi .k,.kpi .s,.fms,.tier,.vchip,.rsdel,th{font-size:10.5px !important;}
+    .rsdel{min-height:34px;padding:6px 12px;}
+  }
+  /* ===== end phone pass ===== */
 </style>
 </head>
 <body>

@@ -367,6 +367,28 @@
   }
   @media(max-width:560px){ .idxstack{grid-template-columns:repeat(2,1fr);} }
   .chartscape{position:fixed;inset:0;z-index:-3;width:100%;height:100%;overflow:hidden;pointer-events:none;opacity:.85;will-change:transform;backface-visibility:hidden;}
+
+
+
+
+  /* ===== phone pass: swipeable filters, compact index tape, readable labels ===== */
+  @media (max-width: 640px){
+    html,body{max-width:100%;} body{overflow-x:clip;} .chartscape,.aurora{display:none;}
+    .ctlgrp{min-width:0;max-width:100%;}
+    .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;max-width:100%;overscroll-behavior-x:contain;}
+    .chips::-webkit-scrollbar{display:none;}
+    .chip{flex:none;font-size:11px;padding:9px 13px;min-height:36px;}
+    .callegend{display:none;}                         /* the dots and arrows explain themselves on the cards */
+    /* index tape: four prices in one row, no mini charts, so the calendar starts sooner */
+    .idxstack{grid-template-columns:repeat(4,minmax(0,1fr));}
+    .idxcard{padding:9px 8px;min-width:0;}
+    .idxbox{display:none;}
+    .idxtop{flex-direction:column;align-items:flex-start;gap:2px;}
+    .lbl,.ddate,.dcount,.ctllabel,.tagline,.beat,.miss,.todaytag,.allday,.st,.idxnote,.disc,.idxsrc{font-size:10.5px !important;}
+    .discord,.backterm{min-height:36px;}
+    a:not([class]){display:inline-block;padding:9px 2px;}
+  }
+  /* ===== end phone pass ===== */
 </style>
 <script>
   /* apply the saved theme BEFORE first paint so there's no flash of dark */

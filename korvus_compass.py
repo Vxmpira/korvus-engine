@@ -378,16 +378,56 @@ def add_event(symbol: str, kind: str, tone: str, title: str, detail: str = "", u
         conn.close()
 
 
+_status_lock = threading.Lock()
+
+
 def status_set(job: str, **kw):
-    """Crawler heartbeat, shown on the page so members can see it working."""
+    """Crawler heartbeat, shown on the page so members can see it working.
+
+    Each job keeps its own row (meta key "status:<job>"), so one job can never
+    overwrite another's. The old layout kept every job in one JSON blob, and a
+    failed read while the board was being rescored wrote that blob back with a
+    single job in it, which is how the page ended up reading "pending" for
+    everything but the filing feed. A failed read or write now skips the
+    heartbeat instead: the next one lands a few seconds later."""
+    key = "status:" + job
+    with _status_lock:
+        conn = None
+        try:
+            conn = db()
+            conn.execute("BEGIN IMMEDIATE")
+            r = conn.execute("SELECT v FROM meta WHERE k=?", (key,)).fetchone()
+            j = {}
+            if r and r["v"]:
+                try:
+                    j = json.loads(r["v"]) or {}
+                except ValueError:
+                    j = {}
+            else:                       # first write since the upgrade: carry the old value over
+                j = dict(_legacy_status(conn).get(job) or {})
+            j.update(kw)
+            conn.execute("INSERT INTO meta(k,v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v",
+                         (key, json.dumps(j)))
+            conn.commit()
+        except Exception:
+            try:
+                if conn is not None:
+                    conn.rollback()
+            except Exception:
+                pass
+        finally:
+            if conn is not None:
+                conn.close()
+
+
+def _legacy_status(c) -> dict:
+    """The pre-split single blob. Read-only now; per-job rows win over it."""
     try:
-        cur = json.loads(meta_get("status", "{}") or "{}")
+        r = c.execute("SELECT v FROM meta WHERE k='status'").fetchone()
+        st = json.loads(r["v"]) if r and r["v"] else {}
+        return st if isinstance(st, dict) else {}
     except Exception:
-        cur = {}
-    j = cur.get(job, {})
-    j.update(kw)
-    cur[job] = j
-    meta_set("status", cur)
+        return {}
 
 
 # ----------------------------------------------------------------------------
@@ -1567,6 +1607,8 @@ def rescore(symbols: Optional[list] = None, emit: bool = True) -> int:
         save_fields(sym, {"score": res["score"], "tier": res["tier"], "read": res["read"],
                           "coverage": res["coverage"], "parts": res["parts"], "score_utc": iso()}, conn)
         n += 1
+        if n % 40 == 0:                 # short write locks: page reads and heartbeats stay unblocked
+            conn.commit()
     conn.commit()
     conn.close()
     return n
@@ -1978,11 +2020,17 @@ def _ro():
 
 
 def _status(c) -> dict:
+    st = _legacy_status(c)
     try:
-        r = c.execute("SELECT v FROM meta WHERE k='status'").fetchone()
-        st = json.loads(r["v"]) if r else {}
+        for r in c.execute("SELECT k, v FROM meta WHERE k LIKE 'status:%'"):
+            try:
+                v = json.loads(r["v"])
+            except ValueError:
+                continue
+            if isinstance(v, dict):
+                st[r["k"][7:]] = v
     except Exception:
-        st = {}
+        pass
     return st
 
 
