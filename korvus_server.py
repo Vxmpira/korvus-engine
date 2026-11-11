@@ -516,6 +516,31 @@ def lodestone_chart():
     return send_from_directory(HERE, "lodestone_chart.png")
 
 
+_ARTICLE_LOOK = (
+    '<link rel="preconnect" href="https://fonts.googleapis.com">'
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+    '<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500'
+    '&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">'
+    '<link rel="stylesheet" href="/korvus-article.css?v=1">\n'
+)
+
+
+@app.route("/korvus-article.css")
+def korvus_article_css():
+    # the shared look for the public article pages under /p/
+    r = send_from_directory(HERE, "korvus_article.css", mimetype="text/css")
+    r.headers["Cache-Control"] = "public, max-age=300"
+    return r
+
+
+@app.route("/korvus-theme.css")
+def korvus_theme_css():
+    # the shared look (type, colour, surfaces) every page loads after its own styles
+    r = send_from_directory(HERE, "korvus_theme.css", mimetype="text/css")
+    r.headers["Cache-Control"] = "public, max-age=300"
+    return r
+
+
 @app.route("/favicon.ico")
 def favicon_ico():
     return send_from_directory(HERE, "favicon.ico")
@@ -566,7 +591,11 @@ def public_marketing_page(name):
     if not os.path.isfile(fp):
         return ("not found", 404)
     with open(fp, encoding="utf-8") as f:
-        return f.read()
+        html = f.read()
+    # every article picks up the shared Korvus look; the page's own CSS still loads first
+    if "/korvus-article.css" not in html and "</head>" in html:
+        html = html.replace("</head>", _ARTICLE_LOOK + "</head>", 1)
+    return html
 
 
 @app.route("/terminal")

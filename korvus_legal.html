@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-k="legal">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Korvus · Legal · BlackCrownVxJ.LLC</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#000000; --bg-2:#040406; --ink:#f6f8ff; --ink-dim:#aab0c0; --ink-faint:#646b7d;
     --line:rgba(255,255,255,.10); --line-soft:rgba(255,255,255,.05);
-    --gold:#ff2d8f; --gold-deep:#d6146e; --crown:#ff2d8f;
-    --crimson:#ff2d8f; --crimson-deep:#d6146e; --crimson-bright:#ff5ba8;
-    --crimson-glow:rgba(255,45,143,.6); --crown-glow:rgba(255,45,143,.65);
+    --gold:#F43F8F; --gold-deep:#C72C6B; --crown:#F43F8F;
+    --crimson:#F43F8F; --crimson-deep:#C72C6B; --crimson-bright:#ff6fae;
+    --crimson-glow:rgba(244,63,143,.6); --crown-glow:rgba(244,63,143,.65);
     --panel:rgba(13,14,18,.62);
-    --body:'Hanken Grotesk',system-ui,sans-serif; --disp:'Bricolage Grotesque',var(--body); --mono:'IBM Plex Mono',monospace;
+    --body:'Hanken Grotesk',system-ui,sans-serif; --disp:'Hanken Grotesk',system-ui,sans-serif; --mono:'Hanken Grotesk',system-ui,sans-serif;
     --r:14px;
   }
   *{box-sizing:border-box;}
@@ -25,7 +25,7 @@
   /* ---------- atmosphere (matched to the terminal) ---------- */
   .aurora{position:fixed;inset:-20%;z-index:-3;filter:blur(22px);opacity:.42;pointer-events:none;}
   .aurora span{position:absolute;border-radius:50%;mix-blend-mode:screen;}
-  .ag1{width:55vw;height:55vw;left:-8vw;top:-18vw;background:radial-gradient(circle,rgba(255,45,143,.16),transparent 62%);animation:agdrift 28s ease-in-out infinite;}
+  .ag1{width:55vw;height:55vw;left:-8vw;top:-18vw;background:radial-gradient(circle,rgba(244,63,143,.16),transparent 62%);animation:agdrift 28s ease-in-out infinite;}
   .ag2{width:50vw;height:50vw;right:-6vw;top:10vh;background:radial-gradient(circle,rgba(255,91,168,.16),transparent 62%);animation:agdrift2 34s ease-in-out infinite;}
   .ag3{width:42vw;height:42vw;left:32vw;bottom:-20vw;background:radial-gradient(circle,rgba(214,20,110,.12),transparent 62%);animation:agdrift 40s ease-in-out infinite reverse;}
   @keyframes agdrift{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(4vw,3vh) scale(1.08);}}
@@ -36,27 +36,27 @@
     background:
       linear-gradient(rgba(120,140,170,.04) 1px,transparent 1px) 0 0/100% 46px,
       linear-gradient(90deg,rgba(120,140,170,.04) 1px,transparent 1px) 0 0/46px 100%,
-      radial-gradient(circle at 50% -5%,rgba(255,45,143,.05),transparent 55%);
+      radial-gradient(circle at 50% -5%,rgba(244,63,143,.05),transparent 55%);
     -webkit-mask-image:radial-gradient(circle at 50% 28%,#000,transparent 92%);
             mask-image:radial-gradient(circle at 50% 28%,#000,transparent 92%);}
 
   .watermark{position:fixed;top:50%;left:50%;transform:translate(-50%,-48%);width:min(58vw,600px);z-index:-1;opacity:.06;pointer-events:none;
-    filter:drop-shadow(0 0 40px rgba(255,45,143,.85)) drop-shadow(0 0 14px rgba(255,60,80,.6));}
+    filter:drop-shadow(0 0 40px rgba(244,63,143,.85)) drop-shadow(0 0 14px rgba(255,60,80,.6));}
   .watermark svg{width:100%;height:auto;display:block;}
 
   /* ---------- header (matched to the terminal) ---------- */
   .topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:13px;padding:13px 26px;
     border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(10,13,18,.88),rgba(6,8,12,.62));backdrop-filter:blur(14px);}
   .glyph{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex:none;
-    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);border:1px solid rgba(255,45,143,.42);
+    background:radial-gradient(circle at 30% 25%,#1a1012,#070405);border:1px solid rgba(244,63,143,.42);
     box-shadow:0 0 28px -5px var(--crown-glow),inset 0 1px 0 rgba(255,255,255,.05);}
   .glyph svg{animation:crownPulse 3.2s ease-in-out infinite;}
-  @keyframes crownPulse{0%,100%{filter:drop-shadow(0 0 7px var(--crown-glow));}50%{filter:drop-shadow(0 0 15px rgba(255,45,143,.98));}}
+  @keyframes crownPulse{0%,100%{filter:drop-shadow(0 0 7px var(--crown-glow));}50%{filter:drop-shadow(0 0 15px rgba(244,63,143,.98));}}
   .brandtxt{line-height:1;}
   .brandtxt .mark{display:block;font-family:var(--disp);font-weight:800;font-size:18px;letter-spacing:-.01em;color:var(--ink);}
-  .brandtxt .tagline{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);margin-top:5px;}
+  .brandtxt .tagline{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);margin-top:5px;}
   .brandtxt .tagline b{color:var(--gold);font-weight:600;}
-  .home{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  .home{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
     color:#ff465e;text-decoration:none;border:1px solid rgba(232,35,63,.38);border-radius:999px;padding:7px 13px;background:rgba(232,35,63,.06);
     box-shadow:0 0 16px -6px var(--crimson-glow);transition:background .18s,border-color .18s,color .18s;}
   .home:hover{background:rgba(232,35,63,.14);border-color:#e8233f;color:#fff;}
@@ -65,15 +65,15 @@
   /* ---------- content panel ---------- */
   .wrap{max-width:880px;margin:34px auto 72px;padding:36px 40px 56px;position:relative;z-index:1;
     background:var(--panel);backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:var(--r);
-    box-shadow:0 36px 90px -38px #000,0 0 0 1px rgba(255,45,143,.05),0 0 70px -34px var(--crimson-glow);
+    box-shadow:0 36px 90px -38px #000,0 0 0 1px rgba(244,63,143,.05),0 0 70px -34px var(--crimson-glow);
     animation:rise .7s ease both;}
   @keyframes rise{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:none;}}
 
   /* jump nav as crimson chips */
   .jump{display:flex;gap:9px;flex-wrap:wrap;margin:0 0 30px;padding-bottom:26px;border-bottom:1px solid var(--line-soft);}
-  .jump a{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-dim);text-decoration:none;
+  .jump a{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-dim);text-decoration:none;
     border:1px solid var(--line);border-radius:999px;padding:8px 16px;transition:all .18s;}
-  .jump a:hover{background:rgba(255,45,143,.12);color:#fff;border-color:rgba(255,45,143,.5);box-shadow:0 0 16px -5px var(--crimson-glow);}
+  .jump a:hover{background:rgba(244,63,143,.12);color:#fff;border-color:rgba(244,63,143,.5);box-shadow:0 0 16px -5px var(--crimson-glow);}
 
   /* ---------- content typography ---------- */
   h1{font-family:var(--disp);font-weight:800;font-size:25px;letter-spacing:-.01em;margin:52px 0 14px;
@@ -88,7 +88,7 @@
   em{color:var(--ink-dim);}
   a{color:var(--gold-deep);text-decoration:none;}
   a:hover{color:var(--gold);text-decoration:underline;}
-  blockquote{border-left:3px solid var(--gold);background:rgba(255,45,143,.07);margin:18px 0;
+  blockquote{border-left:3px solid var(--gold);background:rgba(244,63,143,.07);margin:18px 0;
     padding:14px 18px;border-radius:0 10px 10px 0;font-size:14px;box-shadow:0 0 30px -16px var(--crimson-glow);}
   blockquote p{color:var(--ink-dim);margin:6px 0;}
   hr{border:none;border-top:1px solid var(--line);margin:36px 0;}
@@ -96,7 +96,7 @@
   table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px;}
   th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;}
   th{color:var(--ink);font-family:var(--disp);background:rgba(255,255,255,.03);}
-  .footer{text-align:center;font-family:var(--mono);font-size:11px;color:var(--ink-faint);padding:26px;}
+  .footer{text-align:center;font-family:var(--mono);font-size:12px;color:var(--ink-faint);padding:26px;}
 
   @media(max-width:640px){
     .wrap{margin:16px 12px 48px;padding:26px 20px 44px;}
@@ -116,20 +116,22 @@
   /* ===== end phone pass ===== */
 </style>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CjxyZWN0IHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgcng9IjE0IiBmaWxsPSIjMEEwQTBEIi8+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDExLDE1KSBzY2FsZSgxLjE2KSI+CjxwYXRoIGQ9Ik00IDI0IEw0IDkgTDEyIDE2IEwxOCA1IEwyNCAxNiBMMzIgOSBMMzIgMjQgWiIgZmlsbD0iI0ZGMkQ5NSIvPgo8cmVjdCB4PSI1IiB5PSIyNiIgd2lkdGg9IjI2IiBoZWlnaHQ9IjMiIGZpbGw9IiNGRjJEOTUiLz4KPC9nPgo8L3N2Zz4=">
+<link rel="stylesheet" href="/korvus-theme.css?v=1">
+<!-- korvus-look:1 -->
 </head>
 <body>
 <canvas id="chartscape" class="chartscape"></canvas>
   <div class="aurora"><span class="ag1"></span><span class="ag2"></span><span class="ag3"></span></div>
   <div class="watermark" aria-hidden="true">
-    <svg viewBox="0 0 36 33" fill="none" stroke="#ff2d8f" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
+    <svg viewBox="0 0 36 33" fill="none" stroke="#F43F8F" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
   </div>
   <div class="topbar">
     <span class="glyph">
-      <svg viewBox="0 0 36 33" width="20" height="20" fill="none" stroke="#ff2d8f" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
+      <svg viewBox="0 0 36 33" width="20" height="20" fill="none" stroke="#F43F8F" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
     </span>
     <span class="brandtxt">
-      <span class="mark">KORVUS</span>
-      <span class="tagline">legal &amp; disclosures</span>
+      <span class="mark">Korvus</span>
+      <span class="tagline">Legal and disclosures</span>
     </span>
     <a class="home" href="/">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
@@ -308,7 +310,7 @@
     var light=document.documentElement.getAttribute('data-theme')==='light';
     return light
       ? {bull:'#0e0b16', bear:'#c9146a', body:0.88}
-      : {bull:'#f4f6ff', bear:'#ff2d8f', body:0.95};
+      : {bull:'#f4f6ff', bear:'#F43F8F', body:0.95};
   }
   function nextC(prev){
     tvel+=(Math.random()-0.5)*0.02; tvel*=0.9; trend+=tvel;

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-k="lodestone">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -26,7 +26,7 @@
 <meta name="twitter:image" content="https://korvus.industries/lodestone-chart.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#000000;
@@ -37,18 +37,18 @@
     --ink-faint:#646b7d;
     --line:rgba(255,255,255,.09);
     --line-bright:rgba(255,255,255,.18);
-    --gold:#ff2d8f;
-    --gold-deep:#d6146e;
-    --crimson:#ff2d8f;
-    --crimson-deep:#d6146e;
-    --crimson-bright:#ff5ba8;
-    --crimson-glow:rgba(255,45,143,.6);
+    --gold:#F43F8F;
+    --gold-deep:#C72C6B;
+    --crimson:#F43F8F;
+    --crimson-deep:#C72C6B;
+    --crimson-bright:#ff6fae;
+    --crimson-glow:rgba(244,63,143,.6);
     --brand-yellow:#f5c542;
     --up:#3ce594;
     --down:#ff2e4d;
-    --mono:'IBM Plex Mono',ui-monospace,monospace;
+    --mono:'Hanken Grotesk',system-ui,sans-serif;
     --body:'Hanken Grotesk',system-ui,sans-serif;
-    --disp:'Bricolage Grotesque',system-ui,sans-serif;
+    --disp:'Hanken Grotesk',system-ui,sans-serif;
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html{scroll-behavior:smooth;}
@@ -66,7 +66,7 @@
   .nav-inner{display:flex;align-items:center;gap:14px;padding:16px 28px;max-width:1140px;margin:0 auto;}
   .brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);}
   .crown{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex:none;
-    background:rgba(255,45,143,.09);border:1px solid rgba(255,45,143,.3);}
+    background:rgba(244,63,143,.09);border:1px solid rgba(244,63,143,.3);}
   .brand-name{font-family:var(--disp);font-weight:600;font-size:21px;letter-spacing:.01em;}
   .nav-links{margin-left:auto;display:flex;align-items:center;gap:28px;}
   .nav-links a{color:var(--ink-dim);text-decoration:none;font-size:14px;transition:color .2s;}
@@ -85,14 +85,14 @@
 
   /* ---- hero ---- */
   .hero{position:relative;z-index:2;text-align:center;padding:96px 0 30px;}
-  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);margin-bottom:26px;}
+  .eyebrow{font-family:var(--mono);font-size:13px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);margin-bottom:26px;}
   .hero h1{font-family:var(--disp);font-weight:500;font-size:clamp(40px,6.4vw,78px);line-height:1.04;letter-spacing:-.02em;margin-bottom:20px;}
   .hero h1 em{font-style:normal;color:var(--crimson);}
   .hero .sub{max-width:680px;margin:0 auto 30px;color:var(--ink-dim);font-size:clamp(15px,1.6vw,18px);}
   .hero-cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
   .hero-cta .btn{padding:14px 30px;font-size:15px;}
   .hero-badges{display:flex;gap:12px 22px;justify-content:center;flex-wrap:wrap;margin-top:34px;
-    font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);}
+    font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);}
   .hero-badges span{display:inline-flex;align-items:center;gap:7px;}
   .hero-badges i{width:5px;height:5px;border-radius:50%;background:var(--crimson);box-shadow:0 0 7px var(--crimson-glow);}
 
@@ -100,11 +100,11 @@
   .shot-wrap{max-width:860px;margin:44px auto 0;padding:0 28px;position:relative;z-index:2;}
   .shot-wrap img{display:block;width:100%;height:auto;border-radius:14px;border:1px solid var(--line-bright);
     box-shadow:0 40px 110px -34px rgba(0,0,0,.95),0 0 60px -22px var(--crimson-glow);}
-  .shot-cap{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  .shot-cap{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;
     color:var(--ink-faint);margin-top:14px;text-align:center;}
 
   /* ---- shared section headings ---- */
-  .sec-label{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:16px;}
+  .sec-label{font-family:var(--mono);font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:16px;}
   .sec-title{font-family:var(--disp);font-weight:500;font-size:clamp(28px,4vw,44px);line-height:1.1;letter-spacing:-.015em;margin-bottom:18px;}
   .sec-intro{color:var(--ink-dim);max-width:640px;font-size:17px;}
 
@@ -112,8 +112,8 @@
   .mods{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:40px;}
   .mod{background:linear-gradient(180deg,rgba(18,20,26,.6),rgba(10,12,16,.5));border:1px solid var(--line);
     border-radius:14px;padding:26px 24px;backdrop-filter:blur(10px);transition:border-color .25s,transform .25s;}
-  .mod:hover{border-color:rgba(255,45,143,.4);transform:translateY(-2px);}
-  .mod .num{font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--crimson);margin-bottom:12px;}
+  .mod:hover{border-color:rgba(244,63,143,.4);transform:translateY(-2px);}
+  .mod .num{font-family:var(--mono);font-size:13px;letter-spacing:.14em;color:var(--crimson);margin-bottom:12px;}
   .mod h3{font-family:var(--disp);font-weight:500;font-size:19px;margin-bottom:9px;letter-spacing:-.01em;}
   .mod p{font-size:14px;line-height:1.6;color:var(--ink-dim);}
   @media(max-width:960px){.mods{grid-template-columns:repeat(2,1fr);}}
@@ -139,18 +139,18 @@
 
   /* ---- pricing block ---- */
   .pricebox{max-width:520px;margin:40px auto 0;background:linear-gradient(180deg,rgba(18,20,26,.7),rgba(10,12,16,.55));
-    border:1px solid rgba(255,45,143,.35);border-radius:16px;padding:36px 32px;text-align:center;
+    border:1px solid rgba(244,63,143,.35);border-radius:16px;padding:36px 32px;text-align:center;
     box-shadow:0 0 60px -24px var(--crimson-glow);}
-  .pricebox .tag{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--crimson);margin-bottom:12px;}
+  .pricebox .tag{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--crimson);margin-bottom:12px;}
   .pricebox h3{font-family:var(--disp);font-weight:500;font-size:26px;margin-bottom:8px;}
   .pricebox .price{font-family:var(--disp);font-weight:500;font-size:46px;letter-spacing:-.02em;margin:14px 0 2px;}
   .pricebox .price span{font-size:18px;color:var(--ink-faint);}
-  .pricebox .pnote{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:4px;}
+  .pricebox .pnote{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:4px;}
   .pricebox ul{list-style:none;margin:20px 0 24px;padding:0;text-align:left;display:grid;gap:9px;}
   .pricebox ul li{font-size:14px;color:var(--ink-dim);padding-left:22px;position:relative;}
   .pricebox ul li::before{content:"✓";position:absolute;left:0;color:var(--up);font-weight:700;}
   .pricebox .btn{width:100%;padding:14px 0;font-size:15px;}
-  .pricebox .fine{font-family:var(--mono);font-size:10px;color:var(--ink-faint);margin-top:14px;line-height:1.6;}
+  .pricebox .fine{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin-top:14px;line-height:1.6;}
   .pricebox .fine a{color:var(--ink-faint);text-decoration:underline;}
 
   /* ---- FAQ ---- */
@@ -172,7 +172,7 @@
   .foot-links{margin-left:auto;display:flex;gap:22px;flex-wrap:wrap;}
   .foot-links a{color:var(--ink-faint);text-decoration:none;font-size:13px;}
   .foot-links a:hover{color:var(--ink);}
-  .foot-llc{width:100%;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--ink-faint);margin-top:8px;}
+  .foot-llc{width:100%;font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;color:var(--ink-faint);margin-top:8px;}
   .foot-llc b{color:var(--brand-yellow);font-weight:500;}
   @media(prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important;}}
 
@@ -186,6 +186,8 @@
   }
   /* ===== end phone pass ===== */
 </style>
+<link rel="stylesheet" href="/korvus-theme.css?v=1">
+<!-- korvus-look:1 -->
 </head>
 <body>
   <canvas id="candles"></canvas>
@@ -195,7 +197,7 @@
     <div class="nav-inner">
       <a class="brand" href="/">
         <span class="crown">
-          <svg viewBox="0 0 36 33" width="18" height="18" fill="none" stroke="#ff2d8f" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
+          <svg viewBox="0 0 36 33" width="18" height="18" fill="none" stroke="#F43F8F" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
         </span>
         <span class="brand-name">Korvus</span>
       </a>
@@ -432,7 +434,7 @@
     <div class="container foot-inner">
       <a class="brand" href="/">
         <span class="crown">
-          <svg viewBox="0 0 36 33" width="16" height="16" fill="none" stroke="#ff2d8f" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
+          <svg viewBox="0 0 36 33" width="16" height="16" fill="none" stroke="#F43F8F" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg"><path d="M4 24 L4 9 L12 16 L18 5 L24 16 L32 9 L32 24 Z"/><path d="M8 28 L28 28"/></svg>
         </span>
         <span class="brand-name" style="font-size:17px;">Korvus</span>
       </a>
@@ -475,7 +477,7 @@
     const cv=document.getElementById('candles'),ctx=cv.getContext('2d');
     const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
     let W,H,candles=[],offset=0,price,momentum=0,runLeft=0,trendDir=1;
-    const BULL='#f6f8ff',BEAR='#ff2d8f',CW=9,GAP=8,STEP=CW+GAP;
+    const BULL='#f6f8ff',BEAR='#F43F8F',CW=9,GAP=8,STEP=CW+GAP;
     function nextCandle(){
       const vol=H*0.022;
       if(runLeft<=0){trendDir=Math.random()<0.5?-1:1;runLeft=4+Math.floor(Math.random()*9);}
@@ -495,7 +497,7 @@
         if(offset>=STEP){offset-=STEP;candles.shift();candles.push(nextCandle());}}
       ctx.beginPath();
       candles.forEach((c,i)=>{const x=i*STEP-offset+CW/2;i===0?ctx.moveTo(x,c.c):ctx.lineTo(x,c.c);});
-      ctx.strokeStyle='rgba(255,45,143,.10)';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.strokeStyle='rgba(244,63,143,.10)';ctx.lineWidth=1.5;ctx.stroke();
       candles.forEach((c,i)=>{
         const x=i*STEP-offset+CW/2;if(x<-CW||x>W+CW)return;
         const up=c.bull,color=up?BULL:BEAR;
