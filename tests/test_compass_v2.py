@@ -47,13 +47,52 @@ def test_funds_and_5y():
     assert c.history_stats(_series(200, 100, 0.5))["chart5"] is None
     assert c.active_symbols() == ["GOOD", "MEH"] and set(c.active_symbols(kind="etf")) == set(c.ETFS)
     d = c.api_list()
-    assert [x["s"] for x in d["etfs"]] == ["SPY", "QQQ", "DIA", "IWM"] and {x["s"] for x in d["stocks"]} == {"GOOD", "MEH"}
+    assert [x["s"] for x in d["etfs"]] == list(c.ETFS) and [x["s"] for x in d["etfs"] if x["g"] == "us"] == ["SPY", "QQQ", "DIA", "IWM"] and {x["s"] for x in d["stocks"]} == {"GOOD", "MEH"}
     spy = c.api_stock("SPY")
     assert spy["kind"] == "etf" and spy["tier"] == "Index fund" and spy["score"] is None and spy["read"] == "bull"
     assert "ES futures" in spy["note"] and spy["reads"] == [] and spy["chart5"]["c"]
     # a universe refresh never drops the funds and never announces them
     c.refresh_universe(verbose=False)
     assert set(c.active_symbols(kind="etf")) == set(c.ETFS) and c.api_events() == []
+
+
+SCREEN = [
+    {"symbol": "TSM", "companyName": "Taiwan Semiconductor Manufacturing", "marketCap": 9e11, "country": "TW", "sector": "Technology"},
+    {"symbol": "AAPL", "companyName": "Apple Inc.", "marketCap": 3e12, "country": "US"},
+    {"symbol": "NVO", "companyName": "Novo Nordisk A/S", "marketCap": 4e11, "country": "DK"},
+    {"symbol": "TINY", "companyName": "Tiny Foreign Co", "marketCap": 2e9, "country": "GB"},
+    {"symbol": "RY", "companyName": "Royal Bank of Canada", "marketCap": 2e11, "country": "CA"},
+    {"symbol": "RYX", "companyName": "Royal Bank of Canada Pref", "marketCap": 1e11, "country": "CA"},
+    {"symbol": "EWX", "companyName": "Some Fund", "marketCap": 5e10, "country": "JP", "isEtf": True},
+    {"symbol": "GOOD", "companyName": "Good Co plc", "marketCap": 5e10, "country": "IE"},
+]
+
+
+def test_global():
+    g = c.parse_global(SCREEN)
+    assert [x["symbol"] for x in g] == ["TSM", "NVO", "RY", "GOOD"], g          # biggest first; US, small, funds, dup class out
+    assert c.parse_global(SCREEN, limit=2)[-1]["symbol"] == "NVO" and c.parse_global([]) == []
+    m = {x["symbol"]: x for x in c.merge_universe(
+        [{"symbol": "GOOD", "name": "Good Co", "sector": "Tech", "industry": "", "cik": 111}], [], {"TSM": 1046179}, [], g)}
+    assert m["TSM"]["in_global"] == 1 and m["TSM"]["country"] == "TW" and m["TSM"]["cik"] == 1046179
+    assert m["GOOD"]["in_sp"] == 1 and m["GOOD"]["in_global"] == 0 and m["GOOD"]["country"] == "IE"   # index member keeps its seat
+    assert m["NVO"]["cik"] is None
+    # arriving on a live board: one big batch is silent, the stocks carry their country
+    many = [dict(x, symbol=f"F{i:03d}", companyName=f"Foreign {i}", country="JP") for i, x in enumerate([SCREEN[0]] * 30)]
+    rows = c.merge_universe(UNI, UNI[:1], {}, [], c.parse_global(many))
+    c.fetch_universe = lambda: (rows, "test")
+    before = len(c.api_events())
+    assert c.refresh_universe(verbose=False) == 32 and len(c.api_events()) == before
+    d = c.api_list()
+    jp = [x for x in d["stocks"] if x["co"] == "JP"]
+    assert len(jp) == 30 and jp[0]["gl"] == 1 and jp[0]["cn"] == "Japan"
+    assert [x for x in d["stocks"] if x["s"] == "GOOD"][0]["co"] == "US"
+    st = c.admin_status()["counts"]
+    assert st["international"] == 30 and st["countries"] == 2
+    assert "HOME COUNTRY: Japan (a foreign company" in agent.data_sheet(dict(c.load_stock("F001"), parts=[]))
+    c.fetch_universe = lambda: (UNI, "test")                                    # back to the small board for the rest
+    c.refresh_universe(verbose=False)
+    assert c.active_symbols() == ["GOOD", "MEH"]
 
 
 def test_live_quotes():
@@ -152,7 +191,7 @@ def test_vault_and_admin():
     assert "\u2014" not in "".join(files.values())
     st = c.admin_status()
     k = st["counts"]
-    assert k["stocks"] == 2 and k["funds"] == 4 and k["scored"] == 1 and k["briefs"] == 2 and k["briefs_by"]["haiku"] == 1
+    assert k["stocks"] == 2 and k["international"] == 0 and k["funds"] == len(c.ETFS) == 12 and k["scored"] == 1 and k["briefs"] == 2 and k["briefs_by"]["haiku"] == 1
     assert k["filings_24h"] == 2 and st["running"] is False and st["top"][0]["symbol"] == "GOOD" and len(st["events"]) == 2
     c.meta_set("heartbeat", c.iso())
     assert c.admin_status()["running"] is True

@@ -8,7 +8,7 @@
  produce an honest, measurable win rate for one written-down rule set, so the
  strategy can be judged on evidence before any real money is considered.
 
- STRATEGY v2  "Catalyst Follow-Through, both ways"  (every number is in .env)
+ STRATEGY v3  "Catalyst Follow-Through, both ways, all sessions"  (every number is in .env)
    Trigger   a filing from a universe stock scored impact med or high,
              confidence >= 60, seen within the last 18 hours (so an
              after-hours earnings release is tradable at the next session).
@@ -19,12 +19,20 @@
              SHORT: price BELOW its reference and down less than 8% on the day
                     (do not press a collapsed gap; also stays clear of the
                     SEC Rule 201 short-sale restriction that starts at -10%).
-   Window    entries only 9:45 AM to 3:30 PM ET on regular sessions.
+   Window    BOT_SESSION=all (default): around the clock, Sunday 6:00 PM ET to
+             Friday 5:00 PM ET, except the 5:00 to 6:00 PM ET maintenance hour.
+             That covers pre-market, the regular session, after-hours and the
+             overnight session. Stocks trade thinly outside 9:30 AM to 4:00 PM,
+             so outside the regular session the bot only acts on a FRESH print
+             (a real trade within the last 15 minutes) and pays wider slippage.
+             BOT_SESSION=regular restores 9:45 AM to 3:30 PM ET entries only.
    Size      $10,000 paper notional per trade, max 5 open, one trade per
              filing, one entry per symbol per day.
    Exit      1.5% in our favor (target), 1.0% against (stop), or flat at
-             3:55 PM ET, whichever first. Same distances for both sides.
-   Fills     last quote +/- 0.05% slippage, always against us (buy higher,
+             4:55 PM ET, just before the maintenance hour (3:55 PM in regular
+             mode), whichever first. Same distances for both sides.
+   Fills     last quote +/- 0.05% slippage in the regular session, 0.15%
+             outside it, always against us (buy higher,
              sell lower). Quotes are polled every 60s, so a
              stop can fill worse than -1.0%; the ledger records what happened.
 
@@ -46,7 +54,9 @@ import korvus_intel as intel
 
 _env, _num = intel._env, intel._num
 
-STRATEGY      = "v2-catalyst-both-ways"
+SESSION       = _env("BOT_SESSION", "all").lower()        # all | regular
+# A new rule set gets its own scoreboard so old results are never mixed in.
+STRATEGY      = "v3-all-sessions" if SESSION == "all" else "v2-catalyst-both-ways"
 ALLOW_SHORT   = _env("BOT_ALLOW_SHORT", "1") not in ("0", "false", "no", "off")
 TICK_SECONDS  = max(30, int(_num("BOT_TICK_SECONDS", 60)))
 NOTIONAL      = _num("BOT_NOTIONAL", 10_000)
@@ -58,11 +68,34 @@ MAX_DAY_DOWN  = _num("BOT_MAX_DAY_DOWN_PCT", 8.0)   # short: skip if already dow
 MIN_CONF      = int(_num("BOT_MIN_CONFIDENCE", 60))
 LOOKBACK_H    = _num("BOT_LOOKBACK_HOURS", 18)
 SLIP          = _num("BOT_SLIPPAGE_PCT", 0.05) / 100.0
+SLIP_EXT      = _num("BOT_SLIPPAGE_EXT_PCT", 0.15) / 100.0    # outside the regular session: wider spreads
+MAX_QUOTE_AGE = _num("BOT_MAX_QUOTE_AGE_MIN", 15)             # minutes; older than this is not a live market
 MIN_SAMPLE    = 30
 
-ENTRY_START = (9, 45)
+ENTRY_START = (9, 45)       # regular mode
 ENTRY_END   = (15, 30)
 FLAT_AT     = (15, 55)
+MAINT_START = (17, 0)       # all-sessions mode: the daily maintenance hour, ET
+MAINT_END   = (18, 0)
+ALL_FLAT_AT = (16, 55)      # flat just before maintenance
+ALL_NO_ENTRY = (16, 30)     # no new entries in the last half hour before it
+
+PHASE_LABEL = {"regular": "regular session", "premarket": "pre-market", "afterhours": "after-hours",
+               "overnight": "overnight session", "maintenance": "maintenance hour", "weekend": "weekend",
+               "closed": "market closed"}
+
+
+def window_text() -> str:
+    """The trading window in words, for the vault and the admin."""
+    if SESSION == "all":
+        return ("around the clock, Sunday 6:00 PM ET to Friday 5:00 PM ET, except the 5:00 to 6:00 PM ET "
+                f"maintenance hour. Outside 9:30 AM to 4:00 PM it only acts on a trade printed in the last "
+                f"{MAX_QUOTE_AGE:.0f} minutes")
+    return "entries 9:45 AM to 3:30 PM ET on regular sessions"
+
+
+def flat_text() -> str:
+    return "4:55 PM ET, before the maintenance hour" if SESSION == "all" else "3:55 PM ET"
 
 
 def _hm(t: dt.datetime) -> tuple:
@@ -70,11 +103,55 @@ def _hm(t: dt.datetime) -> tuple:
 
 
 def session_open(now_et: dt.datetime) -> bool:
+    """Regular-session check (used by BOT_SESSION=regular)."""
     try:
         from korvus_quotes import market_is_open
         return bool(market_is_open())
     except Exception:
         return now_et.weekday() < 5 and (9, 30) <= _hm(now_et) < (16, 0)
+
+
+def session_phase(now_et: dt.datetime) -> str:
+    """Where we are in the trading week. All-sessions mode runs Sunday 6 PM ET
+    to Friday 5 PM ET with a 5 to 6 PM ET maintenance break each day."""
+    if SESSION != "all":
+        return "regular" if session_open(now_et) else "closed"
+    wd, hm = now_et.weekday(), _hm(now_et)
+    if wd == 5 or (wd == 4 and hm >= MAINT_START) or (wd == 6 and hm < MAINT_END):
+        return "weekend"
+    if MAINT_START <= hm < MAINT_END:
+        return "maintenance"
+    if wd < 5 and (9, 30) <= hm < (16, 0):
+        return "regular"
+    if wd < 5 and (4, 0) <= hm < (9, 30):
+        return "premarket"
+    if wd < 5 and (16, 0) <= hm < (20, 0):
+        return "afterhours"
+    return "overnight"
+
+
+def can_enter(now_et: dt.datetime, phase: str) -> bool:
+    hm = _hm(now_et)
+    if SESSION != "all":
+        return phase == "regular" and ENTRY_START <= hm < ENTRY_END
+    return phase in ("regular", "premarket", "afterhours", "overnight") and not (ALL_NO_ENTRY <= hm < MAINT_START)
+
+
+def session_id(t: dt.datetime) -> str:
+    """The trading day a moment belongs to. In all-sessions mode a day runs
+    6 PM to 5 PM ET, so Sunday evening already counts as Monday."""
+    if SESSION != "all":
+        return t.date().isoformat()
+    return (t + dt.timedelta(hours=6)).date().isoformat()
+
+
+def quote_fresh(q: dict, now_utc: dt.datetime, phase: str) -> bool:
+    """Is this quote a live market right now? Outside the regular session a
+    quote with no trade time, or an old one, is yesterday's price: never fill on it."""
+    ts = q.get("ts")
+    if not ts:
+        return phase == "regular"
+    return (now_utc.timestamp() - float(ts)) <= MAX_QUOTE_AGE * 60
 
 
 # ----------------------------------------------------------------------------
@@ -123,21 +200,25 @@ def levels(side: str, fill: float) -> tuple:
     return fill * (1 + TARGET_PCT / 100), fill * (1 - STOP_PCT / 100)
 
 
-def exit_decision(t: dict, px: float, now_et: dt.datetime):
+def exit_decision(t: dict, px: float, now_et: dt.datetime, fresh: bool = True, slip: float = None):
     """Return (reason, fill_px) or None. A long exits by selling (fill below
-    the quote), a short exits by buying back (fill above the quote)."""
+    the quote), a short exits by buying back (fill above the quote). Target and
+    stop need a fresh quote; the time exit does not (it closes at the last price)."""
+    slip = SLIP if slip is None else slip
     short = (t.get("side") or "long") == "short"
-    fill = px * (1 + SLIP) if short else px * (1 - SLIP)
+    fill = px * (1 + slip) if short else px * (1 - slip)
     hit_target = px <= t["target_px"] if short else px >= t["target_px"]
     hit_stop = px >= t["stop_px"] if short else px <= t["stop_px"]
-    if hit_target:
+    if fresh and hit_target:
         return "target", fill
-    if hit_stop:
+    if fresh and hit_stop:
         return "stop", fill
-    if _hm(now_et) >= FLAT_AT:
+    hm = _hm(now_et)
+    if (ALL_FLAT_AT <= hm < MAINT_START) if SESSION == "all" else (hm >= FLAT_AT):
         return "time", fill
-    try:   # missed the 3:55 flat (service was down): close at the first chance
-        if dt.datetime.fromisoformat(t["entry_utc"]).astimezone(now_et.tzinfo).date() < now_et.date():
+    try:   # missed the flat (service was down): close at the first chance
+        ent = dt.datetime.fromisoformat(t["entry_utc"]).astimezone(now_et.tzinfo)
+        if session_id(ent) < session_id(now_et):
             return "overnight", fill
     except Exception:
         pass
@@ -168,10 +249,13 @@ def tick(now_et: dt.datetime = None, quote_fn=None) -> dict:
     now_utc = now_et.astimezone(dt.timezone.utc)
     out = {"exits": 0, "entries": 0, "skipped": [], "log": [], "candidates": 0,
            "session_open": False, "in_window": False, "open_positions": 0}
-    if not session_open(now_et):
+    phase = session_phase(now_et)
+    out["phase"] = phase
+    if phase in ("closed", "weekend", "maintenance"):
         return out
     out["session_open"] = True
-    out["in_window"] = ENTRY_START <= _hm(now_et) < ENTRY_END
+    out["in_window"] = can_enter(now_et, phase)
+    slip = SLIP if phase == "regular" else SLIP_EXT
     conn = intel.db()
 
     # ---- exits first ----
@@ -180,7 +264,7 @@ def tick(now_et: dt.datetime = None, quote_fn=None) -> dict:
         q = quote_fn(t["symbol"])
         if not q:
             continue
-        d = exit_decision(t, q["price"], now_et)
+        d = exit_decision(t, q["price"], now_et, quote_fresh(q, now_utc, phase), slip)
         if d:
             out["log"].append(("exit", t["symbol"], _close(conn, t, *d, now_utc.isoformat())))
             out["exits"] += 1
@@ -192,7 +276,7 @@ def tick(now_et: dt.datetime = None, quote_fn=None) -> dict:
         conn.close()
         return out
     since = (now_utc - dt.timedelta(hours=LOOKBACK_H)).isoformat()
-    today_et = now_et.date().isoformat()
+    today_et = session_id(now_et)
     cands = [dict(r) for r in conn.execute(
         "SELECT * FROM filings WHERE scored=1 AND seen_utc >= ? ORDER BY confidence DESC, seen_utc DESC",
         (since,))]
@@ -211,18 +295,21 @@ def tick(now_et: dt.datetime = None, quote_fn=None) -> dict:
             try:
                 from zoneinfo import ZoneInfo
                 last_et = dt.datetime.fromisoformat(same_day["entry_utc"]).astimezone(ZoneInfo("America/New_York"))
-                if last_et.date().isoformat() == today_et:
+                if session_id(last_et) == today_et:
                     continue
             except Exception:
                 pass
         q = quote_fn(f["symbol"])
         if not q:
             continue
+        if not quote_fresh(q, now_utc, phase):
+            out["skipped"].append((f["symbol"], f"no fresh trade in the {PHASE_LABEL[phase]}"))
+            continue
         ok, why = confirm_entry(f, q, side)
         if not ok:
             out["skipped"].append((f["symbol"], why))
             continue
-        fill = q["price"] * (1 - SLIP) if side == "short" else q["price"] * (1 + SLIP)
+        fill = q["price"] * (1 - slip) if side == "short" else q["price"] * (1 + slip)
         qty = int(math.floor(NOTIONAL / fill))
         if qty < 1:
             continue
@@ -237,7 +324,8 @@ def tick(now_et: dt.datetime = None, quote_fn=None) -> dict:
         out["open_positions"] = n_open
         msg = (f"{'SHORT' if side == 'short' else 'ENTRY'} {f['symbol']} x{qty} @ ${fill:.2f} "
                f"on {f['catalyst'].replace('_', ' ')} "
-               f"({f['impact']}/{f['confidence']}%)")
+               f"({f['impact']}/{f['confidence']}%)"
+               + ("" if phase == "regular" else f" in the {PHASE_LABEL[phase]}"))
         out["log"].append(("entry", f["symbol"], msg))
         print(f"  [paperbot] {msg}")
     conn.close()

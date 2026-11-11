@@ -109,6 +109,9 @@ def data_sheet(s: dict) -> str:
     cur = f.get("currency", "USD")
     L = [f"STOCK: {s['symbol']} ({s.get('name') or ''})",
          f"SECTOR: {s.get('sector') or 'n/a'} / {s.get('industry') or 'n/a'}",
+         f"HOME COUNTRY: {c.COUNTRY_NAMES.get(s.get('country') or 'US', s.get('country') or 'United States')}"
+         + (" (a foreign company whose shares also trade in the US; its financials may be reported in "
+            f"{(s.get('fund') or {}).get('currency', 'another currency')})" if (s.get('country') or 'US') != 'US' else ""),
          f"COMPASS SCORE: {s.get('score')} of 100, tier {s.get('tier')}, read {s.get('read')}",
          "SCORE PARTS (0-100 each):"]
     for p in s.get("parts") or []:

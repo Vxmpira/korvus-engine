@@ -96,6 +96,7 @@
   .rk{color:var(--ink-faint);font-family:var(--mono);font-size:11px;width:34px;}
   .tk b{font-family:var(--mono);font-weight:600;font-size:13px;} .tk span{display:block;color:var(--ink-faint);font-size:11.5px;
     max-width:150px;overflow:hidden;text-overflow:ellipsis;}
+  .cc{font-family:var(--mono);font-size:9px;font-style:normal;letter-spacing:.06em;color:var(--sec);border:1px solid var(--line);border-radius:4px;padding:0 4px;margin-left:6px;vertical-align:1px;}
   .sc{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end;}
   .sc b{font-family:var(--disp);font-size:16px;font-weight:700;min-width:26px;text-align:right;}
   .bar{width:40px;height:5px;border-radius:3px;background:var(--line);overflow:hidden;display:inline-block;}
@@ -211,7 +212,7 @@
     .hide-m{display:none;} .asof{text-align:left;} .funds{grid-template-columns:repeat(2,minmax(0,1fr));} .bb{grid-template-columns:1fr;} .brand small{display:none;}
     .dbody{padding:14px 12px 40px;} .dhead{padding:12px;} .part{grid-template-columns:112px 1fr 34px;} .bars3{grid-template-columns:1fr;}
     .verdict{grid-template-columns:1fr;} td,th{padding:9px 6px;}
-    .controls input{flex:1 1 100%;} .seg{flex:1 1 100%;} .seg button{flex:1;} .controls select{flex:1 1 30%;} .bar{display:none;} .tk span{max-width:110px;}
+    .controls input{flex:1 1 100%;} .seg{flex:1 1 100%;} .seg button{flex:1;} .controls select{flex:1 1 45%;} .bar{display:none;} .tk span{max-width:110px;}
   }
 </style>
 </head>
@@ -233,7 +234,7 @@
   <section class="hero">
     <div>
       <h1>Find stocks worth holding.</h1>
-      <p>Every S&amp;P 500 and Nasdaq-100 company, scored on long-term price trend, growth, profitability, value and balance sheet, using what each company reports to the SEC. Built for buy-and-hold investors.</p>
+      <p>Every S&amp;P 500 and Nasdaq-100 company, plus the largest companies from the rest of the world that trade in the US, scored on long-term price trend, growth, profitability, value and balance sheet, using what each company reports to the SEC. Built for buy-and-hold investors.</p>
     </div>
     <div class="asof" id="asof"></div>
   </section>
@@ -246,10 +247,11 @@
     <div class="card">
       <div class="controls">
         <input id="q" type="search" placeholder="Search ticker or company" autocomplete="off" spellcheck="false">
-        <div class="seg" id="idxSeg"><button data-v="" class="on">All</button><button data-v="sp">S&amp;P 500</button><button data-v="nd">Nasdaq-100</button></div>
+        <div class="seg" id="idxSeg"><button data-v="" class="on">All</button><button data-v="sp">S&amp;P 500</button><button data-v="nd">Nasdaq-100</button><button data-v="gl">International</button></div>
         <select id="readSel" aria-label="Read"><option value="">Any read</option><option value="bull">Bullish</option><option value="neut">Neutral</option><option value="bear">Bearish</option></select>
         <select id="tierSel" aria-label="Tier"><option value="">Any tier</option><option>Top rated</option><option>Strong</option><option>Solid</option><option>Mixed</option><option>Weak</option></select>
         <select id="secSel" aria-label="Sector"><option value="">All sectors</option></select>
+        <select id="coSel" aria-label="Country"><option value="">All countries</option></select>
       </div>
       <div class="tblwrap"><table>
         <thead><tr id="thead"></tr></thead>
@@ -295,7 +297,7 @@ const READ = {bull:'Bullish', bear:'Bearish', neut:'Neutral'};
 const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const scoreColor = v => v === null ? 'var(--neut)' : v >= 62 ? 'var(--bull)' : v < 38 ? 'var(--bear)' : 'var(--crimson)';
 
-let ALL = [], META = {}, sortKey = 'sc', sortDir = -1, shown = 60, filt = {q:'', idx:'', rd:'', ti:'', sec:''};
+let ALL = [], META = {}, sortKey = 'sc', sortDir = -1, shown = 60, filt = {q:'', idx:'', rd:'', ti:'', sec:'', co:''};
 
 const COLS = [
   {k:'rk', t:'#', cls:'l', nosort:1},
@@ -323,7 +325,7 @@ function spark(a, tone){
 function filtered(){
   const q = filt.q.trim().toLowerCase();
   let rows = ALL.filter(x => (!q || x.s.toLowerCase().indexOf(q) === 0 || (x.n || '').toLowerCase().indexOf(q) >= 0)
-    && (!filt.idx || x[filt.idx]) && (!filt.rd || x.rd === filt.rd) && (!filt.ti || x.ti === filt.ti) && (!filt.sec || x.sec === filt.sec));
+    && (!filt.idx || x[filt.idx]) && (!filt.rd || x.rd === filt.rd) && (!filt.ti || x.ti === filt.ti) && (!filt.sec || x.sec === filt.sec) && (!filt.co || x.co === filt.co));
   const k = sortKey, rdRank = {bull:2, neut:1, bear:0};
   rows.sort((a, b) => {
     let va = a[k], vb = b[k];
@@ -344,14 +346,14 @@ function renderHead(){
 
 function renderTable(){
   const rows = filtered();
-  const note = '<tr><td colspan="12"><div class="empty"><b>The crawler is building the board.</b><br>It walks about 520 companies on its first pass: prices, SEC filings, then analyst data. Scores appear here as each stock fills in. Check back in a little while.</div></td></tr>';
+  const note = '<tr><td colspan="12"><div class="empty"><b>The crawler is building the board.</b><br>It walks several hundred companies on its first pass: prices, SEC filings, then analyst data. Scores appear here as each stock fills in. Check back in a little while.</div></td></tr>';
   if(!ALL.length){ $('tbody').innerHTML = note; $('more').innerHTML = ''; return; }
   if(ALL.length && !rows.length){ $('tbody').innerHTML = '<tr><td colspan="12"><div class="empty">No stocks match those filters.</div></td></tr>'; $('more').innerHTML = ''; return; }
   const html = rows.slice(0, shown).map((x, i) => {
     const sc = num(x.sc);
     return '<tr data-s="' + esc(x.s) + '"' + (x.hl ? ' title="' + esc(x.hl) + '"' : '') + '>'
       + '<td class="l rk">' + (i + 1) + '</td>'
-      + '<td class="l tk"><b>' + esc(x.s) + '</b><span>' + esc(x.n || '') + '</span></td>'
+      + '<td class="l tk"><b>' + esc(x.s) + '</b>' + (x.co && x.co !== 'US' ? '<i class="cc" title="' + esc(x.cn || x.co) + '">' + esc(x.co) + '</i>' : '') + '<span>' + esc(x.n || '') + '</span></td>'
       + '<td><span class="sc"><span class="bar"><i style="width:' + (sc || 0) + '%;background:' + scoreColor(sc) + '"></i></span><b>' + (sc === null ? '·' : Math.round(sc)) + '</b></span><span class="tier">' + esc(x.ti || '') + '</span></td>'
       + '<td><span class="rd ' + esc(x.rd || 'neut') + '">' + READ[x.rd || 'neut'] + '</span></td>'
       + '<td><span class="trd"><span class="hide-m">' + esc(x.tr || 'Pending') + '</span>' + spark(x.sp_, x.tt) + '</span></td>'
@@ -384,10 +386,12 @@ function liveChg(x){ return (x.lp !== undefined && x.lp !== null) ? x.lc : x.d1;
 function renderFunds(){
   const f = META.etfs || [];
   if(!f.length){ $('fundsWrap').innerHTML = ''; return; }
-  $('fundsWrap').innerHTML = '<div class="fundhd">Index funds · trend only, not scored</div><div class="funds">' + f.map(x =>
-    '<button class="fund" type="button" data-s="' + esc(x.s) + '" title="' + esc(x.note || '') + '"><span class="fk">' + esc(x.s) + '</span><span class="fp">' + px(livePx(x)) + '</span>'
+  const card = x => '<button class="fund" type="button" data-s="' + esc(x.s) + '" title="' + esc(x.note || '') + '"><span class="fk">' + esc(x.s) + '</span><span class="fp">' + px(livePx(x)) + '</span>'
     + '<span class="fn">' + esc(x.n) + '</span><span class="fd">' + pctC(liveChg(x), 2) + '</span>'
-    + '<span class="ft">' + esc(x.tr || 'Pending') + ' · 1y ' + pctC(x.r1y) + '</span><span style="text-align:right">' + spark(x.sp_, x.tt) + '</span></button>').join('') + '</div>';
+    + '<span class="ft">' + esc(x.tr || 'Pending') + ' · 1y ' + pctC(x.r1y) + '</span><span style="text-align:right">' + spark(x.sp_, x.tt) + '</span></button>';
+  const us = f.filter(x => x.g !== 'world'), world = f.filter(x => x.g === 'world');
+  $('fundsWrap').innerHTML = '<div class="fundhd">US index funds · trend only, not scored</div><div class="funds">' + us.map(card).join('') + '</div>'
+    + (world.length ? '<div class="fundhd">Around the world · one fund per market</div><div class="funds">' + world.map(card).join('') + '</div>' : '');
 }
 
 function renderCrawl(){
@@ -481,6 +485,7 @@ function renderDetail(s){
     h += '<div class="sect"><div class="verdict">' + ring(sc, s.read) + '<div><h4>' + esc(s.tier || 'Building') + ' <span class="rd ' + esc(s.read || 'neut') + '">' + READ[s.read || 'neut'] + ' read</span></h4><p>' + esc(verdictText(s)) + '</p>'
       + '<div class="tags">' + (s.sector ? '<span class="tag">' + esc(s.sector) + '</span>' : '') + (s.industry ? '<span class="tag">' + esc(s.industry) + '</span>' : '')
       + (s.in_sp ? '<span class="tag">S&amp;P 500</span>' : '') + (s.in_ndx ? '<span class="tag">Nasdaq-100</span>' : '')
+      + (s.country && s.country !== 'US' ? '<span class="tag">' + esc(s.country_name || s.country) + (s.in_global ? ' · US-listed shares' : '') + '</span>' : '')
       + (num(s.coverage) !== null && s.coverage < 0.8 ? '<span class="tag">Data coverage ' + Math.round(s.coverage * 100) + '%</span>' : '') + '</div></div></div></div>';
 
     if(b.headline){
@@ -582,6 +587,9 @@ async function load(){
     const d = await a.json(); ALL = d.stocks || []; META = d;
     const secs = Array.from(new Set(ALL.map(x => x.sec).filter(Boolean))).sort(), sel = $('secSel'), cur = sel.value;
     sel.innerHTML = '<option value="">All sectors</option>' + secs.map(s => '<option>' + esc(s) + '</option>').join(''); sel.value = cur;
+    const cos = {}; ALL.forEach(x => { if(x.co) cos[x.co] = [x.cn || x.co, (cos[x.co] ? cos[x.co][1] : 0) + 1]; });
+    const csel = $('coSel'), ccur = csel.value;
+    csel.innerHTML = '<option value="">All countries</option>' + Object.keys(cos).sort((a, b) => cos[b][1] - cos[a][1]).map(k => '<option value="' + esc(k) + '">' + esc(cos[k][0]) + ' (' + cos[k][1] + ')</option>').join(''); csel.value = ccur;
     $('disc').textContent = d.disclaimer || '';
     renderFunds(); renderTiles(); renderCrawl(); renderHead(); renderTable();
     renderEvents(b.ok ? ((await b.json()).events || []) : []);
@@ -597,6 +605,7 @@ $('q').addEventListener('input', e => { filt.q = e.target.value; shown = 60; ren
 $('readSel').addEventListener('change', e => { filt.rd = e.target.value; shown = 60; renderTable(); });
 $('tierSel').addEventListener('change', e => { filt.ti = e.target.value; shown = 60; renderTable(); });
 $('secSel').addEventListener('change', e => { filt.sec = e.target.value; shown = 60; renderTable(); });
+$('coSel').addEventListener('change', e => { filt.co = e.target.value; shown = 60; renderTable(); });
 $('idxSeg').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; filt.idx = b.dataset.v;
   Array.from($('idxSeg').children).forEach(x => x.classList.toggle('on', x === b)); shown = 60; renderTable(); });
 $('tiles').addEventListener('click', e => { const t = e.target.closest('.tile'); if(!t) return; const act = t.dataset.act;

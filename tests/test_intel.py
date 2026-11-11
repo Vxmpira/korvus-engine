@@ -13,6 +13,7 @@ import korvus_intel as intel
 intel.DB_PATH = os.path.join(TMP, "intel.db")
 import korvus_paperbot as bot
 import korvus_vault as vault
+bot.SESSION = "regular"            # this file tests the regular-hours rule set
 bot.session_open = lambda now: True
 ET = ZoneInfo("America/New_York")
 

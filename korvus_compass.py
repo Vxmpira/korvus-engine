@@ -3,7 +3,8 @@
  KORVUS COMPASS  (the long-term investing board, Operator feature)
 ==============================================================================
  WHAT IT IS
-   A crawler that walks the S&P 500 + Nasdaq-100 (about 520 names) and keeps a
+   A crawler that walks the S&P 500 + Nasdaq-100 plus the largest non-US
+   companies listed in the US (about 650 names in all) and keeps a
    research file on every stock for people who buy and hold (Robinhood, Cash
    App, any brokerage): long-term price trend, what the company actually earns
    according to its own SEC filings, Wall Street's consensus, recent Korvus
@@ -108,6 +109,20 @@ SEC_RPS      = max(0.5, min(6.0, _num("COMPASS_SEC_RPS", 4)))   # this crawler's
 TICK_SECONDS = 300
 FEED_FORMS   = ["8-K", "10-Q", "10-K", "20-F", "40-F", "6-K"]
 
+GLOBAL_MAX      = int(_num("COMPASS_GLOBAL_MAX", 150))          # largest non-US companies listed in the US
+GLOBAL_MIN_MCAP = _num("COMPASS_GLOBAL_MIN_MCAP", 15_000_000_000)
+
+COUNTRY_NAMES = {
+    "US": "United States", "CN": "China", "TW": "Taiwan", "JP": "Japan", "GB": "United Kingdom", "NL": "Netherlands",
+    "DE": "Germany", "FR": "France", "CH": "Switzerland", "IE": "Ireland", "CA": "Canada", "IN": "India",
+    "KR": "South Korea", "BR": "Brazil", "AU": "Australia", "DK": "Denmark", "IL": "Israel", "SG": "Singapore",
+    "HK": "Hong Kong", "ES": "Spain", "IT": "Italy", "SE": "Sweden", "MX": "Mexico", "AR": "Argentina",
+    "ZA": "South Africa", "BE": "Belgium", "FI": "Finland", "NO": "Norway", "LU": "Luxembourg", "BM": "Bermuda",
+    "UY": "Uruguay", "KY": "Cayman Islands", "CL": "Chile", "CO": "Colombia", "PE": "Peru", "ID": "Indonesia",
+    "PH": "Philippines", "TH": "Thailand", "TR": "Turkey", "GR": "Greece", "PT": "Portugal", "AT": "Austria",
+    "NZ": "New Zealand", "KZ": "Kazakhstan", "JE": "Jersey", "MC": "Monaco", "PA": "Panama", "AE": "UAE",
+}
+
 # Index funds shown as trend-only tiles above the board. They have no company
 # financials, so they are never scored or ranked against the stocks.
 ETFS = {
@@ -115,7 +130,17 @@ ETFS = {
     "QQQ": ("Nasdaq-100", "The 100 largest Nasdaq companies, tech heavy. The index NQ futures track."),
     "DIA": ("Dow 30", "30 blue-chip US companies. The index YM futures track."),
     "IWM": ("Russell 2000", "2,000 smaller US companies. The index RTY futures track."),
+    # the rest of the world, one fund per market
+    "EFA": ("Developed markets", "Large companies in Europe, Japan and Australia. Everything developed outside the US and Canada."),
+    "EEM": ("Emerging markets", "Large companies in China, India, Taiwan, Korea, Brazil and other emerging economies."),
+    "EWU": ("United Kingdom", "Large London-listed companies."),
+    "EWG": ("Germany", "Large German companies."),
+    "EWJ": ("Japan", "Large Tokyo-listed companies."),
+    "FXI": ("China", "50 of the largest Chinese companies listed in Hong Kong."),
+    "INDA": ("India", "Large Indian companies."),
+    "EWZ": ("Brazil", "Large Brazilian companies."),
 }
+US_FUNDS = ("SPY", "QQQ", "DIA", "IWM")
 
 UA = {"User-Agent": "Korvus Compass (BlackCrownVxJ LLC) BlackCrownVxJ.LLC@outlook.com"}
 
@@ -272,7 +297,7 @@ def db_init():
         );
     """)
     cols = {r[1] for r in conn.execute("PRAGMA table_info(stocks)").fetchall()}
-    for col, ddl in (("kind", "TEXT DEFAULT 'stock'"), ("note", "TEXT"), ("chart5", "TEXT"), ("ret_5y", "REAL"),
+    for col, ddl in (("country", "TEXT"), ("in_global", "INTEGER DEFAULT 0"), ("kind", "TEXT DEFAULT 'stock'"), ("note", "TEXT"), ("chart5", "TEXT"), ("ret_5y", "REAL"),
                      ("live_price", "REAL"), ("live_chg", "REAL"), ("live_utc", "TEXT"),
                      ("brief", "TEXT"), ("brief_sig", "TEXT"), ("brief_utc", "TEXT")):
         if col not in cols:
@@ -366,7 +391,7 @@ def status_set(job: str, **kw):
 
 
 # ----------------------------------------------------------------------------
-# UNIVERSE: S&P 500 + Nasdaq-100
+# UNIVERSE: S&P 500 + Nasdaq-100 + the largest US-listed foreign companies
 # ----------------------------------------------------------------------------
 class _TableGrab(HTMLParser):
     """Pulls the rows of <table id="constituents"> out of a Wikipedia page
@@ -508,15 +533,59 @@ def _wiki_constituents(page: str) -> list:
     return []
 
 
-def merge_universe(sp: list, ndx: list, sec_map: dict, extra: list = ()) -> list:
-    """One row per ticker, flagged with which index it sits in. CIKs come from
+def parse_global(rows: list, limit: int = None) -> list:
+    """FMP screener rows -> the largest non-US companies listed on a US exchange
+    (ADRs and direct listings: TSM, ASML, Novo Nordisk, Toyota, Shell...). They
+    file 20-F / 6-K / 40-F with the SEC, so the same crawler can read them."""
+    limit = GLOBAL_MAX if limit is None else limit
+    seen_names, out = set(), []
+    for r in sorted(rows or [], key=lambda r: -float(r.get("marketCap") or 0)):
+        sym = norm_symbol(r.get("symbol", ""))
+        co = (r.get("country") or "").strip().upper()
+        if not sym or not co or co == "US" or r.get("isEtf") or r.get("isFund"):
+            continue
+        if float(r.get("marketCap") or 0) < GLOBAL_MIN_MCAP or len(sym) > 6:
+            continue
+        name = (r.get("companyName") or r.get("name") or "").strip()
+        key = re.sub(r"[^a-z0-9]", "", name.lower())[:14]
+        if key and key in seen_names:        # a second share class of the same company
+            continue
+        seen_names.add(key)
+        out.append({"symbol": sym, "name": name, "sector": r.get("sector") or "", "industry": r.get("industry") or "",
+                    "cik": None, "country": co})
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _fmp_global() -> list:
+    if not FMP_KEY or GLOBAL_MAX <= 0:
+        return []
+    params = {"marketCapMoreThan": int(GLOBAL_MIN_MCAP), "isEtf": "false", "isFund": "false",
+              "isActivelyTrading": "true", "exchange": "NASDAQ,NYSE", "limit": 3000, "apikey": FMP_KEY}
+    for url in ("https://financialmodelingprep.com/stable/company-screener",
+                "https://financialmodelingprep.com/api/v3/stock-screener"):
+        try:
+            r = requests.get(url, params=params, timeout=40)
+            if r.status_code != 200:
+                continue
+            data = r.json()
+            if isinstance(data, list) and data:
+                return parse_global(data)
+        except Exception as e:
+            print(f"  [compass] global screener error: {e}")
+    return []
+
+
+def merge_universe(sp: list, ndx: list, sec_map: dict, extra: list = (), glob: list = ()) -> list:
+    """One row per ticker, flagged with which list it sits in. CIKs come from
     the source when present, else from the SEC ticker map."""
     by = {}
     for src, flag in ((sp, "in_sp"), (ndx, "in_ndx")):
         for x in src:
             s = x["symbol"]
             cur = by.setdefault(s, {"symbol": s, "name": "", "sector": "", "industry": "",
-                                    "cik": None, "in_sp": 0, "in_ndx": 0})
+                                    "cik": None, "in_sp": 0, "in_ndx": 0, "in_global": 0, "country": "US"})
             cur[flag] = 1
             for k in ("name", "sector", "industry"):
                 # S&P's GICS labels win over the Nasdaq ICB ones (one taxonomy on screen)
@@ -524,11 +593,20 @@ def merge_universe(sp: list, ndx: list, sec_map: dict, extra: list = ()) -> list
                     cur[k] = x[k]
             if x.get("cik") and not cur["cik"]:
                 cur["cik"] = int(x["cik"])
+    for x in glob:
+        s = x["symbol"]
+        cur = by.get(s)
+        if cur:                       # already an index member (Linde, Accenture...): just record the country
+            cur["country"] = x.get("country") or cur["country"]
+            continue
+        by[s] = {"symbol": s, "name": x.get("name") or "", "sector": x.get("sector") or "",
+                 "industry": x.get("industry") or "", "cik": None, "in_sp": 0, "in_ndx": 0,
+                 "in_global": 1, "country": x.get("country") or ""}
     for s in extra:
         s = norm_symbol(s)
         if s and s not in by:
             by[s] = {"symbol": s, "name": "", "sector": "", "industry": "", "cik": None,
-                     "in_sp": 0, "in_ndx": 0}
+                     "in_sp": 0, "in_ndx": 0, "in_global": 0, "country": ""}
     for s, cur in by.items():
         if not cur["cik"]:
             c = sec_map.get(s) or sec_map.get(s.replace("-", "."))
@@ -555,14 +633,21 @@ def fetch_universe() -> tuple:
     if len(ndx) < 80:
         ndx, src_ndx = _wiki_constituents("List_of_NASDAQ-100_companies"), "wikipedia"
     if len(sp) >= 400 and len(ndx) >= 80:
-        rows = merge_universe(sp, ndx, _sec_ticker_map(), EXTRA)
+        glob = _fmp_global()
+        if len(glob) < 20 and GLOBAL_MAX > 0 and os.path.exists(UNIVERSE_CACHE):
+            try:      # the screener had a bad day: keep last week's international list
+                with open(UNIVERSE_CACHE) as f:
+                    glob = [r for r in json.load(f)["rows"] if r.get("in_global")]
+            except Exception:
+                glob = []
+        rows = merge_universe(sp, ndx, _sec_ticker_map(), EXTRA, glob)
         try:
             with open(UNIVERSE_CACHE + ".tmp", "w") as f:
                 json.dump({"asof": iso(), "rows": rows}, f)
             os.replace(UNIVERSE_CACHE + ".tmp", UNIVERSE_CACHE)
         except Exception:
             pass
-        return rows, f"sp500:{src_sp} ndx:{src_ndx}"
+        return rows, f"sp500:{src_sp} ndx:{src_ndx} global:{sum(1 for r in rows if r.get('in_global'))}"
     if os.path.exists(UNIVERSE_CACHE):
         try:
             with open(UNIVERSE_CACHE) as f:
@@ -587,19 +672,23 @@ def refresh_universe(verbose: bool = True) -> int:
     have = {r["symbol"] for r in conn.execute("SELECT symbol FROM stocks").fetchall()}
     new_syms = {r["symbol"] for r in rows}
     seeded = bool(have - set(ETFS))
+    fresh = [r["symbol"] for r in rows if r["symbol"] not in have]
+    announce = seeded and len(fresh) <= 10          # a whole new list arriving is not 150 separate updates
     for r in rows:
+        co, gl = r.get("country") or "", int(r.get("in_global") or 0)
         if r["symbol"] in have:
             conn.execute("""UPDATE stocks SET name=COALESCE(NULLIF(?,''),name), cik=COALESCE(?,cik),
                             sector=COALESCE(NULLIF(?,''),sector), industry=COALESCE(NULLIF(?,''),industry),
-                            in_sp=?, in_ndx=?, active=1 WHERE symbol=?""",
-                         (r["name"], r["cik"], r["sector"], r["industry"], r["in_sp"], r["in_ndx"], r["symbol"]))
+                            in_sp=?, in_ndx=?, in_global=?, country=COALESCE(NULLIF(?,''),country), active=1
+                            WHERE symbol=?""",
+                         (r["name"], r["cik"], r["sector"], r["industry"], r["in_sp"], r["in_ndx"], gl, co, r["symbol"]))
         else:
-            conn.execute("""INSERT INTO stocks(symbol,name,cik,sector,industry,in_sp,in_ndx,active)
-                            VALUES(?,?,?,?,?,?,?,1)""",
-                         (r["symbol"], r["name"], r["cik"], r["sector"], r["industry"], r["in_sp"], r["in_ndx"]))
-            if seeded:
+            conn.execute("""INSERT INTO stocks(symbol,name,cik,sector,industry,in_sp,in_ndx,in_global,country,active)
+                            VALUES(?,?,?,?,?,?,?,?,?,1)""",
+                         (r["symbol"], r["name"], r["cik"], r["sector"], r["industry"], r["in_sp"], r["in_ndx"], gl, co))
+            if announce:
                 add_event(r["symbol"], "index", "neut", f"{r['symbol']} joined the Compass board",
-                          "Added to the S&P 500 or Nasdaq-100.", conn=conn)
+                          "Added to the international list." if gl else "Added to the S&P 500 or Nasdaq-100.", conn=conn)
     gone = have - new_syms - set(ETFS)
     for s in gone:
         conn.execute("UPDATE stocks SET active=0 WHERE symbol=?", (s,))
@@ -1913,7 +2002,8 @@ def api_list() -> dict:
     for r in rows:
         s = row_to_dict(r)
         if s.get("kind") == "etf":
-            etfs.append(dict({"s": s["symbol"], "n": s["name"], "note": s.get("note") or "", "p": s["price"],
+            etfs.append(dict({"s": s["symbol"], "n": s["name"], "note": s.get("note") or "",
+                              "g": ("us" if s["symbol"] in US_FUNDS else "world"), "p": s["price"],
                               "d1": s["chg_1d"], "r1y": s["ret_1y"], "r5y": s.get("ret_5y"), "pos": s["pos52"],
                               "dd": s["drawdown"], "tr": s["trend"], "tt": s["trend_tone"],
                               "sp_": s.get("spark") or [], "pd": s["price_date"]}, **_live_fields(s)))
@@ -1923,7 +2013,8 @@ def api_list() -> dict:
         parts = {p["key"]: p["value"] for p in (s.get("parts") or [])}
         out.append(dict({
             "s": s["symbol"], "n": s["name"], "sec": s["sector"], "ind": s["industry"],
-            "sp": s["in_sp"], "nd": s["in_ndx"],
+            "sp": s["in_sp"], "nd": s["in_ndx"], "gl": s.get("in_global") or 0,
+            "co": s.get("country") or "", "cn": COUNTRY_NAMES.get(s.get("country") or "", s.get("country") or ""),
             "p": s["price"], "d1": s["chg_1d"], "r3": s["ret_3m"], "r1y": s["ret_1y"],
             "dd": s["drawdown"], "pos": s["pos52"], "tr": s["trend"], "tt": s["trend_tone"],
             "sp_": s.get("spark") or [],
@@ -1965,6 +2056,7 @@ def api_stock(symbol: str) -> Optional[dict]:
     s["reads"] = korvus_reads(symbol) if s.get("kind") != "etf" else []
     s["events"] = ev
     s["live"] = _live_fields(s)
+    s["country_name"] = COUNTRY_NAMES.get(s.get("country") or "", s.get("country") or "")
     s["disclaimer"] = DISCLAIMER
     s["weights"] = WEIGHTS
     return s
@@ -2011,6 +2103,8 @@ def admin_status() -> dict:
         "counts": {
             "stocks": g(f"SELECT COUNT(*) FROM stocks WHERE {stock}"),
             "funds": g("SELECT COUNT(*) FROM stocks WHERE active=1 AND kind='etf'"),
+            "international": g(f"SELECT COUNT(*) FROM stocks WHERE {stock} AND COALESCE(country,'US') NOT IN ('US','')"),
+            "countries": g(f"SELECT COUNT(DISTINCT country) FROM stocks WHERE {stock} AND COALESCE(country,'')!=''"),
             "priced": g(f"SELECT COUNT(*) FROM stocks WHERE {stock} AND price IS NOT NULL"),
             "with_financials": g(f"SELECT COUNT(*) FROM stocks WHERE {stock} AND fund IS NOT NULL"),
             "with_analysts": g(f"SELECT COUNT(*) FROM stocks WHERE {stock} AND analysts IS NOT NULL AND analysts NOT IN ('{{}}','null')"),
