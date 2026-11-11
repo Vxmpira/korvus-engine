@@ -1325,20 +1325,29 @@ function syncSourceChips(){
   const f = document.getElementById('srcFilingBtn'); if(f) f.classList.toggle('active', _filingsOnly);
 }
 let _newsRegion = '';       // Asia / London chips: show one session's desks ('' = everything)
+// Each source view (all / SEC / Asia / London) keeps its own last result, so
+// switching chips is instant and a slow reply for one view can never land in
+// another. Only the newest request is allowed to draw.
+const _viewCache = {};
+let _newsSeq = 0, _newsAbort = null;
+function viewKey(){ return _filingsOnly ? 'sec' : (_newsRegion || 'all'); }
+function switchView(){
+  syncSourceChips();
+  const hit = _viewCache[viewKey()];
+  if(hit) renderNews(hit);
+  else { _newsCache = []; document.getElementById('feed').innerHTML = '<div class="feedempty">Loading\u2026</div>'; document.getElementById('feedMeta').textContent = ''; }
+  loadLiveNews();
+}
 function setNewsRegion(r){
   _newsRegion = (_newsRegion === r) ? '' : r;
   if(_newsRegion) _filingsOnly = false;          // one source chip at a time
-  syncSourceChips();
-  renderNews(_newsCache);
-  if(typeof loadLiveNews === 'function') loadLiveNews();
+  switchView();
 }
 let _filingsOnly = false;   // SEC chip: show only primary-source filings
 function toggleFilingsOnly(){
   _filingsOnly = !_filingsOnly;
   if(_filingsOnly) _newsRegion = '';
-  syncSourceChips();
-  renderNews(_newsCache);
-  if(typeof loadLiveNews === 'function') loadLiveNews();
+  switchView();
 }
 const MAX_INST = 3;         // cap instrument tags shown per card, tight & realistic
 function setNewsImp(v){
@@ -1625,12 +1634,18 @@ tick();setInterval(tick,1000);
    gracefully falls back to the sample feed so the page still looks alive.
    ============================================================================ */
 async function loadLiveNews(){
+  const seq = ++_newsSeq, key = viewKey();
+  if(_newsAbort){ try{ _newsAbort.abort(); }catch(e){} }
+  _newsAbort = (typeof AbortController === 'function') ? new AbortController() : null;
   try{
-    const res = await fetch(newsUrl(), {cache:'no-store'});
+    const res = await fetch(newsUrl(), {cache:'no-store', signal: _newsAbort ? _newsAbort.signal : undefined});
     if(!res.ok) throw new Error('no server');
     const data = await res.json();
-    if(data.items && data.items.length){
-      renderNews(data.items);
+    if(seq !== _newsSeq) return;                   // a newer click or refresh owns the panel now
+    const items = data.items || [];
+    if(items.length || key !== 'all'){
+      _viewCache[key] = items;                     // an empty Asia / London / SEC view is a real answer
+      renderNews(items);
       markLive(true);
       return;
     }
@@ -1638,8 +1653,10 @@ async function loadLiveNews(){
     renderNews(SAMPLE_NEWS);
     markLive(false, 'loading the live feed');
   }catch(e){
-    // no server / feed momentarily unreachable: show placeholders while retrying
-    renderNews(SAMPLE_NEWS);
+    if(seq !== _newsSeq || (e && e.name === 'AbortError')) return;
+    // feed momentarily unreachable: keep what this view last showed while retrying
+    if(_viewCache[key]) renderNews(_viewCache[key]);
+    else if(key === 'all') renderNews(SAMPLE_NEWS);
     markLive(false, 'connecting to live feed');
   }
 }
