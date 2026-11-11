@@ -460,17 +460,26 @@ def fetch_rss() -> list[dict]:
                 print(f"  [rss] {name} returned {resp.status_code} - skipping")
                 continue
             root = ET.fromstring(r.content)
-            # RSS items live at channel/item; handle namespaces loosely
-            items = root.findall(".//item")
+            # Feeds come as RSS 2.0, RSS 1.0 (namespaced items) or Atom (entries).
+            # Match on the local tag name so all three parse.
+            local = lambda el: el.tag.rsplit("}", 1)[-1].lower()
+            items = [el for el in root.iter() if local(el) in ("item", "entry")]
+            def text(it, *names):
+                for ch in it:
+                    if local(ch) in names:
+                        if local(ch) == "link" and not (ch.text or "").strip():
+                            return (ch.get("href") or "").strip()      # Atom keeps the URL in href
+                        return (ch.text or "").strip()
+                return ""
             count = 0
             for it in items[:25]:                       # cap per feed
-                title = (it.findtext("title") or "").strip()
+                title = text(it, "title")
                 if not title:
                     continue
-                desc = (it.findtext("description") or "").strip()
+                desc = text(it, "description", "summary", "content")
                 desc = re.sub(r"<[^>]+>", " ", desc)    # strip any HTML
-                link = (it.findtext("link") or "").strip()
-                pub  = (it.findtext("pubDate") or "").strip()
+                link = text(it, "link")
+                pub  = text(it, "pubdate", "date", "updated", "published")
                 out.append({
                     "id": make_id("wire", title),       # same hash space → dedupes vs Benzinga dupes
                     "source": "wire",

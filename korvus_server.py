@@ -228,6 +228,8 @@ def api_news():
         if names:
             region_clause = f"AND source_name IN ({','.join('?' * len(names))})"
             region_args = names
+    if request.args.get("only") == "filing":       # the SEC chip: filings only, however busy the wires are
+        region_clause, region_args = "AND source='filing'", []
     rows = conn.execute(
         f"SELECT * FROM items WHERE processed=1 {noise_clause} {region_clause} ORDER BY created_at DESC LIMIT 60",
         region_args,
