@@ -1,0 +1,39 @@
+/* ============================================================================
+   KORVUS LOOK for the public article pages at /p/<name>.
+   The server adds this stylesheet to every page in pages/ when it is served,
+   so articles written by the agents pick up the same type, colour and
+   surfaces as the rest of the site without each file being edited.
+   Pure CSS, nothing animated.
+   ============================================================================ */
+html body{background:#000 radial-gradient(1100px 520px at 84% -180px,rgba(244,63,143,.13),transparent 66%) no-repeat !important;
+  color:#cfcbd4 !important;font-family:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif !important;
+  font-size:17px;line-height:1.68 !important;-webkit-font-smoothing:antialiased;}
+body::before,body::after{display:none !important;}
+body *{letter-spacing:normal !important;text-transform:none !important;text-shadow:none !important;}
+h1,h2,.brand{font-family:'Fraunces',Georgia,'Times New Roman',serif !important;font-weight:400 !important;color:#fff !important;letter-spacing:-.015em !important;}
+h1{font-size:clamp(34px,5.2vw,54px) !important;font-weight:300 !important;line-height:1.06 !important;letter-spacing:-.025em !important;margin:44px 0 16px !important;}
+h2{font-size:clamp(24px,3vw,30px) !important;line-height:1.15 !important;margin:44px 0 12px !important;}
+h3{font-family:inherit !important;font-size:18px !important;font-weight:600 !important;color:#fff !important;}
+p,li{color:#cfcbd4 !important;}
+.lede{font-size:19px !important;line-height:1.6 !important;}
+a{color:#F43F8F !important;text-underline-offset:3px;}
+strong,b{color:#fff;}
+header{border-bottom:1px solid rgba(255,255,255,.1) !important;padding-bottom:18px !important;}
+header svg{width:26px !important;height:24px !important;}
+header svg *{stroke:#F43F8F;}
+.brand{font-size:24px !important;font-weight:500 !important;}
+nav a{color:#cfcbd4 !important;font-size:15px !important;}
+.btn,a.btn{display:inline-block;background:#F43F8F !important;color:#fff !important;border:none !important;border-radius:999px !important;
+  font-weight:600 !important;font-size:16px !important;padding:13px 26px !important;box-shadow:none !important;}
+.panel,.card,.box,.callout{background:#08080a !important;border:1px solid rgba(255,255,255,.11) !important;border-radius:20px !important;box-shadow:none !important;}
+.panel{padding:24px !important;}
+.card{padding:22px !important;}
+.tag{font-size:13.5px !important;color:#999 !important;}
+.chip{border:1px solid rgba(255,255,255,.2) !important;color:#cfcbd4 !important;border-radius:999px !important;padding:5px 13px !important;font-size:14px !important;background:transparent !important;}
+.price{font-family:'Fraunces',Georgia,serif !important;font-weight:300 !important;font-size:38px !important;color:#fff !important;}
+table{font-size:15px !important;font-variant-numeric:tabular-nums;}
+th,td{border-color:rgba(255,255,255,.1) !important;padding:11px 8px !important;}
+th{color:#999 !important;font-weight:500 !important;}
+.note,footer{font-size:13.5px !important;color:#999 !important;border-color:rgba(255,255,255,.1) !important;line-height:1.6;}
+::selection{background:rgba(244,63,143,.34);color:#fff;}
+@media (max-width:720px){ html body{font-size:16px;} .panel,.card{border-radius:16px !important;padding:18px !important;} }
