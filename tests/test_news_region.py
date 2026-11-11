@@ -58,9 +58,38 @@ def test_region_query():
     lon = c.get("/api/news?region=london").get_json()["items"]
     assert len(lon) == 3 and {x["region"] for x in lon} == {"london"}
     assert len(c.get("/api/news?region=mars").get_json()["items"]) == 60     # unknown region: ignored
+    # the SEC chip asks the server for filings only, so busy wires can never crowd them off the page
+    conn = eng.db_connect()
+    eng.insert_raw_item(conn, {"id": "f1", "source": "filing", "source_name": "SEC 8-K \u00b7 AAPL", "url": "u",
+                               "headline": "Apple 8-K", "raw_text": "t", "category": "general", "published_at": ""})
+    conn.execute("UPDATE items SET processed=1, created_at='2026-11-09T00:00:00' WHERE id='f1'")
+    conn.commit(); conn.close()
+    assert not [x for x in c.get("/api/news").get_json()["items"] if x["source"] == "filing"]   # older than the latest 60
+    sec = c.get("/api/news?only=filing").get_json()["items"]
+    assert len(sec) == 1 and sec[0]["source"] == "filing"
+
+
+def test_feed_formats():
+    """RSS 2.0, namespaced RSS 1.0 and Atom all parse (Nikkei returned 0 items before)."""
+    import types
+    feeds = {
+        "rss2": b"<rss><channel><item><title>A</title><link>http://a</link><description>d</description><pubDate>p</pubDate></item></channel></rss>",
+        "rss1": b'<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/"><item><title>B</title><link>http://b</link><dc:date>2026</dc:date></item></rdf:RDF>',
+        "atom": b'<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>C</title><link href="http://c"/><summary>s</summary><updated>u</updated></entry></feed>',
+    }
+    old_feeds, old_get = eng.RSS_FEEDS, eng.requests.get
+    eng.RSS_FEEDS = [(k, "https://x/" + k, "general") for k in feeds]
+    eng.requests.get = lambda u, **kw: types.SimpleNamespace(status_code=200, content=feeds[u.rsplit("/", 1)[-1]])
+    try:
+        out = eng.fetch_rss()
+    finally:
+        eng.RSS_FEEDS, eng.requests.get = old_feeds, old_get
+    assert [(x["headline"], x["url"]) for x in out] == [("A", "http://a"), ("B", "http://b"), ("C", "http://c")], out
+    assert out[1]["published_at"] == "2026" and out[2]["raw_text"] == "s"
 
 
 if __name__ == "__main__":
     test_feeds_tagged(); print("ok  test_feeds_tagged")
     test_region_query(); print("ok  test_region_query")
+    test_feed_formats(); print("ok  test_feed_formats")
     print("ALL NEWS REGION TESTS PASSED")

@@ -459,6 +459,16 @@
   .catbtn.imp-low.active{background:var(--ink-faint);color:#fff;box-shadow:none;}
   .catbtn.src-region{color:#7fd4ff;}
   .catbtn.src-region.active{background:#7fd4ff;color:#06141a;box-shadow:0 0 14px -4px rgba(127,212,255,.7);}
+  .catbtn.src-region[data-region="asia"]{color:#c9a2ff;}
+  .catbtn.src-region[data-region="asia"].active{background:#c9a2ff;color:#140a22;box-shadow:0 0 14px -4px rgba(201,162,255,.7);}
+  /* session badge on each card, same colours as the Asia / London chips */
+  .badge.region{margin-left:6px;font-weight:600;}
+  .badge.region.london{color:#7fd4ff;border-color:rgba(127,212,255,.4);background:rgba(127,212,255,.08);}
+  .badge.region.asia{color:#c9a2ff;border-color:rgba(201,162,255,.4);background:rgba(201,162,255,.08);}
+  article.reg-london{box-shadow:inset 2px 0 0 rgba(127,212,255,.55);}
+  article.reg-asia{box-shadow:inset 2px 0 0 rgba(201,162,255,.55);}
+  html[data-theme="light"] .badge.region.london{color:#0b6fa8;border-color:rgba(11,111,168,.35);background:rgba(11,111,168,.06);}
+  html[data-theme="light"] .badge.region.asia{color:#6a3fc0;border-color:rgba(106,63,192,.35);background:rgba(106,63,192,.06);}
   .catbtn.src-filing{color:#ffd479;}
   .catbtn.src-filing.active{background:#ffd479;color:#1a1206;box-shadow:0 0 14px -4px rgba(255,212,121,.7);}
   .mktstatus{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
@@ -1301,19 +1311,34 @@ function instTag(sym){
 
 let _newsCache = [];
 let _newsImp = new Set();   // impact filter; empty = all (multi-select: stack High+Med, etc.)
+function regionBadge(n){
+  return n.region==='asia' ? '<span class="badge region asia" title="Asia session desk">Asia</span>'
+       : n.region==='london' ? '<span class="badge region london" title="London session desk">London</span>' : '';
+}
+function newsUrl(){
+  // SEC and the session chips are one group: the server narrows before its page
+  // limit, so each chip shows a full page of its own kind.
+  return '/api/news' + (_filingsOnly ? '?only=filing' : _newsRegion ? '?region=' + _newsRegion : '');
+}
+function syncSourceChips(){
+  document.querySelectorAll('.catfilter .catbtn[data-region]').forEach(b => b.classList.toggle('active', b.dataset.region === _newsRegion));
+  const f = document.getElementById('srcFilingBtn'); if(f) f.classList.toggle('active', _filingsOnly);
+}
 let _newsRegion = '';       // Asia / London chips: show one session's desks ('' = everything)
 function setNewsRegion(r){
   _newsRegion = (_newsRegion === r) ? '' : r;
-  document.querySelectorAll('.catfilter .catbtn[data-region]').forEach(b => b.classList.toggle('active', b.dataset.region === _newsRegion));
+  if(_newsRegion) _filingsOnly = false;          // one source chip at a time
+  syncSourceChips();
   renderNews(_newsCache);
-  if(typeof loadLiveNews === 'function') loadLiveNews();   // refetch: the server narrows to that session's desks
+  if(typeof loadLiveNews === 'function') loadLiveNews();
 }
 let _filingsOnly = false;   // SEC chip: show only primary-source filings
 function toggleFilingsOnly(){
   _filingsOnly = !_filingsOnly;
-  const b = document.getElementById('srcFilingBtn');
-  if(b) b.classList.toggle('active', _filingsOnly);
+  if(_filingsOnly) _newsRegion = '';
+  syncSourceChips();
   renderNews(_newsCache);
+  if(typeof loadLiveNews === 'function') loadLiveNews();
 }
 const MAX_INST = 3;         // cap instrument tags shown per card, tight & realistic
 function setNewsImp(v){
@@ -1351,13 +1376,13 @@ function renderNews(list){
     const [arrow,cls,label]=dirMeta[n.dir];
     const insts=(n.inst||[]).slice(0,MAX_INST).map(instTag).join('');
     const isF = n.source==='filing';
-    return `<article class="item${isF?' secitem':''}" data-idx="${realIdx}" onclick="openNewsDetail(${realIdx})" title="Click for detail">
+    return `<article class="item${isF?' secitem':''}${n.region?' reg-'+n.region:''}" data-idx="${realIdx}" onclick="openNewsDetail(${realIdx})" title="Click for detail">
       <div class="rail">
         <div class="railtop"><span class="time">${n.time}</span><span class="impact ${n.impact}">${n.impact}</span></div>
         <div class="accent ${n.impact}"></div>
       </div>
       <div class="body">
-        ${isF ? secBand(n) : `<div class="src"><span class="badge ${n.source}">${srcLabel(n.source)}</span>${n.source_name?`<span class="srcname">${esc(n.source_name)}</span>`:''}${n.company?`<span class="srcco">${esc(n.company)}</span>`:''}</div>`}
+        ${isF ? secBand(n) : `<div class="src"><span class="badge ${n.source}">${srcLabel(n.source)}</span>${regionBadge(n)}${n.source_name?`<span class="srcname">${esc(n.source_name)}</span>`:''}${n.company?`<span class="srcco">${esc(n.company)}</span>`:''}</div>`}
         <p class="headline">${esc(n.headline)}</p>
         <p class="summary">${esc(n.summary)}</p>
         ${factChips(n, 3)}
@@ -1601,7 +1626,7 @@ tick();setInterval(tick,1000);
    ============================================================================ */
 async function loadLiveNews(){
   try{
-    const res = await fetch('/api/news' + (_newsRegion ? '?region=' + _newsRegion : ''), {cache:'no-store'});
+    const res = await fetch(newsUrl(), {cache:'no-store'});
     if(!res.ok) throw new Error('no server');
     const data = await res.json();
     if(data.items && data.items.length){
