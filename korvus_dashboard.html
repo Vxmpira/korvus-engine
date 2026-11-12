@@ -1047,7 +1047,7 @@
 
   </div>
 
-  <!-- SESSION MAP, ICT killzones (ET clock) + key levels for the NQ proxy -->
+  <!-- SESSION MAP, ICT killzones (ET clock) + MNQ key levels from the CME feed -->
   <div class="ctxwrap">
   <div class="ctxband" id="sessionBand">
     <div class="ctxlabel"><span class="t">Session Map</span><span class="s">Asia · London · New York · ET</span></div>
@@ -1749,6 +1749,7 @@ async function loadLiveQuotes(){
     const q = data.quotes || {};
     if(Object.keys(q).length === 0){ _setWatchStatus(_futuresStateET()); setFeedBadge(_futuresStateET()); return; } // provider 'off' or no key / after hours: keep samples, but show real session
     const open = data.meta && data.meta.market_open;
+    if(q.MNQ && typeof q.MNQ.price === 'number' && q.MNQ.price > 0) renderSessionLevels(q);  // session map moves with the board
 
     // 1) Futures Board. With a licensed CME feed (Databento) we show the REAL
     //    contract: its actual price AND true daily %. Without it we fall back to
@@ -1936,6 +1937,7 @@ let USER_TIER = 'free';   // default; loadMe() updates it
 let REALTIME  = false;    // server-truth: this session is served the LIVE feed
 let IS_OWNER = false;     // only the TRADOVATE_OWNER account; gates the live feed
 let NATIVE_FUTURES = false; // true when the feed serves REAL CME futures (Databento, Pro)
+let _meLoaded = false;      // /api/me has answered at least once
 let PRICE_DISPLAY = '';   // monthly price string from billing (e.g. "$3.99")
 // Gold crown shown beside the Account button for Pro (Operator) members.
 const PRO_CROWN_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" '
@@ -1951,11 +1953,16 @@ async function loadMe(){
   try{
     const res = await fetch('/api/me', {cache:'no-store'});
     const me = await res.json();
+    if(!me.auth){ _meLoaded = true; renderSessionLevels(null); }
     PRICE_DISPLAY = me.price_display || '';
     if(me.auth){
       USER_TIER = me.tier || 'free';
       IS_OWNER = !!me.is_owner;
+      const _hadNative = NATIVE_FUTURES;
       NATIVE_FUTURES = !!me.native_futures;
+      _meLoaded = true;
+      // first time we learn the CME feed is on: pull MNQ right away, not on the next poll
+      if(NATIVE_FUTURES && !_hadNative){ loadLiveQuotes().catch(function(){}); loadContextBands(); }
       REALTIME = !!me.realtime;
       const _bs = document.getElementById('boardSource');
       if(_bs){
@@ -2242,9 +2249,9 @@ function renderSessions(){
   }
 }
 
-// key levels for MNQ. With a licensed CME feed (Databento) these are the REAL
-// front-month contract's O/H/L/prev. Without it we fall back to the QQQ proxy,
-// shown HONESTLY as the proxy (we never print the QQQ price under an MNQ label).
+// key levels for MNQ: the REAL front-month contract's O/H/L/prev from the
+// licensed CME feed. It rides the fast quotes loop (every second for Pro), so it
+// fills as soon as the board does. There is no QQQ stand-in.
 function renderSessionLevels(q){
   const el = document.getElementById('sessionLevels'); if(!el) return;
   const item = (k,v) => `<div class="lvl"><span class="lk">${k}</span><span class="lv">${v}</span></div>`;
@@ -2266,26 +2273,21 @@ function renderSessionLevels(q){
       + item('Low', fx(real.low)) + item('Prev', fx(real.prev_close))
       + rangebar(pos)
       + `<div class="ctxnote">${_futuresStateET()==='closed' ? 'CME front-month · last session (market closed)' : "live CME front-month · today's session range"}</div>`;
+    el.dataset.mnq = '1';
     return;
   }
 
-  // 2) Proxy fallback. Closed: dashes. Open: QQQ levels, labeled as the proxy.
-  if(!_proxiesLive()){
-    el.innerHTML = item('NQ proxy','-') + item('Open','-') + item('High','-')
-      + item('Low','-') + item('Prev','-')
-      + `<div class="ctxnote">market closed, levels resume at 9:30 ET</div>`;
-    return;
-  }
-  const d = (q && q.QQQ) ? q.QQQ : null;
-  const price = d && typeof d.price==='number' ? d.price : null;
-  const hasOHLC = d && ['open','high','low'].every(k=>typeof d[k]==='number' && d[k]>0);
-  const pos = (hasOHLC && d.high>d.low && price!=null) ? Math.min(100,Math.max(0,(price-d.low)/(d.high-d.low)*100)) : null;
-  el.innerHTML = item('QQQ', price!=null?fx(price):'-')
-    + item('Open', fx(d&&d.open)) + item('High', fx(d&&d.high))
-    + item('Low', fx(d&&d.low)) + item('Prev', fx(d&&d.prev_close))
-    + rangebar(pos)
-    + `<div class="ctxnote">${hasOHLC ? "QQQ proxy (NQ stand-in) · today's range · live MNQ needs a licensed feed" : 'awaiting OHLC from the feed'}</div>`;
+  // 2) No MNQ yet: MNQ label with dashes. Never a QQQ stand-in.
+  el.dataset.mnq = '0';
+  const note = !_meLoaded ? 'loading MNQ from the CME feed'
+    : (!NATIVE_FUTURES ? 'live CME feed unavailable right now'
+    : (_futuresStateET()==='closed' ? 'CME closed, levels resume at the next session' : 'loading MNQ from the CME feed'));
+  el.innerHTML = item('MNQ','-') + item('Open','-') + item('High','-')
+    + item('Low','-') + item('Prev','-')
+    + `<div class="ctxnote">${note}</div>`;
 }
+
+function _sessionHasMNQ(){ const el=document.getElementById('sessionLevels'); return !!(el && el.dataset.mnq==='1'); }
 
 // dedicated lean fetch so the bands always get clean data (esp. QQQ), decoupled
 // from the larger board fetch, which can drop symbols under provider rate limits.
@@ -2298,10 +2300,10 @@ async function loadContextBands(){
     const data = await res.json();
     const q = data.quotes || {};
     renderMacroBand(q);
-    renderSessionLevels(q);
+    if(q.MNQ || !_sessionHasMNQ()) renderSessionLevels(q);
   }catch(e){
     renderMacroBand(null);      // honest "-" / awaiting, never a fake number
-    renderSessionLevels(null);
+    if(!_sessionHasMNQ()) renderSessionLevels(null);
   }
 }
 
