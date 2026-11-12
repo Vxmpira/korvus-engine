@@ -1028,10 +1028,10 @@
   </header>
 
   <!-- FUTURES BOARD, more instruments -->
-  <div class="ribbonhead">
+  <!-- header row retired to give the panels room; boardSource / feedExplain stay for the scripts -->
+  <div class="ribbonhead" hidden>
     <span class="rbtitle">Futures Board <small id="boardSource" title="These panels price each future through its matching ETF (QQQ for NQ, SPY for ES, and so on) during US market hours.">via ETF proxies</small></span>
     <span class="feednote" id="feedExplain"></span>
-    <span class="feedbadge" id="feedBadge">● -</span>
   </div>
   <div class="ribbonwrap">
     <div class="ribbon" id="ribbon"></div>
@@ -1054,6 +1054,7 @@
     <div id="killzones" style="display:flex;"></div>
     <div class="kznow" id="kzNow"></div>
     <div id="sessionLevels" style="display:flex;"></div>
+    <div class="sessbadge"><span class="feedbadge" id="feedBadge">● -</span></div>
   </div>
   </div>
 
@@ -1571,7 +1572,7 @@ function renderSMT(d){
   const fb = v.freshness ? (fmap[v.freshness] || fmap.live) : null;
   const badge = fb ? `<span style="display:inline-block;margin-left:8px;padding:2px 7px;border:1px solid ${fb[1]};color:${fb[1]};border-radius:6px;font:600 9px/1.4 var(--mono,ui-monospace,monospace);letter-spacing:.1em;vertical-align:middle">${fb[0]}</span>` : '';
   document.getElementById('smt').innerHTML=
-    `<div class="verdict ${v.state}"><b>${icon} ${v.title}${badge}${tiltTag}</b>${v.note}</div>
+    `<div class="verdict ${v.state}" onclick="this.classList.toggle('open')" title="Click to read the full note"><b>${icon} ${v.title}${badge}${tiltTag}</b><span class="vnote">${v.note}</span></div>
      <div class="corr">${legs}</div>`;
 }
 
@@ -1854,6 +1855,7 @@ function setFeedBadge(fs){
       note = 'Overnight, showing last close. Live at 9:30 AM ET.';
     }
     ex.className = 'feednote' + (note ? ' show' : '');
+    b.title = note || 'Feed state for the futures board';   // the old header note now lives on the badge
     ex.innerHTML = note ? '<span class="fdot"></span>' + note : '';
   }
 }

@@ -502,3 +502,19 @@ html[data-k="forex"] .colhead{background:var(--k-glass-strong) !important;-webki
   #candles{width:calc(100vw / var(--k-zoom)) !important;height:calc(100vh / var(--k-zoom)) !important;}
 }
 @media (min-width:1800px){ html{--k-zoom:.88;} }
+
+/* ============================ terminal: more room for the panels ============================
+   The futures-board header row is gone; its live badge sits at the right end of
+   the Session Map. SMT is compact (its note shows two lines, click to read all),
+   so Funds Watch gets the height it was missing. */
+html[data-k="terminal"] .ribbonhead{display:none !important;}
+html[data-k="terminal"] .sessbadge{display:flex;align-items:center;margin-left:auto;padding:0 16px 0 12px;flex:none;}
+html[data-k="terminal"] .sessbadge .feedbadge{font-size:11px !important;}
+html[data-k="terminal"] .smtbody{padding:12px 16px 14px !important;}
+html[data-k="terminal"] .verdict{padding:10px 13px !important;margin-bottom:11px !important;cursor:pointer;}
+html[data-k="terminal"] .verdict b{margin-bottom:4px !important;}
+html[data-k="terminal"] .verdict .vnote{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;}
+html[data-k="terminal"] .verdict.open .vnote{display:block;-webkit-line-clamp:unset;}
+html[data-k="terminal"] .corr{gap:8px !important;}
+html[data-k="terminal"] .smt .phead,html[data-k="terminal"] .watch .phead{padding:12px 18px !important;}
+@media (max-width:760px){ html[data-k="terminal"] .sessbadge{padding:0 12px;} }
