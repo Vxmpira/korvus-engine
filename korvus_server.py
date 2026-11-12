@@ -371,6 +371,24 @@ def api_feed_intel_status():
     return jsonify(out)
 
 
+@app.route("/api/feed/lab")
+def api_feed_lab():
+    """Server-to-server view of the futures strategy lab for the BlackCrown
+    admin's Paper Bot tab. Same shared key as intel-status. Read-only."""
+    import hmac
+    want = os.getenv("INTEL_STATUS_KEY", "")
+    got = request.headers.get("X-Intel-Key", "")
+    if not want or not hmac.compare_digest(want, got):
+        return jsonify({"error": "forbidden"}), 403
+    try:
+        import korvus_lab
+        out = korvus_lab.book()
+    except Exception as e:
+        out = {"enabled": False, "started": False, "error": str(e)[:200], "markets": [], "log": [], "trades": []}
+    out["server_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
+    return jsonify(out)
+
+
 def _feed_region(source_name) -> str:
     try:
         from korvus_engine import FEED_REGION
@@ -1641,6 +1659,7 @@ _warmer_lock = _threading.Lock()
 
 def _warm_loop():
     last_cal = 0.0
+    last_lab = 0.0
     while True:
         try:
             from korvus_quotes import warm_quotes
@@ -1655,6 +1674,13 @@ def _warm_loop():
                 last_cal = now
             except Exception as e:
                 print(f"  [warm] calendar: {e}")
+        if now - last_lab >= 55:        # the futures lab, once a minute, paper only
+            last_lab = now
+            try:
+                import korvus_lab
+                korvus_lab.tick()
+            except Exception as e:
+                print(f"  [warm] lab: {e}")
         _time.sleep(30)                 # quote-universe refresh cadence
 
 def _start_warmer():
