@@ -129,6 +129,7 @@ Data as of: {stamp}
 - `Filings/YYYY-MM-DD.md`: every filing captured that day, with the Korvus read
 - `Tickers/SYMBOL.md`: per-stock history of filings and paper trades
 - [[{SUBDIR}/Bot/Strategy|Strategy]] and [[{SUBDIR}/Bot/Scoreboard|Scoreboard]] in `Bot/`, plus monthly ledgers in `Bot/Trades/`
+- The futures lab (MNQ and MES intraday swings) in `Lab/`: [[{SUBDIR}/Lab/Strategies|every strategy it has created]], monthly ledgers in `Lab/Trades/`, and [[{SUBDIR}/Lab/Log|its log]]
 - `data/`: the same data as JSONL for agents and backtests
   - `filings.jsonl`: one filing per line (last {EXPORT_DAYS} days)
   - `trades.jsonl`: every paper trade
@@ -220,30 +221,32 @@ Data as of: {stamp}
         files[f"Tickers/{s}.md"] = "\n".join(out) + "\n"
 
     # ---- Bot: strategy + scoreboard + ledgers ----
+    rule_lines = "\n".join(f"- **{k}:** {v}" for k, v in bot.rules_lines())
     files["Bot/Strategy.md"] = _fm(type="intel-strategy", version=bot.STRATEGY, tags=["korvus-intel", "paper-bot"]) + f"""
 # Strategy {bot.STRATEGY}
 
 {GEN}
-**Paper only.** No broker connection, no real orders.
+**Paper only.** No broker connection, no real orders. Bullish read -> **long**. Bearish read -> **short**{"" if bot.ALLOW_SHORT else " (shorts currently switched off)"}. Neutral -> no trade.
 
-- **Trigger:** a universe filing scored impact med or high, confidence at least {bot.MIN_CONF}%, seen in the last {bot.LOOKBACK_H:.0f} hours. Bullish read -> **long**. Bearish read -> **short**{"" if bot.ALLOW_SHORT else " (shorts currently switched off)"}. Neutral -> no trade.
-- **Confirm (long):** price above the reference price at the time the filing was seen, and up less than {bot.MAX_DAY_UP:.0f}% on the day.
-- **Confirm (short):** price below the reference price, and down less than {bot.MAX_DAY_DOWN:.0f}% on the day (stays clear of the Rule 201 short-sale restriction at -10%).
-- **Window:** {bot.window_text()}.
-- **Size:** ${bot.NOTIONAL:,.0f} paper notional, at most {bot.MAX_OPEN} open, one entry per symbol per day.
-- **Exit:** {bot.TARGET_PCT}% in our favor (target), {bot.STOP_PCT}% against (stop), or flat at {bot.flat_text()}. Same distances long and short.
-- **Fills:** last quote with {bot.SLIP*100:.2f}% slippage against us{f" ({bot.SLIP_EXT*100:.2f}% outside the regular session)" if bot.SESSION == "all" else ""}, quotes polled every {bot.TICK_SECONDS}s. Real fills would be worse.
-- **Shorts on paper** assume shares can be borrowed with no borrow fee. Real shorts need a margin account and an available borrow, and some names charge a daily fee.
+{rule_lines}
+
+Scalping is allowed here and only here: on company stock, on a filing the crawler has just read. Everything else is a swing inside the day.
 
 Changing any rule ships as a new version with a fresh [[{SUBDIR}/Bot/Scoreboard|Scoreboard]]; history is never rewritten.
 """
+    na = lambda v, suf="": f"{v}{suf}" if v is not None else "n/a"
+    pct = lambda v: f"{round(100 * v['wins'] / v['trades'])}%" if v.get("trades") else "n/a"
     wr = f"{sb['win_rate_pct']}%" if sb["win_rate_pct"] is not None else "n/a"
     sample = ("" if sb["sample_ok"] else
               f"\n> Sample too small to judge: {sb['closed_trades']} of {bot.MIN_SAMPLE} closed trades needed before the win rate means anything.\n")
-    cats = "\n".join(f"| {c} | {v['trades']} | {round(100*v['wins']/v['trades'])}% |"
+    cats = "\n".join(f"| {c} | {v['trades']} | {pct(v)} |"
                      for c, v in sorted(sb["by_catalyst"].items())) or "| none yet | 0 | n/a |"
-    sides = "\n".join(f"| {sd} | {v['trades']} | {round(100*v['wins']/v['trades'])}% | ${v['pnl']:+,.2f} |"
+    sides = "\n".join(f"| {sd} | {v['trades']} | {pct(v)} | ${v['pnl']:+,.2f} |"
                       for sd, v in sorted(sb.get("by_side", {}).items())) or "| none yet | 0 | n/a | $0.00 |"
+    books = "\n".join(f"| {pb} | {v['trades']} | {pct(v)} | ${v['pnl']:+,.2f} | {na(v.get('avg_r'), 'R')} | {na(v.get('avg_hold_min'), ' min')} |"
+                      for pb, v in sorted(sb.get("by_playbook", {}).items())) or "| none yet | 0 | n/a | $0.00 | n/a | n/a |"
+    phases = "\n".join(f"| {ph} | {v['trades']} | {pct(v)} | ${v['pnl']:+,.2f} |"
+                       for ph, v in sorted(sb.get("by_phase", {}).items())) or "| none yet | 0 | n/a | $0.00 |"
     files["Bot/Scoreboard.md"] = _fm(type="intel-scoreboard", version=bot.STRATEGY, updated=_et_date(data_asof) or "n/a",
                                      closed=sb["closed_trades"], tags=["korvus-intel", "paper-bot"]) + f"""
 # Scoreboard · [[{SUBDIR}/Bot/Strategy|Strategy]] {bot.STRATEGY}
@@ -256,12 +259,26 @@ Data as of: {stamp}
 | Closed trades | {sb['closed_trades']} |
 | Open trades | {sb['open_trades']} |
 | Win rate | {wr} |
-| Avg win | {sb['avg_win_pct'] if sb['avg_win_pct'] is not None else 'n/a'}% |
-| Avg loss | {sb['avg_loss_pct'] if sb['avg_loss_pct'] is not None else 'n/a'}% |
-| Expectancy per trade | {sb['expectancy_pct'] if sb['expectancy_pct'] is not None else 'n/a'}% |
-| Profit factor | {sb['profit_factor'] if sb['profit_factor'] is not None else 'n/a'} |
+| Avg win | {na(sb['avg_win_pct'], '%')} |
+| Avg loss | {na(sb['avg_loss_pct'], '%')} |
+| Expectancy per trade | {na(sb['expectancy_pct'], '%')} ({na(sb.get('expectancy_r'), 'R')}) |
+| Profit factor | {na(sb['profit_factor'])} |
 | Paper P&L | ${sb['paper_pnl']:,.2f} |
+| Risk per trade | ${sb.get('risk_per_trade', 0):,.0f} |
+| Average hold | {na(sb.get('avg_hold_min'), ' min')} |
+| Best run for us / against us (avg) | {na(sb.get('avg_mfe_pct'), '%')} / {na(sb.get('avg_mae_pct'), '%')} |
+| Stops filled worse than planned by (avg) | {na(sb.get('stop_slip_pct'), '%')} |
 | Exits | {', '.join(f'{k} {v}' for k, v in sb['exits'].items()) or 'none yet'} |
+
+## By playbook
+| Playbook | Trades | Win rate | Paper P&L | Avg result | Avg hold |
+|---|---:|---:|---:|---:|---:|
+{books}
+
+## By session
+| Session | Trades | Win rate | Paper P&L |
+|---|---:|---:|---:|
+{phases}
 
 ## By side
 | Side | Trades | Win rate | Paper P&L |
@@ -273,22 +290,83 @@ Data as of: {stamp}
 |---|---:|---:|
 {cats}
 
+R is the result in units of the dollars risked: +2R made twice the risk, -1R lost exactly the risk.
 Paper results: simulated fills on 60-second quotes, no market impact. Not real returns.
 """
     by_month = {}
     for t in trades:
         by_month.setdefault(_et(t["entry_utc"], "%Y-%m"), []).append(t)
     for m, ts in by_month.items():
-        rows = ["| Entry (ET) | Symbol | Side | Qty | Entry | Exit | Reason | P&L | % |", "|---|---|---|---:|---:|---:|---|---:|---:|"]
+        rows = ["| Entry (ET) | Symbol | Playbook | Side | Qty | Entry | Exit | Reason | Held | P&L | % | R |",
+                "|---|---|---|---|---:|---:|---:|---|---:|---:|---:|---:|"]
         for t in sorted(ts, key=lambda x: x["entry_utc"]):
+            pb = t.get("playbook") or t.get("strategy") or ""
             if t["status"] == "closed":
-                rows.append(f"| {_et(t['entry_utc'], '%m-%d %I:%M %p')} | {_tl(t['symbol'])} | {t.get('side') or 'long'} | {t['qty']} | "
-                            f"{t['entry_px']:.2f} | {t['exit_px']:.2f} | {t['exit_reason']} | {t['pnl']:+.2f} | {t['pnl_pct']:+.2f} |")
+                rows.append(f"| {_et(t['entry_utc'], '%m-%d %I:%M %p')} | {_tl(t['symbol'])} | {pb} | {t.get('side') or 'long'} | {t['qty']} | "
+                            f"{t['entry_px']:.2f} | {t['exit_px']:.2f} | {t['exit_reason']} | {na(t.get('hold_min'), ' min')} | "
+                            f"{t['pnl']:+.2f} | {t['pnl_pct']:+.2f} | {na(t.get('r_mult'))} |")
             else:
-                rows.append(f"| {_et(t['entry_utc'], '%m-%d %I:%M %p')} | {_tl(t['symbol'])} | {t.get('side') or 'long'} | {t['qty']} | "
-                            f"{t['entry_px']:.2f} | open | | | |")
+                rows.append(f"| {_et(t['entry_utc'], '%m-%d %I:%M %p')} | {_tl(t['symbol'])} | {pb} | {t.get('side') or 'long'} | {t['qty']} | "
+                            f"{t['entry_px']:.2f} | open | | | | | |")
         files[f"Bot/Trades/{m}.md"] = _fm(type="intel-ledger", month=m, tags=["korvus-intel", "paper-bot"]) + \
             f"\n# Paper trades {m}\n\n{GEN}\n" + "\n".join(rows) + "\n"
+
+    # ---- Lab: the futures strategy lab's whole record ----
+    try:
+        import korvus_lab
+        lab = korvus_lab.export()
+    except Exception as e:
+        print(f"  [intel:vault] lab export skipped: {e}")
+        lab = None
+    if lab:
+        lstamp = (_et(lab["asof"]) + " ET") if lab.get("asof") else "no trades yet"
+        money = lambda v: f"${v:+,.2f}" if v is not None else "n/a"
+        out = [_fm(type="lab-strategies", version=lab["rules"], tags=["korvus-intel", "futures-lab"]),
+               f"# Futures lab · every strategy the bot has created\n\n{GEN}\nData as of: {lstamp}\n",
+               f"**Paper only.** Style: {lab['style']['label']}. At most {lab['style']['max_trades_day']} trades a day per strategy, "
+               f"no new trade after {lab['style']['last_entry_et']} ET, always flat by {lab['style']['flat_et']} ET. "
+               f"Costs charged: ${lab['costs']['commission_rt']:.2f} a round trip and {lab['costs']['slippage_ticks']:g} tick of slippage each side.\n"]
+        for m in lab["markets"]:
+            a, pv = m["all"], m["previous"]
+            out.append(f"## {m['sym']} · {m['name']}\n")
+            out.append(f"{m['created']} created, {m['running']} running, {m['retired']} retired. Champion: {m['champion'] or 'none yet'}. "
+                       f"All swing trades: {a['trades']} closed, {na(a['win_rate'], '%')} winners, {money(a['pnl'])}, "
+                       f"{money(a['expectancy'])} a trade, average hold {na(a.get('avg_hold_min'), ' min')}.")
+            if pv.get("strategies"):
+                out.append(f"\nBefore the swing ruling ({pv['era']}): {pv['strategies']} strategies, {pv['trades']} trades, {money(pv['pnl'])}. Retired, kept on the record.")
+            out.append("\n| Strategy | Status | Family | Trades | Winners | P&L | Per trade | Avg hold |\n|---|---|---|---:|---:|---:|---:|---:|")
+            for st in m["strategies"]:
+                if st["era"] != lab["rules"]:
+                    continue
+                out.append(f"| {st['id']} | {st['status']} | {st['family_label']} | {st['trades']} | {na(st['win_rate'], '%')} | "
+                           f"{money(st['pnl'])} | {money(st['expectancy'])} | {na(st.get('avg_hold_min'), ' min')} |")
+            out.append("")
+            for st in m["strategies"]:
+                if st["era"] != lab["rules"]:
+                    continue
+                out.append(f"### {st['id']} · {st['family_label']} · {st['status']}\n")
+                out.append(f"- **Rules:** {st['rules']}\n- **Why it exists:** {st['why']}"
+                           + (f"\n- **Why it was retired:** {st['retired_why']}" if st.get("retired_why") else "")
+                           + (f"\n- **Since it was crowned:** {st['since_crowned']['trades']} trades, {money(st['since_crowned']['pnl'])}" if st.get("since_crowned") else "")
+                           + "\n")
+        files["Lab/Strategies.md"] = "\n".join(out) + "\n"
+        lmonths = {}
+        for t in lab["trades"]:
+            lmonths.setdefault(_et(t["entry_utc"], "%Y-%m"), []).append(t)
+        for mth, ts in lmonths.items():
+            rows = ["| Entry (ET) | Market | Strategy | Family | Side | Entry | Exit | Reason | Held | P&L | Why it entered |",
+                    "|---|---|---|---|---|---:|---:|---|---:|---:|---|"]
+            for t in sorted(ts, key=lambda x: x["entry_utc"]):
+                done = t["status"] == "closed"
+                rows.append(f"| {_et(t['entry_utc'], '%m-%d %I:%M %p')} | {t['sym']} | {t['strat']} | {t['family']} | {t['side']} | "
+                            f"{t['entry_px']:.2f} | {(format(t['exit_px'], '.2f') if done else 'open')} | {t['reason'] or ''} | "
+                            f"{na(t.get('hold_min'), ' min') if done else ''} | {(format(t['pnl'], '+.2f') if done else '')} | {_cell(t.get('note') or '')} |")
+            files[f"Lab/Trades/{mth}.md"] = _fm(type="lab-ledger", month=mth, tags=["korvus-intel", "futures-lab"]) + \
+                f"\n# Futures lab trades {mth}\n\n{GEN}\n" + "\n".join(rows) + "\n"
+        files["Lab/Log.md"] = _fm(type="lab-log", tags=["korvus-intel", "futures-lab"]) + \
+            f"\n# Futures lab log\n\n{GEN}\nNewest first: every strategy created, retired or crowned, and every trade.\n\n" + \
+            "\n".join(f"- {_et(l['t'], '%m-%d %I:%M %p')} · {l['sym']} · {l['kind']} · {l['text']}" for l in lab["log"]) + "\n"
+        files["data/lab.json"] = json.dumps({**lab, "trades": lab["trades"][:1500]}, indent=1) + "\n"
 
     # ---- machine-readable ----
     keep = ("accession", "symbol", "company", "form", "items", "filed_utc", "seen_utc", "url", "headline",
@@ -303,14 +381,19 @@ Paper results: simulated fills on 60-second quotes, no market impact. Not real r
         "data_asof_utc": data_asof,
         "scoreboard": sb,
         "min_sample": bot.MIN_SAMPLE,
+        "changes": bot.CHANGELOG,
         "universe_count": len(universe),
         "universe_asof": asof,
         "rules": {"strategy": bot.STRATEGY, "session": bot.SESSION, "window": bot.window_text(),
                   "flat_at": bot.flat_text(), "notional": bot.NOTIONAL, "max_open": bot.MAX_OPEN,
-                  "target_pct": bot.TARGET_PCT, "stop_pct": bot.STOP_PCT, "min_confidence": bot.MIN_CONF,
-                  "max_day_up_pct": bot.MAX_DAY_UP, "max_day_down_pct": bot.MAX_DAY_DOWN,
+                  "risk_usd": bot.RISK_USD, "extended": bot.EXTENDED, "allow_scalp": bot.ALLOW_SCALP,
+                  "lines": [{"k": k, "v": v} for k, v in bot.rules_lines()],
+                  "playbooks": {k: {x: v[x] for x in ("label", "fresh_min", "conf_high", "conf_med", "min_move", "checks",
+                                                      "stop_floor", "rr", "max_hold_min")} for k, v in bot.PLAYBOOKS.items()},
+                  "max_day_move_pct": bot.MAX_DAY_MOVE, "skip_catalysts": list(bot.SKIP_CATALYSTS),
                   "allow_short": bot.ALLOW_SHORT, "lookback_hours": bot.LOOKBACK_H,
-                  "slippage_pct": round(bot.SLIP * 100, 3), "tick_seconds": bot.TICK_SECONDS,
+                  "slippage_pct": round(bot.SLIP * 100, 3), "slippage_ext_pct": round(bot.SLIP_EXT * 100, 3),
+                  "tick_seconds": bot.TICK_SECONDS,
                   "price_band": [intel.PRICE_MIN, intel.PRICE_MAX], "mcap_max": intel.MCAP_MAX},
     }, indent=1) + "\n"
     return files
