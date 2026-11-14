@@ -165,6 +165,12 @@ def db_init():
     tcols = {r[1] for r in conn.execute("PRAGMA table_info(trades)")}
     if "side" not in tcols:
         conn.execute("ALTER TABLE trades ADD COLUMN side TEXT DEFAULT 'long'")   # long | short
+    # v4: which playbook took the trade, how it was sized, and how far it ran each way
+    for col, typ in (("playbook", "TEXT"), ("phase", "TEXT"), ("risk_usd", "REAL"), ("init_stop_px", "REAL"),
+                     ("stop_pct", "REAL"), ("mfe_pct", "REAL"), ("mae_pct", "REAL"), ("r_mult", "REAL"),
+                     ("hold_min", "REAL"), ("note", "TEXT")):
+        if col not in tcols:
+            conn.execute(f"ALTER TABLE trades ADD COLUMN {col} {typ}")
     cols = {r[1] for r in conn.execute("PRAGMA table_info(filings)")}
     if "scorer" not in cols:
         conn.execute("ALTER TABLE filings ADD COLUMN scorer TEXT")        # who decided: haiku | crown
@@ -726,6 +732,9 @@ def run_forever():
               "inc_entries_today": out["entries"], "inc_exits_today": out["exits"]}
         if out.get("skipped"):
             st["last_skip"] = f"{out['skipped'][-1][0]}: {out['skipped'][-1][1]}"
+        st["watch"] = (out.get("watch") or [])[:25]
+        st["positions"] = out.get("positions") or []
+        st["strategy"] = bot.STRATEGY
         status.record("bot", **st)
         for kind, sym, text in out.get("log", []):
             status.event("bot", text, symbol=sym, kind=kind)

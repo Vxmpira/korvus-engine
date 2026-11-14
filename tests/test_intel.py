@@ -13,8 +13,7 @@ import korvus_intel as intel
 intel.DB_PATH = os.path.join(TMP, "intel.db")
 import korvus_paperbot as bot
 import korvus_vault as vault
-bot.SESSION = "regular"            # this file tests the regular-hours rule set
-bot.session_open = lambda now: True
+bot.EXTENDED = False               # this file tests the regular session; extended hours are in test_paperbot_sessions
 ET = ZoneInfo("America/New_York")
 
 
@@ -43,7 +42,7 @@ def seed():
                   (s, s + " Inc", 1000 + len(s), p, 2e9, 1e6, "Tech", "NASDAQ", now))
     rows = [  # accession, sym, impact, dir, conf, ref
         ("0001-26-000001", "AAA", "high", "bull", 80, 99.0),   # trigger, confirms
-        ("0001-26-000002", "BBB", "med",  "bull", 70, 82.0),   # trigger, but below reference -> skip
+        ("0001-26-000002", "BBB", "med",  "bull", 75, 82.0),   # trigger, but below reference -> skip
         ("0001-26-000003", "CCC", "high", "bear", 90, 110.0),  # bearish -> never long
         ("0001-26-000004", "AAA", "low",  "bull", 95, 99.0),   # low impact -> no
     ]
@@ -57,18 +56,50 @@ def seed():
 
 
 def test_filters():
-    assert bot.is_trigger({"direction": "bull", "impact": "med", "confidence": 60})
+    assert bot.is_trigger({"direction": "bull", "impact": "med", "confidence": 72})
+    assert not bot.is_trigger({"direction": "bull", "impact": "med", "confidence": 62})     # the v3 log's weak reads
+    assert bot.is_trigger({"direction": "bull", "impact": "high", "confidence": 65})
     assert not bot.is_trigger({"direction": "bull", "impact": "low", "confidence": 99})
+    assert bot.grade({"impact": "high", "confidence": 70}, "scalp") and not bot.grade({"impact": "med", "confidence": 99}, "scalp")
     assert bot.side_for({"direction": "bear", "impact": "high", "confidence": 99}) == "short"
     assert bot.side_for({"direction": "neut", "impact": "high", "confidence": 99}) is None
-    assert bot.confirm_entry({"ref_price": 99}, {"price": 100, "chg_pct": 2})[0]
-    assert not bot.confirm_entry({"ref_price": 99}, {"price": 98, "chg_pct": 2})[0]
-    assert not bot.confirm_entry({"ref_price": 90}, {"price": 100, "chg_pct": 9})[0]
-    assert bot.confirm_entry({"ref_price": 100}, {"price": 99, "chg_pct": -2}, "short")[0]
-    assert not bot.confirm_entry({"ref_price": 100}, {"price": 101, "chg_pct": -2}, "short")[0]
-    assert not bot.confirm_entry({"ref_price": 100}, {"price": 90, "chg_pct": -9}, "short")[0]
-    t, s = bot.levels("short", 100.0)
-    assert round(t, 2) == 98.5 and round(s, 2) == 101.0
+    C = bot.confirm_entry
+    assert C({"ref_price": 99}, {"price": 100, "chg_pct": 2})[0]
+    assert not C({"ref_price": 99}, {"price": 99.4, "chg_pct": 2})[0]                 # +0.4%: one tick above is not agreement
+    assert C({"ref_price": 99}, {"price": 99.4, "chg_pct": 2}, "long", "scalp")[0]     # a scalp needs +0.3%
+    assert not C({"ref_price": 99}, {"price": 98, "chg_pct": 2})[0]
+    assert not C({"ref_price": 90}, {"price": 100, "chg_pct": 9})[0]                   # already a chase
+    assert not C({"ref_price": 99}, {"price": 100, "chg_pct": 2, "open": 101})[0]      # below its own open: no swing
+    assert C({"ref_price": 99}, {"price": 100, "chg_pct": 2, "open": 99.5})[0]
+    assert not C({}, {"price": 100, "chg_pct": 2})[0]                                  # no reference price, no trade
+    assert C({"ref_price": 100}, {"price": 99, "chg_pct": -2}, "short")[0]
+    assert not C({"ref_price": 100}, {"price": 101, "chg_pct": -2}, "short")[0]
+    assert not C({"ref_price": 100}, {"price": 90, "chg_pct": -9}, "short")[0]
+    t, st = bot.levels("short", 100.0)
+    assert round(t, 2) == 97.0 and round(st, 2) == 101.5                               # 1.5% stop, 2x target
+    # the stop widens with the stock's own range, the size shrinks so the dollars at risk stay the same
+    quiet = bot.plan("swing", "long", 100.0, {"price": 100}, "regular")
+    wild = bot.plan("swing", "long", 100.0, {"price": 100, "high": 103, "low": 97}, "regular")
+    assert quiet["stop_pct"] == 1.5 and quiet["qty"] == 66 and wild["stop_pct"] == 3.0 and wild["qty"] == 33
+    assert abs(quiet["risk_usd"] - 99.0) < 1e-6 and abs(wild["risk_usd"] - 99.0) < 1e-6
+    assert bot.plan("swing", "long", 100.0, {"price": 100, "high": 110, "low": 90}, "regular")["stop_pct"] == 3.5
+    ext = bot.plan("scalp", "long", 100.0, {"price": 100}, "afterhours")
+    assert ext["stop_pct"] == 1.8 and ext["qty"] == 27 and round(ext["target_pct"], 2) == 2.7   # wider stop, half risk
+    assert bot.plan("scalp", "long", 9000.0, {"price": 9000}, "regular")["qty"] == 0
+    f = {"impact": "high", "direction": "bull", "confidence": 80, "catalyst": "dividend", "seen_utc": "2026-11-10T13:00:00+00:00"}
+    assert bot.playbook_for(f, dt.datetime(2026, 11, 10, 10, 30, tzinfo=ET), "regular")[0] is None       # routine catalyst
+    f["catalyst"] = "earnings"
+    assert bot.playbook_for(f, dt.datetime(2026, 11, 10, 8, 10, tzinfo=ET), "premarket") == (None, "waiting for the day swing window (10:00 AM to 2:30 PM ET)")
+    assert bot.playbook_for(f, dt.datetime(2026, 11, 10, 10, 30, tzinfo=ET), "regular")[0] == "swing"
+
+
+def _ticks(day, h, m, q, n=3):
+    """n checks one minute apart; returns the last result and every skip seen."""
+    r, skipped = None, []
+    for i in range(n):
+        r = bot.tick(day.replace(hour=h, minute=m + i), q)
+        skipped += r["skipped"]
+    return r, skipped
 
 
 def test_simulated_day():
@@ -76,30 +107,57 @@ def test_simulated_day():
     px = {"AAA": 100.0, "BBB": 80.0, "CCC": 111.0}
     q = lambda s: {"price": px[s], "chg_pct": 1.0, "prev_close": px[s] - 1, "open": 0, "high": 0, "low": 0}
     day = dt.datetime(2026, 11, 10, tzinfo=ET)
-    r = bot.tick(day.replace(hour=9, minute=35), q)            # before entry window
-    assert r["entries"] == 0
+    r = bot.tick(day.replace(hour=9, minute=45), q)            # the open is still settling: swings wait for 10:00
+    assert r["entries"] == 0 and r["watch"][0]["state"] == "waiting", r["watch"]
     r = bot.tick(day.replace(hour=10, minute=0), q)
-    assert r["entries"] == 1, r                                  # AAA only
-    assert ("BBB", "below reference 82.00") in r["skipped"], r["skipped"]
-    assert ("CCC", "short: not below reference 110.00") in r["skipped"], r["skipped"]   # bear read, price not confirming
+    assert r["entries"] == 0 and ("AAA", "confirming: +1.01% since the filing, held on 1 of 3 checks") in r["skipped"], r["skipped"]
+    r = bot.tick(day.replace(hour=10, minute=1), q)
+    assert r["entries"] == 0
+    r = bot.tick(day.replace(hour=10, minute=2), q)            # held three checks in a row: the swing is on
+    assert r["entries"] == 1, r
+    assert ("BBB", "-2.44% since the filing, needs +0.5% the read's way") in r["skipped"], r["skipped"]
+    assert ("CCC", "-0.91% since the filing, needs +0.5% the read's way") in r["skipped"], r["skipped"]   # bear read, price not confirming
+    c = intel.db(); t = dict(c.execute("SELECT * FROM trades WHERE symbol='AAA'").fetchone()); c.close()
+    assert t["playbook"] == "swing" and t["strategy"] == "v4-scalp-and-swing" and t["qty"] == 66 and t["phase"] == "regular"
+    assert abs(t["stop_px"] - 100.05 * 0.985) < 1e-3 and abs(t["target_px"] - 100.05 * 1.03) < 1e-3 and abs(t["risk_usd"] - 99.05) < 0.01
     r = bot.tick(day.replace(hour=10, minute=5), q)
-    assert r["entries"] == 0                                     # one trade per filing / per day
-    px["AAA"] = 101.7                                            # +1.65% from ~100.05 fill
+    assert r["entries"] == 0                                     # one trade per filing per playbook
+    px["AAA"] = 101.6                                            # up one stop distance: stop goes to the entry price
+    r = bot.tick(day.replace(hour=10, minute=30), q)
+    assert r["exits"] == 0 and any(k == "manage" for k, _, _ in r["log"]), r["log"]
+    px["AAA"] = 103.2                                            # +3% target
     r = bot.tick(day.replace(hour=11, minute=0), q)
     assert r["exits"] == 1
     sb = bot.scoreboard()
     assert sb["closed_trades"] == 1 and sb["wins"] == 1 and sb["win_rate_pct"] == 100.0 and not sb["sample_ok"]
-    assert sb["exits"] == {"target": 1}
-    # a losing trade on a fresh filing, closed by the time stop
+    assert sb["exits"] == {"target": 1} and sb["by_playbook"]["swing"]["avg_r"] > 2 and sb["avg_hold_min"] == 58
+    assert sb["avg_mfe_pct"] > 3 and sb["expectancy_r"] > 2
+    # a swing that worked and then came all the way back leaves at the entry price, not at a loss
     c = intel.db()
     c.execute("UPDATE filings SET direction='bull', ref_price=110 WHERE symbol='CCC'"); c.commit(); c.close()
-    bot.tick(day.replace(hour=12, minute=0), q)
-    px["CCC"] = 110.5
+    r, _ = _ticks(day, 12, 0, q)
+    assert r["entries"] == 1
+    px["CCC"] = 112.8
+    assert bot.tick(day.replace(hour=12, minute=30), q)["exits"] == 0
+    px["CCC"] = 110.9
+    r = bot.tick(day.replace(hour=12, minute=45), q)
+    assert r["exits"] == 1
+    c = intel.db(); t = dict(c.execute("SELECT * FROM trades WHERE symbol='CCC'").fetchone()); c.close()
+    assert t["exit_reason"] == "breakeven stop" and -20 < t["pnl"] < 0 and t["mfe_pct"] > 1.5, t
+    # a swing still open late in the day is flat by 3:55 PM, never carried overnight
+    c = intel.db(); c.execute("UPDATE filings SET ref_price=79 WHERE symbol='BBB'"); c.commit(); c.close()
+    r, _ = _ticks(day, 13, 0, q)
+    assert r["entries"] == 1
+    px["BBB"] = 80.3
+    assert bot.tick(day.replace(hour=15, minute=30), q)["exits"] == 0
     r = bot.tick(day.replace(hour=15, minute=56), q)
     assert r["exits"] == 1
     sb = bot.scoreboard()
-    assert sb["closed_trades"] == 2 and sb["losses"] == 1 and sb["win_rate_pct"] == 50.0, sb
-    assert sb["max_drawdown_usd"] == 54.97 and sb["trading_days"] == 1 and sb["capital_at_work"] == 50000, sb
+    assert sb["closed_trades"] == 3 and sb["losses"] == 1 and sb["win_rate_pct"] == 66.7, sb
+    assert sb["exits"] == {"target": 1, "breakeven stop": 1, "end of day": 1}, sb["exits"]
+    assert sb["trading_days"] == 1 and sb["capital_at_work"] == 50000 and sb["risk_per_trade"] == 100, sb
+    r = bot.tick(day.replace(hour=14, minute=45), q)             # past 2:30 PM: no new swings
+    assert r["entries"] == 0 and not bot.swing_window(day.replace(hour=14, minute=45), "regular")
 
 
 def test_short_side():
@@ -118,24 +176,25 @@ def test_short_side():
     chg = {"SHA": -1.0, "SHB": -1.0, "SHC": -10.0}
     q = lambda s: {"price": px[s], "chg_pct": chg[s], "prev_close": 0, "open": 0, "high": 0, "low": 0}
     day = dt.datetime(2026, 11, 11, tzinfo=ET)
-    r = bot.tick(day.replace(hour=10, minute=0), q)
+    r, skipped = _ticks(day, 10, 0, q)
     assert r["entries"] == 2, r
-    assert ("SHC", "short: already down 10.0% on the day") in r["skipped"], r["skipped"]
+    assert ("SHC", "already down 10.0% on the day") in skipped, skipped
     c = intel.db()
     sha = dict(c.execute("SELECT * FROM trades WHERE symbol='SHA'").fetchone()); c.close()
     assert sha["side"] == "short" and sha["entry_px"] < 49.5          # sold below the quote (slippage)
     assert sha["target_px"] < sha["entry_px"] < sha["stop_px"]
-    px["SHA"] = 48.6                                                   # falls ~1.8% -> target
-    px["SHB"] = 60.2                                                   # rises ~1.4% -> stop
+    px["SHA"] = 47.9                                                   # falls ~3.2% -> target
+    px["SHB"] = 60.4                                                   # rises ~1.7% -> stop
     r = bot.tick(day.replace(hour=11, minute=0), q)
     assert r["exits"] == 2, r
     c = intel.db()
     a = dict(c.execute("SELECT * FROM trades WHERE symbol='SHA'").fetchone())
     b = dict(c.execute("SELECT * FROM trades WHERE symbol='SHB'").fetchone()); c.close()
-    assert a["exit_reason"] == "target" and a["pnl"] > 0 and a["pnl_pct"] > 1.5 and a["exit_px"] > 48.6, a
-    assert b["exit_reason"] == "stop" and b["pnl"] < 0 and b["pnl_pct"] < -1.0, b
+    assert a["exit_reason"] == "target" and a["pnl"] > 0 and a["pnl_pct"] > 3.0 and a["exit_px"] > 47.9 and a["r_mult"] > 2, a
+    assert b["exit_reason"] == "stop" and b["pnl"] < 0 and b["pnl_pct"] < -1.5 and b["r_mult"] < -1, b
     sb = bot.scoreboard()
     assert sb["by_side"]["short"]["trades"] == 2 and sb["by_side"]["short"]["wins"] == 1, sb["by_side"]
+    assert sb["stop_slip_pct"] > 0                                     # the stop filled past its level, and the board says by how much
     bot.ALLOW_SHORT = False
     assert bot.side_for({"direction": "bear", "impact": "high", "confidence": 99}) is None
     bot.ALLOW_SHORT = True
@@ -150,7 +209,10 @@ def test_vault_render_and_git():
     assert any(k.startswith("Bot/Trades/") for k in files)
     assert "Sample too small" in files["Bot/Scoreboard.md"]
     sbj = json.loads(files["data/scoreboard.json"])
-    assert sbj["scoreboard"]["closed_trades"] == 4 and sbj["rules"]["target_pct"] == 1.5 and sbj["min_sample"] == 30
+    assert sbj["scoreboard"]["closed_trades"] == 5 and sbj["rules"]["risk_usd"] == 100 and sbj["min_sample"] == 30
+    assert sbj["rules"]["playbooks"]["swing"]["rr"] == 2.0 and len(sbj["rules"]["lines"]) >= 5
+    assert "| swing |" in files["Bot/Scoreboard.md"] and "Catalyst day swing" in files["Bot/Strategy.md"]
+    assert "| Playbook |" in files[next(k for k in files if k.startswith("Bot/Trades/"))]
     assert sbj["rules"]["allow_short"] is True and "short" in sbj["scoreboard"]["by_side"]
     assert "| short |" in files["Bot/Scoreboard.md"] and "Bearish read -> **short**" in files["Bot/Strategy.md"]
     assert "[[intel/Tickers/AAA|AAA]]" in files["Universe.md"]
