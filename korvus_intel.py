@@ -632,10 +632,13 @@ def poll_filings(verbose: bool = True) -> int:
     n = scanned = matched = 0
     t0 = time.time()
     fetched_ok = 0
+    missed = []
     for form in edgar.FORMS:
-        raw = edgar._get(edgar.FEED_URL.format(form=form))
+        raw = edgar.fetch_feed(form)
         if raw:
             fetched_ok += 1
+        else:
+            missed.append(f"{form} {edgar.last_error() or 'no answer'}")
         entries = edgar.parse_feed(raw or "")
         scanned += len(entries)
         for e in entries:
@@ -672,7 +675,7 @@ def poll_filings(verbose: bool = True) -> int:
                   last_duration_ms=int((time.time() - t0) * 1000),
                   inc_polls_today=1, inc_scanned_today=scanned, inc_new_today=n)
     if fetched_ok < len(edgar.FORMS):
-        status.error("edgar", f"only {fetched_ok} of {len(edgar.FORMS)} EDGAR feeds answered")
+        status.error("edgar", f"only {fetched_ok} of {len(edgar.FORMS)} EDGAR feeds answered ({'; '.join(missed)})")
     if n:
         status.record("edgar", last_match_utc=now.isoformat())
     return n
@@ -789,7 +792,7 @@ def main():
         watch = universe_by_cik()
         hits = []
         for form in edgar.FORMS:
-            for e in edgar.parse_feed(edgar._get(edgar.FEED_URL.format(form=form)) or ""):
+            for e in edgar.parse_feed(edgar.fetch_feed(form) or ""):
                 if e["cik"] in watch:
                     hits.append((e["updated"][:19], watch[e["cik"]], e["form"], edgar.describe_items(e["items"])))
         print(f"  [intel] universe {len(watch)} names; {len(hits)} of their filings in the latest EDGAR feed")
