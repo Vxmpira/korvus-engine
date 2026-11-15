@@ -389,6 +389,91 @@ def api_feed_lab():
     return jsonify(out)
 
 
+@app.route("/api/feed/brief")
+def api_feed_brief():
+    """Server-to-server source for the BlackCrown Pre-market Brief video.
+    Same shared key as intel-status (X-Intel-Key). Read-only. Returns the
+    scored stories since ?hours= ago (default 14, max 72), ranked by impact,
+    the index futures board, and today's economic calendar."""
+    import hmac
+    want = os.getenv("INTEL_STATUS_KEY", "")
+    got = request.headers.get("X-Intel-Key", "")
+    if not want or not hmac.compare_digest(want, got):
+        return jsonify({"error": "forbidden"}), 403
+    out = {"items": [], "board": {}, "calendar": []}
+    try:
+        hours = max(1, min(72, int(request.args.get("hours", "14"))))
+    except Exception:
+        hours = 14
+    cutoff = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)).isoformat()
+    try:
+        if os.path.exists(DB_PATH):
+            conn = db()
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
+            noise_clause = "AND COALESCE(noise,0)=0" if "noise" in cols else ""
+            rows = conn.execute(
+                f"""SELECT * FROM items WHERE processed=1 {noise_clause} AND created_at >= ?
+                    ORDER BY CASE COALESCE(impact,'low')
+                               WHEN 'high' THEN 0 WHEN 'med' THEN 1 ELSE 2 END,
+                             COALESCE(confidence,0) DESC, created_at DESC
+                    LIMIT 25""",
+                (cutoff,),
+            ).fetchall()
+            conn.close()
+            for r in rows:
+                k = r.keys()
+                out["items"].append({
+                    "t": to_et(r["created_at"]),
+                    "utc": r["created_at"],
+                    "source": r["source"],
+                    "source_name": r["source_name"] if "source_name" in k else "",
+                    "region": _feed_region(r["source_name"] if "source_name" in k else ""),
+                    "impact": r["impact"] or "low",
+                    "dir": r["direction"] or "neut",
+                    "conf": r["confidence"] or 0,
+                    "inst": json.loads(r["instruments"] or "[]"),
+                    "headline": r["headline"] or "",
+                    "summary": (r["summary"] or "")[:320],
+                    "impact_desc": ((r["impact_desc"] if "impact_desc" in k else "") or "")[:240],
+                })
+    except Exception as e:
+        out["items_error"] = str(e)[:200]
+    try:
+        from korvus_quotes import get_quotes
+        q = get_quotes(["MES", "MNQ", "MYM", "CL", "GC", "ZN"])
+        out["board_meta"] = q.pop("_meta", {})
+        out["board"] = q
+    except Exception as e:
+        out["board_error"] = str(e)[:200]
+    try:
+        from korvus_calendar import get_calendar
+        from zoneinfo import ZoneInfo
+        today = dt.datetime.now(ZoneInfo("America/New_York")).date()
+        cal = get_calendar()
+        cal = cal.get("events", []) if isinstance(cal, dict) else (cal or [])
+        for e in cal:
+            try:
+                d = dt.datetime.fromisoformat(str(e.get("date", "")).replace("Z", "+00:00"))
+                d_et = d.astimezone(ZoneInfo("America/New_York"))
+            except Exception:
+                continue
+            if d_et.date() != today or str(e.get("country", "")).upper() != "USD":
+                continue
+            if str(e.get("impact", "")).lower() not in ("high", "medium", "med"):
+                continue
+            out["calendar"].append({
+                "time": d_et.strftime("%-I:%M %p"),
+                "title": (e.get("title") or "")[:80],
+                "impact": e.get("impact"),
+                "forecast": e.get("forecast"),
+                "previous": e.get("previous"),
+            })
+    except Exception as e:
+        out["calendar_error"] = str(e)[:200]
+    out["server_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
+    return jsonify(out)
+
+
 def _feed_region(source_name) -> str:
     try:
         from korvus_engine import FEED_REGION
