@@ -1899,7 +1899,7 @@ def job_feed(verbose: bool = True, fetch=None) -> int:
     for r in conn.execute("SELECT symbol, cik FROM stocks WHERE active=1 AND cik IS NOT NULL").fetchall():
         by_cik.setdefault(int(r["cik"]), []).append(r["symbol"])
     conn.close()
-    fetch = fetch or (lambda form: edgar.parse_feed(edgar._get(edgar.FEED_URL.format(form=form)) or ""))
+    fetch = fetch or (lambda form: edgar.parse_feed(edgar.fetch_feed(form) or ""))
     hits = []
     for form in FEED_FORMS:
         try:

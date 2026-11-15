@@ -24,6 +24,7 @@ def test_poll_records_status():
             return F.INDEX
         return F.EX991
     edgar._get = fake_get
+    edgar.time.sleep = lambda s: None
     edgar._fresh = lambda e: True
     intel.quote = lambda s: {"price": 100.0, "prev_close": 99.0, "chg_pct": 1, "open": 0, "high": 0, "low": 0}
     intel.score_filing = lambda *a, **k: {"summary": "s", "read": "r", "catalyst": "earnings",
@@ -33,7 +34,7 @@ def test_poll_records_status():
     snap = status.snapshot()
     e = snap["stages"]["edgar"]
     assert e["polls_today"] == 1 and e["scanned_today"] == 3 and e["new_today"] == 1, e
-    assert e["feeds_ok"] == 1 and e["feeds"] == 2 and "last_error" in e   # 6-K feed empty -> flagged
+    assert e["feeds_ok"] == 1 and e["feeds"] == 2 and "6-K" in e["last_error"], e   # 6-K feed empty -> flagged by name
     assert snap["stages"]["scoring"]["scored_today"] == 1
     kinds = [(x["stage"], x["level"]) for x in snap["events"]]
     assert ("edgar", "info") in kinds and ("scoring", "info") in kinds and ("edgar", "error") in kinds, kinds
@@ -41,6 +42,21 @@ def test_poll_records_status():
     assert status.snapshot()["stages"]["edgar"]["polls_today"] == 2
     status.flush(force=True)
     assert json.load(open(status.STATUS_PATH))["stages"]["edgar"]["new_today"] == 1
+
+
+def test_feed_retry():
+    calls = []
+    def flaky(url, timeout=15):
+        calls.append(timeout)
+        if len(calls) == 1:
+            edgar._tls.err = "timed out after 30s"
+            return None
+        return "<feed/>"
+    old, edgar._get = edgar._get, flaky
+    try:
+        assert edgar.fetch_feed("6-K") == "<feed/>" and calls == [edgar.FEED_TIMEOUT] * 2, calls
+    finally:
+        edgar._get = old
 
 
 def test_day_rollover():
@@ -64,7 +80,7 @@ def test_endpoint_key():
 
 if __name__ == "__main__":
     try:
-        for n in ("test_poll_records_status", "test_day_rollover", "test_endpoint_key"):
+        for n in ("test_poll_records_status", "test_feed_retry", "test_day_rollover", "test_endpoint_key"):
             globals()[n](); print("ok", n)
     finally:
         shutil.rmtree(TMP, ignore_errors=True)

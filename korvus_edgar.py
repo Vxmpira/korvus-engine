@@ -97,6 +97,9 @@ FORMS          = [f.strip().upper() for f in _clean_env("EDGAR_FORMS", "8-K,6-K"
 POLL_SECONDS   = _int_env("EDGAR_POLL_SECONDS", 20, floor=10)
 OFF_HOURS_SEC  = 300
 MAX_AGE_MIN    = _int_env("EDGAR_MAX_AGE_MIN", 30, floor=1)
+# The getcurrent CGI behind the 8-K/6-K feeds stalls past 15s under load
+# (three Korvus processes poll it), so feeds get their own longer timeout.
+FEED_TIMEOUT   = _int_env("EDGAR_FEED_TIMEOUT", 30, floor=10)
 DISCORD_HOOK   = _clean_env("EDGAR_DISCORD_WEBHOOK", "")
 DISCORD_DELAY  = _int_env("EDGAR_DISCORD_DELAY_MIN", 15, floor=0)
 TERMINAL_URL   = _clean_env("EDGAR_TERMINAL_URL", "https://korvus.industries/terminal")
@@ -159,7 +162,16 @@ _last_req = [0.0]
 MIN_GAP = 1.0 / max(0.5, min(6.0, float(_clean_env("EDGAR_MAX_RPS", "2") or 2)))
 
 
+_tls = threading.local()
+
+
+def last_error() -> str:
+    """Why the last _get on this thread came back empty ('' when it worked)."""
+    return getattr(_tls, "err", "")
+
+
 def _get(url: str, timeout: int = 15) -> Optional[str]:
+    _tls.err = ""
     with _http_lock:
         wait = MIN_GAP - (time.time() - _last_req[0])
         if wait > 0:
@@ -169,15 +181,35 @@ def _get(url: str, timeout: int = 15) -> Optional[str]:
         r = _session.get(url, timeout=timeout)
         if r.status_code == 429 or r.status_code == 403:
             print(f"  [edgar] SEC returned {r.status_code}; backing off 60s")
+            _tls.err = f"SEC rate limit ({r.status_code})"
             time.sleep(60)
             return None
         if r.status_code != 200:
+            _tls.err = f"HTTP {r.status_code}"
             return None
         r.encoding = r.encoding or "utf-8"
         return r.text
+    except requests.Timeout:
+        _tls.err = f"timed out after {timeout}s"
+        print(f"  [edgar] timeout {url[:80]}")
+        return None
     except Exception as e:
+        _tls.err = type(e).__name__
         print(f"  [edgar] fetch error {url[:80]}: {e}")
         return None
+
+
+def fetch_feed(form: str, tries: int = 2) -> Optional[str]:
+    """One getcurrent Atom feed, with the longer feed timeout and one retry.
+    last_error() explains a None."""
+    url = FEED_URL.format(form=form)
+    for i in range(max(1, tries)):
+        raw = _get(url, timeout=FEED_TIMEOUT)
+        if raw:
+            return raw
+        if i + 1 < tries:
+            time.sleep(3)
+    return None
 
 
 # ----------------------------------------------------------------------------
@@ -522,7 +554,7 @@ def fetch_matches(all_names: bool = False) -> list:
     watch = load_watchlist()
     matches, seen_acc = [], set()
     for form in FORMS:
-        for e in parse_feed(_get(FEED_URL.format(form=form)) or ""):
+        for e in parse_feed(fetch_feed(form) or ""):
             if e["accession"] in seen_acc:
                 continue
             seen_acc.add(e["accession"])
