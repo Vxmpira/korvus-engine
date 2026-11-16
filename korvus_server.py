@@ -32,6 +32,7 @@ from flask_login import (LoginManager, UserMixin, login_user, logout_user,
 import korvus_auth as auth
 import korvus_billing as billing
 import korvus_notify as notify
+import korvus_traffic as traffic
 
 # Owner/admin gate - comma-separated usernames in .env (e.g. ADMIN_USERNAMES=vxj).
 # Empty by default, which means nobody is an admin until you set it.
@@ -536,6 +537,72 @@ def _capture_utm():
         pass
 
 
+_PUBLIC_PAGES = {"/": "home", "/lodestone": "lodestone", "/signup": "signup",
+                 "/login": "login", "/legal": "legal"}
+
+
+@app.before_request
+def _count_traffic():
+    """Server-side page counts for the admin Board: human views and crawler
+    hits per public page, the human visitor's source, and signup submits.
+    Counts only; nothing about the visitor is stored."""
+    try:
+        path = request.path or "/"
+        ua = request.headers.get("User-Agent", "")
+        bot = traffic.is_bot(ua)
+        if request.method == "POST" and path == "/signup":
+            traffic.record("step", "signup_submit_bot" if bot else "signup_submit")
+            return
+        if request.method != "GET":
+            return
+        key = _PUBLIC_PAGES.get(path)
+        if not key and path.startswith("/p/"):
+            key = "p/" + path[3:64]
+        if not key:
+            return
+        if key == "home" and current_user.is_authenticated:
+            return  # members get the terminal at /, not the landing page
+        traffic.record("view_b" if bot else "view_h", key)
+        if not bot:
+            src = (request.args.get("utm_source") or "").lower()[:24] or \
+                traffic.referrer_bucket(request.headers.get("Referer", ""))
+            if src:
+                traffic.record("src", src)
+    except Exception:
+        pass
+
+
+@app.route("/api/k/ev", methods=["POST"])
+def k_event():
+    """Button clicks from the public pages (elements carrying data-k), sent with
+    navigator.sendBeacon. Crawlers and floods are dropped; always 204."""
+    try:
+        key = (request.get_data(as_text=True) or "").strip()[:40]
+        if re.fullmatch(r"[a-z0-9_]{2,40}", key) and not traffic.is_bot(request.headers.get("User-Agent", "")) \
+                and _rate_ok("kev:" + _client_ip(), 120, 3600):
+            traffic.record("click", key)
+    except Exception:
+        pass
+    return ("", 204)
+
+
+@app.route("/api/feed/traffic")
+def api_feed_traffic():
+    """Server-to-server counts for the BlackCrown admin Board (same X-Intel-Key
+    as intel-status): human vs crawler views per page, data-k button clicks,
+    the signup funnel steps, and human visitor sources, last 7 vs prior 7 days."""
+    import hmac
+    want = os.getenv("INTEL_STATUS_KEY", "")
+    got = request.headers.get("X-Intel-Key", "")
+    if not want or not hmac.compare_digest(want, got):
+        return jsonify({"error": "forbidden"}), 403
+    try:
+        days = int(request.args.get("days", 14))
+    except Exception:
+        days = 14
+    return jsonify(traffic.summary(days))
+
+
 def _fire_signup_beacon():
     """Best effort, off the request thread: tell the admin box a signup landed
     and which source sent it. Never slows or breaks the signup itself."""
@@ -805,9 +872,11 @@ def signup_page():
         bot_err = _signup_bot_check()
         if bot_err == "":
             # honeypot hit: feign success so the bot moves on; no account exists
+            traffic.record("step", "signup_honeypot")
             return _render("korvus_signup.html",
                 '<div class="msg ok">Account created. Check your email to verify.</div>')
         if bot_err:
+            traffic.record("step", "signup_blocked")
             return _render("korvus_signup.html", f'<div class="msg err">{bot_err}</div>')
         ok, msg, token = auth.create_user(
             request.form.get("username"),
@@ -815,11 +884,13 @@ def signup_page():
             request.form.get("password"),
         )
         if ok:
+            traffic.record("step", "signup_created")
             _fire_signup_beacon()
             auth.send_verification_email(request.form.get("email"), token)
             return _render("korvus_signup.html",
                 f'<div class="msg ok">{msg} We sent a verification link to your email. '
                 f'Click it, then <a href="/login" style="color:#9fe9bd;text-decoration:underline">log in</a>.</div>')
+        traffic.record("step", "signup_rejected")
         return _render("korvus_signup.html", f'<div class="msg err">{msg}</div>')
     return _render("korvus_signup.html")
 
@@ -835,6 +906,7 @@ def login_page():
             # hasn't been confirmed yet. Blocks throwaway/bot accounts from
             # ever reaching the terminal. Admins are exempt (never locked out).
             if not row.get("email_verified") and not _admin_login_exempt(row.get("username")):
+                traffic.record("step", "login_unverified")
                 u_link = _urlquote(row.get("username") or "")
                 return _render("korvus_login.html",
                     '<div class="msg err">Please verify your email before logging in. '
@@ -842,7 +914,9 @@ def login_page():
                     f'<a href="/resend-verification?u={u_link}" '
                     'style="color:#ffb3af;text-decoration:underline">Resend the link</a></div>')
             login_user(KorvusUser(row), remember=True)
+            traffic.record("step", "login_ok")
             return redirect("/")
+        traffic.record("step", "login_failed")
         return _render("korvus_login.html",
             '<div class="msg err">Incorrect username or password.</div>')
     return _render("korvus_login.html")
@@ -885,6 +959,8 @@ def resend_verification_public():
 @app.route("/verify")
 def verify():
     ok = auth.confirm_email(request.args.get("token"))
+    if ok:
+        traffic.record("step", "email_verified")
     note = ("Your email is verified - thank you." if ok
             else "That verification link is invalid or already used.")
     cls = "ok" if ok else "err"

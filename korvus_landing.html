@@ -292,8 +292,8 @@
     <a href="/lodestone">LodeStone</a>
     <a href="#pricing">Pricing</a>
     <a href="/legal">Legal</a>
-    <a href="/login" class="btn btn-line">Log in</a>
-    <a href="/signup" class="btn btn-bloom">Sign up</a>
+    <a href="/login" class="btn btn-line" data-k="nav_login">Log in</a>
+    <a href="/signup" class="btn btn-bloom" data-k="nav_signup">Sign up</a>
   </div>
 </div></nav>
 
@@ -302,8 +302,8 @@
     <h1>Your edge while the world sleeps.</h1>
     <p class="lede">Korvus reads the newswires in Asia, London and New York around the clock, and SEC filings the moment they are accepted. It scores every story for index futures and explains it in plain language, so you understand the session before you trade it.</p>
     <div class="cta">
-      <a class="btn btn-bloom" href="/signup">Open your free Observer account</a>
-      <a class="plain" href="#pricing">See Operator pricing</a>
+      <a class="btn btn-bloom" href="/signup" data-k="hero_primary">Open your free Observer account</a>
+      <a class="plain" href="#pricing" data-k="hero_secondary">See Operator pricing</a>
     </div>
     <p class="fine">Free Observer account. No card. About a minute to set up.</p>
   </div>
@@ -507,7 +507,7 @@
       <li><span><b>Resting liquidity and SMT divergence,</b> with automatic NQ and ES pairing.</span></li>
       <li><span><b>Nothing repaints.</b> It prints on confirmed bars only, and it never draws an arrow or tells you to buy or sell.</span></li>
     </ul>
-    <div class="cta"><a class="btn btn-line" href="/lodestone">Explore LodeStone</a></div>
+    <div class="cta"><a class="btn btn-line" href="/lodestone" data-k="lodestone_explore">Explore LodeStone</a></div>
   </div>
   <figure>
     <img src="/lodestone-chart.png" alt="LodeStone applied to a one-hour Nasdaq futures chart on TradingView, showing session levels and a dealing range." loading="lazy" width="1200" height="675">
@@ -536,7 +536,7 @@
         <li class="no">Korvus Compass</li>
         <li class="no">Watchlist imports and high-impact email alerts</li>
       </ul>
-      <a class="btn btn-line" href="/signup">Create free account</a>
+      <a class="btn btn-line" href="/signup" data-k="pricing_observer">Create free account</a>
     </div>
     <div class="plan op">
       <div class="who">Recommended</div><h3>Operator</h3>
@@ -552,7 +552,7 @@
         <li>High-impact email alerts</li>
         <li><b>LodeStone</b> TradingView indicator, included here and sold separately on TradingView</li>
       </ul>
-      <a class="btn btn-bloom" href="/signup">Go Operator<!--K_PRICE_CTA_YR--></a>
+      <a class="btn btn-bloom" href="/signup" data-k="pricing_operator">Go Operator<!--K_PRICE_CTA_YR--></a>
     </div>
   </div>
   <p class="under">Live price panels stream during US market hours (9:30 AM to 4:00 PM ET). Outside those hours they show a clear closed state while the 24/7 scored news feed and high-impact alerts keep running. Secure checkout by Stripe. Subscriptions renew until cancelled, and you can cancel anytime from your account.</p>
@@ -709,6 +709,10 @@
   showRow(0);
   $('tabnote').textContent = tabs[0].querySelector('span').textContent;
 })();
+</script>
+<script>
+/* button clicks for the admin Board: any element with data-k reports its key, counts only */
+document.addEventListener("click",function(e){var a=e.target&&e.target.closest?e.target.closest("[data-k]"):null;if(a&&navigator.sendBeacon){try{navigator.sendBeacon("/api/k/ev",a.getAttribute("data-k"))}catch(_){}}},true);
 </script>
 </body>
 </html>
