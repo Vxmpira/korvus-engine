@@ -325,42 +325,56 @@ Paper results: simulated fills on 60-second quotes, no market impact. Not real r
                f"# Futures lab · every strategy the bot has created\n\n{GEN}\nData as of: {lstamp}\n",
                f"**Paper only.** Style: {lab['style']['label']}. At most {lab['style']['max_trades_day']} trades a day per strategy, "
                f"no new trade after {lab['style']['last_entry_et']} ET, always flat by {lab['style']['flat_et']} ET. "
-               f"Costs charged: ${lab['costs']['commission_rt']:.2f} a round trip and {lab['costs']['slippage_ticks']:g} tick of slippage each side.\n"]
+               f"Costs charged: ${lab['costs']['commission_rt']:.2f} a round trip per contract and {lab['costs']['slippage_ticks']:g} tick of slippage each side.\n",
+               f"**How to read the numbers.** Every trade is sized to risk about ${lab['style'].get('risk_usd', 0):g} at its stop "
+               f"(1 to {lab['style'].get('max_contracts', 1)} micro contracts). R is a trade's result divided by what it risked, so +1R made "
+               f"what it risked and -1R lost it. The t-score is the average R against its own noise; {lab['style'].get('crown_t', 2):g} or "
+               f"better is the bar for the crown, and a champion is CONFIRMED only when its trades after the crown clear that bar on their own. "
+               f"A new rule set is replayed on up to {lab['style'].get('tape_test_days', 0):g} days of stored tape before it gets a seat; "
+               f"that replay picks it and proves nothing.\n"]
         for m in lab["markets"]:
             a, pv = m["all"], m["previous"]
             out.append(f"## {m['sym']} · {m['name']}\n")
-            out.append(f"{m['created']} created, {m['running']} running, {m['retired']} retired. Champion: {m['champion'] or 'none yet'}. "
-                       f"All swing trades: {a['trades']} closed, {na(a['win_rate'], '%')} winners, {money(a['pnl'])}, "
-                       f"{money(a['expectancy'])} a trade, average hold {na(a.get('avg_hold_min'), ' min')}.")
+            rr = lambda v: f"{v:+.2f}R" if v is not None else "n/a"
+            champ = (m["champion"] + (", CONFIRMED" if m.get("champion_confirmed") else ", not yet confirmed")) if m["champion"] else "none yet"
+            out.append(f"{m['created']} created, {m['running']} running, {m['retired']} retired. Champion: {champ}. "
+                       f"All quant trades: {a['trades']} closed, {na(a['win_rate'], '%')} winners, {money(a['pnl'])}, "
+                       f"{rr(a.get('exp_r'))} a trade, average hold {na(a.get('avg_hold_min'), ' min')}. "
+                       f"With {m['created']} strategies tried, luck alone would be expected to give the best one a t-score near {m.get('luck_bar', 0):g}.")
             if pv.get("strategies"):
-                out.append(f"\nBefore the swing ruling ({pv['era']}): {pv['strategies']} strategies, {pv['trades']} trades, {money(pv['pnl'])}. Retired, kept on the record.")
-            out.append("\n| Strategy | Status | Family | Trades | Winners | P&L | Per trade | Avg hold |\n|---|---|---|---:|---:|---:|---:|---:|")
+                out.append(f"\nEarlier eras ({pv['era']}): {pv['strategies']} strategies, {pv['trades']} trades, {money(pv['pnl'])}. Retired, kept on the record.")
+            out.append("\n| Strategy | Status | Family | Trades | Winners | P&L | Avg R | t-score | Avg hold |\n|---|---|---|---:|---:|---:|---:|---:|---:|")
             for st in m["strategies"]:
                 if st["era"] != lab["rules"]:
                     continue
-                out.append(f"| {st['id']} | {st['status']} | {st['family_label']} | {st['trades']} | {na(st['win_rate'], '%')} | "
-                           f"{money(st['pnl'])} | {money(st['expectancy'])} | {na(st.get('avg_hold_min'), ' min')} |")
+                out.append(f"| {st['id']} | {st['status']}{' (confirmed)' if st.get('confirmed') else ''} | {st['family_label']} | {st['trades']} | {na(st['win_rate'], '%')} | "
+                           f"{money(st['pnl'])} | {rr(st.get('exp_r'))} | {na(st.get('t_stat'))} | {na(st.get('avg_hold_min'), ' min')} |")
             out.append("")
             for st in m["strategies"]:
                 if st["era"] != lab["rules"]:
                     continue
                 out.append(f"### {st['id']} · {st['family_label']} · {st['status']}\n")
+                bk, sc = st.get("backtest"), st.get("since_crowned")
                 out.append(f"- **Rules:** {st['rules']}\n- **Why it exists:** {st['why']}"
+                           + (f"\n- **Tape test:** best of {bk.get('of', 1)} candidates on {bk.get('days', 0):g} days of stored tape: "
+                              f"{bk.get('trades', 0)} trades, {rr(bk.get('exp_r'))} a trade. It picked the strategy, so it is not evidence." if bk else "")
                            + (f"\n- **Why it was retired:** {st['retired_why']}" if st.get("retired_why") else "")
-                           + (f"\n- **Since it was crowned:** {st['since_crowned']['trades']} trades, {money(st['since_crowned']['pnl'])}" if st.get("since_crowned") else "")
+                           + (f"\n- **Since it was crowned:** {sc['trades']} trades, {money(sc['pnl'])}, {rr(sc.get('exp_r'))} a trade, "
+                              f"t-score {na(sc.get('t_stat'))}. {'CONFIRMED: this record clears the bar on its own.' if st.get('confirmed') else 'Not yet confirmed.'}" if sc else "")
                            + "\n")
         files["Lab/Strategies.md"] = "\n".join(out) + "\n"
         lmonths = {}
         for t in lab["trades"]:
             lmonths.setdefault(_et(t["entry_utc"], "%Y-%m"), []).append(t)
         for mth, ts in lmonths.items():
-            rows = ["| Entry (ET) | Market | Strategy | Family | Side | Entry | Exit | Reason | Held | P&L | Why it entered |",
-                    "|---|---|---|---|---|---:|---:|---|---:|---:|---|"]
+            rows = ["| Entry (ET) | Market | Strategy | Family | Side | Qty | Entry | Exit | Reason | Held | P&L | R | Why it entered |",
+                    "|---|---|---|---|---|---:|---:|---:|---|---:|---:|---:|---|"]
             for t in sorted(ts, key=lambda x: x["entry_utc"]):
                 done = t["status"] == "closed"
-                rows.append(f"| {_et(t['entry_utc'], '%m-%d %I:%M %p')} | {t['sym']} | {t['strat']} | {t['family']} | {t['side']} | "
+                rows.append(f"| {_et(t['entry_utc'], '%m-%d %I:%M %p')} | {t['sym']} | {t['strat']} | {t['family']} | {t['side']} | {t.get('qty') or 1} | "
                             f"{t['entry_px']:.2f} | {(format(t['exit_px'], '.2f') if done else 'open')} | {t['reason'] or ''} | "
-                            f"{na(t.get('hold_min'), ' min') if done else ''} | {(format(t['pnl'], '+.2f') if done else '')} | {_cell(t.get('note') or '')} |")
+                            f"{na(t.get('hold_min'), ' min') if done else ''} | {(format(t['pnl'], '+.2f') if done else '')} | "
+                            f"{(format(t['r'], '+.2f') if done and t.get('r') is not None else '')} | {_cell(t.get('note') or '')} |")
             files[f"Lab/Trades/{mth}.md"] = _fm(type="lab-ledger", month=mth, tags=["korvus-intel", "futures-lab"]) + \
                 f"\n# Futures lab trades {mth}\n\n{GEN}\n" + "\n".join(rows) + "\n"
         files["Lab/Log.md"] = _fm(type="lab-log", tags=["korvus-intel", "futures-lab"]) + \
