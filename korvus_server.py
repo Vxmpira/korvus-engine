@@ -838,23 +838,50 @@ def _admin_login_exempt(username):
 def _signup_bot_check():
     """Server-side bot screens for the signup form. Returns None when the
     submission looks human, else an error string to show (or '' to silently
-    swallow a honeypot hit). Screens:
-      1. honeypot  - a visually hidden field no person ever fills
-      2. time gate - a JS-stamped field; the form must be open >= 3 seconds
+    swallow a trap hit). Screens:
+      1. trap field - a visually hidden field no person ever types in
+      2. time gate  - a JS-stamped field; the form must be open >= 3 seconds
       3. rate limit - max 5 signups per IP per hour
+
+    The trap alone is not proof of a bot: browsers and password managers
+    sometimes fill a hidden text field with the visitor's own username or
+    email. So a filled trap only swallows the submit when the rest of it looks
+    scripted too. A person caught by autofill goes on to the normal checks
+    (and still has to verify the email before logging in). Every trap hit is
+    counted by cause so the admin can tell bots from people.
     """
-    # 1) honeypot: bots auto-fill every input. Pretend success, create nothing.
-    if (request.form.get("hp_field") or "").strip():
-        print(f"  [signup] honeypot tripped from {_client_ip()}")
-        return ""
-    # 2) time gate: the page stamps form_ts (ms since epoch) via JS on load.
-    #    Missing stamp = no JS (scripted client). Instant submit = bot.
+    # the page stamps form_ts (ms since epoch) via JS on load.
+    # Missing stamp = no JS (scripted client). Instant submit = bot.
     ts_raw = (request.form.get("form_ts") or "").strip()
     try:
         age_sec = (time.time() * 1000 - float(ts_raw)) / 1000.0
     except Exception:
         age_sec = None
-    if age_sec is None or age_sec < 3 or age_sec > 21600:
+    timed_ok = age_sec is not None and 3 <= age_sec <= 21600
+
+    # 1) trap field
+    hp = (request.form.get("hp_field") or "").strip()
+    if hp:
+        own = {(request.form.get(k) or "").strip().lower() for k in ("username", "email")}
+        own.discard("")
+        autofilled = hp.lower() in own or hp == (request.form.get("password") or "")
+        if age_sec is None:
+            cause = "hp_no_script"      # no JS ran: a scripted client
+        elif not timed_ok:
+            cause = "hp_instant"        # filled and sent in under 3 seconds
+        elif not autofilled:
+            cause = "hp_junk"           # human pace, but the trap holds text that is not theirs
+        else:
+            cause = "hp_autofill"       # human pace, trap holds their own username or email
+        try:
+            traffic.record("step", cause)
+        except Exception:
+            pass
+        print(f"  [signup] trap filled from {_client_ip()} ({cause}, age={age_sec})")
+        if cause != "hp_autofill":
+            return ""
+    # 2) time gate
+    if not timed_ok:
         print(f"  [signup] time-gate failed from {_client_ip()} (age={age_sec})")
         return "Something went wrong submitting the form. Please try again."
     # 3) per-IP rate limit
