@@ -581,7 +581,11 @@ def _seen(accession: str) -> bool:
     return r is not None
 
 
-def handle_filing(e: dict, symbol: str, verbose: bool = True) -> Optional[str]:
+def handle_filing(e: dict, symbol: str, verbose: bool = True, late: bool = False) -> Optional[str]:
+    """Read, record and score one filing. late=True is a filing found after
+    the fact (the live feed was down when it landed): it is stamped as seen
+    when it was filed, so the paper bot ages it honestly and never takes old
+    news for fresh."""
     idx = edgar.parse_index(edgar._get(e["url"]) or "")
     doc = edgar.pick_document(idx["docs"], e["form"])
     text = edgar.html_to_text(edgar._get(doc["url"]) or "") if doc else ""
@@ -590,16 +594,20 @@ def handle_filing(e: dict, symbol: str, verbose: bool = True) -> Optional[str]:
     q = quote(symbol)
     filed = edgar.accepted_et_to_utc(idx.get("accepted", "")) or edgar.to_utc_iso(e.get("updated", ""))
     headline = edgar.pick_headline(text, symbol, e["company"], e.get("items") or [], e["form"])
+    seen = utcnow().isoformat()
+    if late and filed and filed < seen:
+        seen = filed
     conn = db()
     conn.execute("""INSERT OR IGNORE INTO filings
         (accession,symbol,cik,company,form,items,filed_utc,seen_utc,url,headline,excerpt,ref_price,prev_close)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (e["accession"], symbol, e["cik"], e["company"], e["form"], json.dumps(e.get("items") or []),
-         filed, utcnow().isoformat(), e["url"], headline, text[:4000],
+         filed, seen, e["url"], headline, text[:4000],
          q["price"] if q else None, q["prev_close"] if q else None))
     conn.commit()
     conn.close()
-    status.event("edgar", f"{symbol} filed {e['form']}: {headline[:110]}", symbol=symbol)
+    status.event("edgar", f"{symbol} filed {e['form']}: {headline[:110]}" + (" (found late: the live feed was down)" if late else ""),
+                 symbol=symbol)
     s = score_filing(symbol, e["company"], e["form"], e.get("items") or [], text)
     if s:
         conn = db()
@@ -624,6 +632,50 @@ def handle_filing(e: dict, symbol: str, verbose: bool = True) -> Optional[str]:
     return e["accession"]
 
 
+# ----------------------------------------------------------------------------
+# outages of the live feed. SEC's getcurrent page sometimes stops answering for
+# a while (5:41 to 6:31 PM ET on 2026-11-16, right after the close). Filings
+# that land meanwhile would come back older than EDGAR_MAX_AGE_MIN and be put
+# away unscored, and a long enough outage pushes them off the 100-entry page
+# altogether. So a gap is tracked, and while it is open (and once more when
+# the feed returns) every company in the universe has its own filing list
+# read from data.sec.gov, a different SEC service, and anything missed is
+# scored as a late find.
+# ----------------------------------------------------------------------------
+GAP_SWEEP_AFTER_MIN = 5     # a shorter gap is covered by the live page itself
+GAP_SWEEP_EVERY_MIN = 3     # while the feed stays down
+_gap = {"open": False, "start": None, "since": None, "last_sweep": 0.0, "found": 0, "failed": False}
+_last_full = [None]          # last poll where every feed answered
+
+
+def _filed_after(e: dict, since: dt.datetime) -> bool:
+    u = edgar.to_utc_iso(e.get("updated", ""))
+    return bool(u) and dt.datetime.fromisoformat(u) >= since
+
+
+def sweep_gap(watch: dict, since: dt.datetime, verbose: bool = False) -> tuple:
+    """Read each universe company's own filing list and handle what the live
+    feed missed since `since`. (filings found, finished?)"""
+    found, fails = 0, 0
+    for cik, sym in watch.items():
+        entries = edgar.recent_filings(cik, since)
+        if entries is None:
+            fails += 1
+            if fails >= 5:                   # data.sec.gov is not answering either; try again later
+                return found, False
+            continue
+        fails = 0
+        for e in entries:
+            if not e["accession"] or _seen(e["accession"]) or not edgar.worth_it(e):
+                continue
+            try:
+                handle_filing(e, sym, verbose=verbose, late=True)
+                found += 1
+            except Exception as ex:
+                print(f"  [intel] late filing error {sym}: {ex}")
+    return found, True
+
+
 def poll_filings(verbose: bool = True) -> int:
     watch = universe_by_cik()
     if not watch:
@@ -633,19 +685,36 @@ def poll_filings(verbose: bool = True) -> int:
     t0 = time.time()
     fetched_ok = 0
     missed = []
+    raws = {}
     for form in edgar.FORMS:
         raw = edgar.fetch_feed(form)
         if raw:
             fetched_ok += 1
         else:
             missed.append(f"{form} {edgar.last_error() or 'no answer'}")
-        entries = edgar.parse_feed(raw or "")
+        raws[form] = raw
+    full = fetched_ok == len(edgar.FORMS)
+    if not full and not _gap["open"]:
+        start = utcnow()
+        _gap.update(open=True, start=start, last_sweep=0.0, found=0, failed=False,
+                    since=_last_full[0] or start - dt.timedelta(minutes=edgar.MAX_AGE_MIN))
+    for form in edgar.FORMS:
+        entries = edgar.parse_feed(raws[form] or "")
         scanned += len(entries)
         for e in entries:
             sym = watch.get(e["cik"])
             if sym:
                 matched += 1
             if not sym or not e["accession"] or _seen(e["accession"]):
+                continue
+            if (_gap["open"] and edgar.worth_it(e) and not edgar._fresh(e) and _filed_after(e, _gap["since"])):
+                # landed while the feed was down: score it, stamped as late
+                try:
+                    handle_filing(e, sym, verbose=verbose, late=True)
+                    n += 1
+                    _gap["found"] += 1
+                except Exception as ex:
+                    print(f"  [intel] late filing error {sym}: {ex}")
                 continue
             if not edgar.worth_it(e) or not edgar._fresh(e):
                 # remember it so we don't re-check, but don't spend a score on it
@@ -665,6 +734,28 @@ def poll_filings(verbose: bool = True) -> int:
             except Exception as ex:
                 print(f"  [intel] filing error {sym}: {ex}")
                 status.error("edgar", f"{sym}: {ex}")
+    if _gap["open"]:
+        long_gap = (utcnow() - _gap["start"]).total_seconds() >= GAP_SWEEP_AFTER_MIN * 60
+        # one last read as soon as the feed is back (a minute apart if the
+        # filing lists were not answering either), every few minutes while down
+        every = (60 if _gap.get("failed") else 0) if full else GAP_SWEEP_EVERY_MIN * 60
+        swept_ok = None
+        if long_gap and time.time() - _gap["last_sweep"] >= every:
+            f, swept_ok = sweep_gap(watch, _gap["since"], verbose=verbose)
+            _gap["last_sweep"] = time.time()
+            _gap["found"] += f
+            _gap["failed"] = not swept_ok
+            n += f
+        if full and (not long_gap or swept_ok):
+            mins = round((utcnow() - _gap["start"]).total_seconds() / 60)
+            how = (f"read every watched company's own filing list from data.sec.gov to catch up" if long_gap
+                   else "the live page still covered the gap")
+            status.event("edgar", f"EDGAR live feed answering again after {mins} min; {how}: "
+                         f"{_gap['found']} filing(s) from the gap scored late.")
+            status.record("edgar", last_recovered_utc=utcnow().isoformat(), last_gap_min=mins, last_gap_found=_gap["found"])
+            _gap["open"] = False
+    if full:
+        _last_full[0] = utcnow()
     is_open = edgar._edgar_open_now()
     interval = POLL_SECONDS if is_open else 300
     now = utcnow()

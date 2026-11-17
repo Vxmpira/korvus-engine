@@ -100,6 +100,14 @@ MAX_AGE_MIN    = _int_env("EDGAR_MAX_AGE_MIN", 30, floor=1)
 # The getcurrent CGI behind the 8-K/6-K feeds stalls past 15s under load
 # (three Korvus processes poll it), so feeds get their own longer timeout.
 FEED_TIMEOUT   = _int_env("EDGAR_FEED_TIMEOUT", 30, floor=10)
+# The three processes (terminal watcher, Intel, Compass) ask for the same feeds,
+# so the answer is shared through small files: one process asks SEC, the rest
+# read its copy for this many seconds. A feed that just failed is not asked
+# again by another process for FEED_DOWN_SEC. 0 turns the sharing off.
+FEED_CACHE_SEC = _int_env("EDGAR_FEED_CACHE_SEC", 15, floor=0)
+FEED_DOWN_SEC  = 20
+FEED_CACHE_DIR = os.getenv("EDGAR_FEED_CACHE_DIR", "") or os.path.join(HERE, ".edgar_feed_cache")
+SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik:010d}.json"
 DISCORD_HOOK   = _clean_env("EDGAR_DISCORD_WEBHOOK", "")
 DISCORD_DELAY  = _int_env("EDGAR_DISCORD_DELAY_MIN", 15, floor=0)
 TERMINAL_URL   = _clean_env("EDGAR_TERMINAL_URL", "https://korvus.industries/terminal")
@@ -199,10 +207,10 @@ def _get(url: str, timeout: int = 15) -> Optional[str]:
         return None
 
 
-def fetch_feed(form: str, tries: int = 2) -> Optional[str]:
-    """One getcurrent Atom feed, with the longer feed timeout and one retry.
-    last_error() explains a None."""
-    url = FEED_URL.format(form=form)
+_REAL_GET = _get
+
+
+def _fetch_feed_direct(url: str, tries: int) -> Optional[str]:
     for i in range(max(1, tries)):
         raw = _get(url, timeout=FEED_TIMEOUT)
         if raw:
@@ -210,6 +218,132 @@ def fetch_feed(form: str, tries: int = 2) -> Optional[str]:
         if i + 1 < tries:
             time.sleep(3)
     return None
+
+
+def _age(path: str) -> Optional[float]:
+    try:
+        return time.time() - os.path.getmtime(path)
+    except OSError:
+        return None
+
+
+def _read(path: str) -> Optional[str]:
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return None
+
+
+def _write(path: str, text: str):
+    tmp = f"{path}.{os.getpid()}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(text)
+    os.replace(tmp, path)
+
+
+def fetch_feed(form: str, tries: int = 2) -> Optional[str]:
+    """One getcurrent Atom feed, with the longer feed timeout and one retry,
+    shared across the Korvus processes (see FEED_CACHE_SEC). last_error()
+    explains a None."""
+    url = FEED_URL.format(form=form)
+    # a patched _get (the tests) bypasses the shared copy
+    if FEED_CACHE_SEC <= 0 or _get is not _REAL_GET:
+        return _fetch_feed_direct(url, tries)
+    safe = re.sub(r"[^A-Za-z0-9-]", "_", form)
+    xml, down, lock = (os.path.join(FEED_CACHE_DIR, f"{safe}{x}") for x in (".xml", ".down", ".lock"))
+
+    def shared():
+        a = _age(xml)
+        if a is not None and a <= FEED_CACHE_SEC:
+            t = _read(xml)
+            if t:
+                _tls.err = ""
+                return t
+        a = _age(down)
+        if a is not None and a <= FEED_DOWN_SEC:
+            _tls.err = f"{(_read(down) or 'no answer').strip()}, seen by another Korvus process {a:.0f}s ago"
+            return ""
+        return None
+
+    try:
+        os.makedirs(FEED_CACHE_DIR, exist_ok=True)
+    except OSError:
+        return _fetch_feed_direct(url, tries)
+    hit = shared()
+    if hit is not None:
+        return hit or None
+    lk = None
+    try:
+        import fcntl
+        lk = open(lock, "w")
+        fcntl.flock(lk, fcntl.LOCK_EX)      # one process asks SEC at a time; the others read its answer
+        hit = shared()
+        if hit is not None:
+            return hit or None
+    except Exception:
+        pass
+    try:
+        raw = _fetch_feed_direct(url, tries)
+        try:
+            if raw:
+                _write(xml, raw)
+                if os.path.exists(down):
+                    os.remove(down)
+            else:
+                _write(down, last_error() or "no answer")
+        except OSError:
+            pass
+        return raw
+    finally:
+        if lk:
+            lk.close()                      # closing the file releases the lock
+
+
+def recent_filings(cik: int, since_utc: dt.datetime, forms=None) -> Optional[list]:
+    """A company's own filing list from data.sec.gov, a different SEC service
+    from the getcurrent feed, as feed-shaped entries accepted since since_utc.
+    This is how Intel catches up after the live feed has been down. None when
+    the list could not be read (last_error() says why)."""
+    raw = _get(SUBMISSIONS_URL.format(cik=int(cik)), timeout=15)
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+        rec = data["filings"]["recent"]
+    except Exception:
+        _tls.err = "unreadable filing list"
+        return None
+    forms = set(forms or FORMS)
+    accs = rec.get("accessionNumber") or []
+    n = len(accs)
+    col = lambda k: (rec.get(k) or [""] * n) + [""] * max(0, n - len(rec.get(k) or []))
+    form_c, acc_t, date_c, item_c = col("form"), col("acceptanceDateTime"), col("filingDate"), col("items")
+    # acceptanceDateTime carries a Z, but EDGAR writes Eastern wall clock time
+    # on many records; six hours of slack covers either reading, and the
+    # accession number keeps a filing from being handled twice
+    cutoff = since_utc - dt.timedelta(hours=6)
+    out = []
+    for i in range(n):
+        if form_c[i] not in forms or not accs[i]:
+            continue
+        try:
+            t = dt.datetime.fromisoformat(str(acc_t[i]).replace("Z", "+00:00"))
+            if t.tzinfo is None:
+                t = t.replace(tzinfo=dt.timezone.utc)
+        except Exception:
+            try:
+                t = dt.datetime.fromisoformat(f"{date_c[i]}T23:59:59+00:00")
+            except Exception:
+                continue
+        if t < cutoff:
+            continue
+        acc = accs[i]
+        out.append({"form": form_c[i], "company": data.get("name") or "", "cik": int(cik), "role": "Filer",
+                    "url": f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc.replace('-', '')}/{acc}-index.htm",
+                    "accession": acc, "items": [x.strip() for x in str(item_c[i] or "").split(",") if x.strip()],
+                    "updated": ""})
+    return out
 
 
 # ----------------------------------------------------------------------------

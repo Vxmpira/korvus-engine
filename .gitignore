@@ -17,3 +17,6 @@ intel_status.json.tmp
 *.db-shm
 compass_universe.json
 compass_universe.json.tmp
+
+# shared SEC feed copies (korvus_edgar.fetch_feed)
+.edgar_feed_cache/
