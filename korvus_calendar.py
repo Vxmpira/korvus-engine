@@ -356,6 +356,13 @@ _TITLE_ALIASES = {
     "cpi yoy":                          "inflation rate yoy",
     "core cpi mom":                     "core inflation rate mom",
     "core cpi yoy":                     "core inflation rate yoy",
+    # Regional Fed surveys and the "core" (ex autos) retail print: FF's short
+    # names against FMP's long ones. These share too few words to match on name
+    # alone, which left Philly Fed and Core Retail Sales without an Actual.
+    "philly fed manufacturing index":   "philadelphia fed manufacturing index",
+    "empire state manufacturing index": "ny empire state manufacturing index",
+    "core retail sales mom":            "retail sales ex autos mom",
+    "prelim gdp price index qoq":       "gdp price index qoq",
     # FF uses "UoM" / "CB" vendor labels; FMP names the same releases "Michigan"
     # / plain. The forecast/previous cross-check still guards these, so a wrong
     # counterpart would be rejected rather than filled.
@@ -631,6 +638,64 @@ def _index_rows(rows):
 # tolerating a timezone/rounding gap on the genuine match.
 _MATCH_WINDOW_S = 3 * 24 * 60 * 60        # 3 days
 
+_SAME_RELEASE_S = 5 * 60                   # "same minute" tolerance between feeds
+
+def _match_by_numbers(e, rows, ccy):
+    """The one provider row that shares `e`'s currency, release time, forecast and
+    previous. None when there is no such row, more than one, or FF lacks either
+    number (then there is nothing solid to match on)."""
+    ref = _ts(e.get("date"))
+    if not ref or _num(e.get("forecast")) is None or _num(e.get("previous")) is None:
+        return None
+    hits = []
+    for r in rows:
+        if (r.get("country") or "").upper() != ccy:
+            continue
+        rd = _ts(r.get("date"))
+        try:
+            if not rd or abs((rd - ref).total_seconds()) > _SAME_RELEASE_S:
+                continue
+        except TypeError:                  # one feed dated without a time zone
+            continue
+        if _vals_agree(e.get("forecast"), r.get("forecast")) and _vals_agree(e.get("previous"), r.get("previous")):
+            hits.append(r)
+    with_actual = [h for h in hits if _has_actual(h)]
+    # several rows with the same pair (say two series both 0.3 / 0.2): only safe
+    # when every one of them reports the same actual
+    if len(with_actual) > 1 and len({str(_num(h.get("actual"))) for h in with_actual}) > 1:
+        return None
+    return with_actual[0] if with_actual else None
+
+
+# Released events that still have no Actual after every provider was tried. Kept
+# so the gap is visible (server log + /api/feed status) instead of sitting
+# unnoticed on the page until a member reports it.
+MISSING_ACTUALS = []
+_MISSING_GRACE_S = 45 * 60                 # providers can lag a release by a while
+
+def _note_missing(ff):
+    import time as _t
+    now = _t.time()
+    out = []
+    for e in ff:
+        if _has_actual(e) or (e.get("impact") or "").lower() not in ("high", "medium"):
+            continue
+        if _num(e.get("forecast")) is None:      # speeches, holidays: nothing to report
+            continue
+        ts = _ts(e.get("date"))
+        if not ts:
+            continue
+        age = now - ts.timestamp()
+        if _MISSING_GRACE_S < age < 7 * 86400:
+            out.append({"title": e.get("title"), "country": e.get("country"), "date": e.get("date"),
+                        "impact": e.get("impact")})
+    MISSING_ACTUALS[:] = out
+    for m in out:
+        print(f"  [calendar] MISSING ACTUAL: {m['country']} {m['title']} ({m['date']}) - "
+              f"released but no provider matched; run `korvus_calendar.py usd` to see candidates")
+    return out
+
+
 def _lookup_actual(e, rows, idx):
     """Display-ready actual for FF event `e` from one provider, or None. Tries an
     exact (canon, ccy) hit first, then a token-overlap fallback within the same
@@ -658,7 +723,18 @@ def _lookup_actual(e, rows, idx):
         # similar name alone can never inject a value.
         cands = [best] if (best and best_ov >= 0.34) else None
     if not cands:
-        return None
+        # Last resort, and the one that does not depend on names at all: a row in
+        # the same currency, released at the same minute, whose forecast AND
+        # previous both equal Forex Factory's. Two feeds printing the same two
+        # numbers at the same time are describing the same release, whatever
+        # each one calls it. Must be the only such row, or nothing is filled.
+        m = _match_by_numbers(e, rows, ccy)
+        if m is None:
+            return None
+        act = m.get("actual")
+        if act in (None, ""):
+            return None
+        return _fmt_actual(act, e.get("forecast"), e.get("previous"))
     m = _pick(cands, e.get("date"))
     if not m:
         return None
@@ -716,6 +792,7 @@ def _merge() -> list:
               f"{nfp.get('actual') or '(none at fetch time)'}")
     print(f"  [calendar] merge: {len(ff)} FF events · {m_fmp} from FMP · "
           f"{m_te} from Trading Economics")
+    _note_missing(ff)
     return ff
 
 
