@@ -575,12 +575,19 @@ def _count_traffic():
 @app.route("/api/k/ev", methods=["POST"])
 def k_event():
     """Button clicks from the public pages (elements carrying data-k), sent with
-    navigator.sendBeacon. Crawlers and floods are dropped; always 204."""
+    navigator.sendBeacon, plus one "seen_<page>" per page load from a real
+    browser. Crawlers and floods are dropped; always 204."""
     try:
         key = (request.get_data(as_text=True) or "").strip()[:40]
         if re.fullmatch(r"[a-z0-9_]{2,40}", key) and not traffic.is_bot(request.headers.get("User-Agent", "")) \
                 and _rate_ok("kev:" + _client_ip(), 120, 3600):
-            traffic.record("click", key)
+            # "seen_<page>" is the page's own script reporting that a real
+            # browser rendered it: the people count, which no plain fetcher
+            # (crawler, monitor, link checker) can add to
+            if key.startswith("seen_"):
+                traffic.record("view_js", key[5:])
+            else:
+                traffic.record("click", key)
     except Exception:
         pass
     return ("", 204)

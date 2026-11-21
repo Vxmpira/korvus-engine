@@ -128,6 +128,7 @@ def summary(days=14):
         "last7": w7,
         "prior7": p7,
         "series": series,
-        "notes": "view_h human page views, view_b crawler or script hits, click button keys "
+        "notes": "view_js pages a real browser rendered (its script ran; the true people count), "
+        "view_h hits whose user agent looked human (includes scripts posing as browsers), view_b crawler or script hits, click button keys "
         "(data-k), step signup funnel, src first-touch source of human views. Server side, ET days.",
     }

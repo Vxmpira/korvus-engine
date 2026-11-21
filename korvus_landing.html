@@ -714,5 +714,7 @@
 /* button clicks for the admin Board: any element with data-k reports its key, counts only */
 document.addEventListener("click",function(e){var a=e.target&&e.target.closest?e.target.closest("[data-k]"):null;if(a&&navigator.sendBeacon){try{navigator.sendBeacon("/api/k/ev",a.getAttribute("data-k"))}catch(_){}}},true);
 </script>
+<script>/* a real browser rendered this page: the people count for the admin Board */
+try{if(navigator.sendBeacon&&!navigator.webdriver)navigator.sendBeacon("/api/k/ev","seen_home")}catch(_){}</script>
 </body>
 </html>
