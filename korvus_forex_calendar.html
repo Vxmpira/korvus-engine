@@ -380,10 +380,13 @@
     .chip{flex:none;font-size:11px;padding:9px 13px;min-height:36px;}
     .callegend{display:none;}                         /* the dots and arrows explain themselves on the cards */
     /* index tape: four prices in one row, no mini charts, so the calendar starts sooner */
-    .idxstack{grid-template-columns:repeat(4,minmax(0,1fr));}
-    .idxcard{padding:9px 8px;min-width:0;}
+    /* two by two, so each index has room for its price and change on one line */
+    .idxstack{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .idxcard{padding:10px 12px;min-width:0;overflow:hidden;}
     .idxbox{display:none;}
-    .idxtop{flex-direction:column;align-items:flex-start;gap:2px;}
+    .idxtop{flex-direction:column;align-items:flex-start;gap:3px;min-width:0;}
+    .idxq{flex-wrap:wrap;gap:2px 8px;max-width:100%;}
+    .idxsrc{display:none;}
     .lbl,.ddate,.dcount,.ctllabel,.tagline,.beat,.miss,.todaytag,.allday,.st,.idxnote,.disc,.idxsrc{font-size:10.5px !important;}
     .discord,.backterm{min-height:36px;}
     a:not([class]){display:inline-block;padding:9px 2px;}
