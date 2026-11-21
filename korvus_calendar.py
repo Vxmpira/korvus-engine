@@ -88,6 +88,19 @@ _cache = {"data": [], "ts": 0.0, "ttl": TTL_FF, "provider": ""}
 _CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "calendar_cache.json")
 _DISK_MAX_AGE = 24 * 60 * 60     # don't reuse a saved calendar older than ~1 day
 
+def _code_sig() -> str:
+    """Fingerprint of this file. A saved calendar is only trusted as fresh by the
+    same code that built it, so a deploy that changes how actuals are matched
+    takes effect on the first request instead of after the old cache expires."""
+    try:
+        import hashlib
+        with open(os.path.abspath(__file__), "rb") as f:
+            return hashlib.md5(f.read()).hexdigest()[:12]
+    except Exception:
+        return ""
+
+_SIG = _code_sig()
+
 def _load_disk_cache():
     try:
         with open(_CACHE_FILE, "r") as f:
@@ -97,6 +110,11 @@ def _load_disk_cache():
     data = d.get("data") if isinstance(d, dict) else None
     ts   = float(d.get("ts", 0) or 0) if isinstance(d, dict) else 0
     if data and (time.time() - ts) < _DISK_MAX_AGE:
+        if d.get("sig") != _SIG:
+            # built by different code: keep it as a fallback if the feeds fail,
+            # but treat it as expired so the first request rebuilds it
+            print("  [calendar] disk cache is from an older build - will rebuild on first request")
+            ts = 0.0
         _cache.update({"data": data, "ts": ts,
                        "ttl": d.get("ttl", TTL_FF), "provider": d.get("provider", "")})
         print(f"  [calendar] restored {len(data)} events from disk cache "
@@ -106,7 +124,7 @@ def _save_disk_cache():
     try:
         with open(_CACHE_FILE, "w") as f:
             json.dump({"data": _cache["data"], "ts": _cache["ts"],
-                       "ttl": _cache["ttl"], "provider": _cache["provider"]}, f)
+                       "ttl": _cache["ttl"], "provider": _cache["provider"], "sig": _SIG}, f)
     except Exception as e:
         print(f"  [calendar] disk cache save failed: {e}")
 
@@ -152,7 +170,13 @@ def _forexfactory() -> list:
     if r.status_code != 200:
         print(f"  [calendar] Forex Factory returned {r.status_code} - skipping")
         return []
-    raw = r.json()
+    try:
+        raw = r.json()
+    except ValueError:
+        print("  [calendar] Forex Factory sent a non-JSON page (rate limited) - skipping")
+        return []
+    if not isinstance(raw, list):
+        return []
     out = []
     n_actual = 0
     for e in raw:
@@ -779,6 +803,12 @@ def _merge() -> list:
     ff  = _cached("ff",  _forexfactory, TTL_FF)
     fmp = _cached("fmp", _fmp, TTL_FMP) or []
     te  = _cached("te",  _tradingeconomics, TTL_TE) or []
+    if not ff and _cache.get("data") and _cache.get("provider") == "merge":
+        # Forex Factory is rate limited or down. Keep its last good event list and
+        # still top it up with fresh actuals, so a release never stays blank just
+        # because the event feed could not be reached at that moment.
+        print("  [calendar] Forex Factory unavailable - refreshing actuals on the last good week")
+        ff = [dict(e) for e in _cache["data"]]
     if not ff:
         # no FF curation -> serve whichever raw provider has data (still has actuals)
         return fmp or te
@@ -825,13 +855,13 @@ def get_calendar(force_refresh: bool = False) -> list:
 
     provider = CALENDAR_PROVIDER
     if provider == "auto":
-        # Default to pure Forex Factory so the page matches forexfactory.com
-        # field-for-field (title, time, impact, forecast, previous, actual all
-        # come straight from FF's own feed). "merge"/"fmp" stay available via
-        # CALENDAR_PROVIDER for faster actuals, but they can surface a value FF
-        # has not posted yet (different revision, unit, or rounding), which is
-        # exactly what reads as a mismatch on the page.
-        provider = "forexfactory"
+        # Forex Factory stays the source of truth: its event list, times, impact,
+        # forecast, previous, and its own actual whenever its feed carries one.
+        # A paid provider only fills an Actual that Forex Factory left blank, and
+        # only after the cross-checks in _lookup_actual. Pure Forex Factory (the
+        # old default here) left released events showing "-" on the page while
+        # the `usd` check, which already merged, reported them as filled.
+        provider = "merge" if (FMP_KEY or TE_KEY) else "forexfactory"
 
     data, ttl = [], TTL_FF
     try:
