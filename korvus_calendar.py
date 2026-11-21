@@ -638,6 +638,17 @@ def _index_rows(rows):
 # tolerating a timezone/rounding gap on the genuine match.
 _MATCH_WINDOW_S = 3 * 24 * 60 * 60        # 3 days
 
+_REVISION_WORDS = {"revised", "final", "prelim", "preliminary", "flash", "advance", "second", "third"}
+
+def _is_revision(e) -> bool:
+    return bool(_REVISION_WORDS & set(_norm_title(e.get("title")).split()))
+
+def _same_minute(a, b) -> bool:
+    try:
+        return bool(a and b) and abs((a - b).total_seconds()) <= _SAME_RELEASE_S
+    except TypeError:
+        return False
+
 _SAME_RELEASE_S = 5 * 60                   # "same minute" tolerance between feeds
 
 def _match_by_numbers(e, rows, ccy):
@@ -752,6 +763,11 @@ def _lookup_actual(e, rows, idx):
     #   loose name  -> require a positive confirm.
     #   exact name  -> accept even when we simply can't corroborate.
     status = _corroborate(e, m)
+    if status == "contradict" and exact and _is_revision(e) and _same_minute(ref, md):
+        # A revised/final reading: Forex Factory's "previous" is the preliminary
+        # print, the provider's is last month's final, so the two legitimately
+        # differ. Same name, same currency, same minute is the same release.
+        status = "unknown"
     if status == "contradict":
         return None
     if status != "confirm" and not exact:

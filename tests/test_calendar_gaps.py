@@ -47,6 +47,21 @@ def test_match_by_numbers():
     assert k._lookup_actual(ff("Unknown Thing", "", "49.5"), FMP, idx) is None
 
 
+def test_revised_reading_fills():
+    """Seen live 2026-11-20: FMP 'Michigan 1 Year Inflation Expectations' = 3.7, FF
+    'Revised UoM Inflation Expectations' has no forecast and previous 4.3% (the
+    prelim), while FMP's previous is last month's final."""
+    t = "2026-11-20T15:00:00+00:00"
+    rows = [{"title": "Michigan 1 Year Inflation Expectations (Nov)", "country": "USD", "date": t, "actual": 3.7, "forecast": None, "previous": 4.6},
+            {"title": "Michigan 5 Year Inflation Expectations (Nov)", "country": "USD", "date": t, "actual": 3.3, "forecast": None, "previous": 3.9}]
+    idx = k._index_rows(rows)
+    e = ff("Revised UoM Inflation Expectations", "", "4.3%", date="2026-11-20T10:00:00-05:00", impact="Medium")
+    assert k._lookup_actual(e, rows, idx) == "3.7%"
+    # the same clash on a non-revised release, or at another time, is still rejected
+    assert k._lookup_actual(ff("UoM Inflation Expectations", "", "4.3%", date="2026-11-20T10:00:00-05:00"), rows, idx) is None
+    assert k._lookup_actual(dict(e, date="2026-11-20T12:00:00-05:00"), rows, idx) is None
+
+
 def test_missing_is_reported():
     now = dt.datetime.now(dt.timezone.utc)
     old = (now - dt.timedelta(hours=3)).isoformat()
