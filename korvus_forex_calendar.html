@@ -595,7 +595,7 @@ function impClass(imp){ return (imp||'Low').toLowerCase(); }
 // reads green; for a short list of "lower is better" labels (unemployment rate,
 // jobless claims) the sense inverts, matching standard economic-calendar colouring.
 // When we cannot parse both numbers we stay neutral rather than guess a colour.
-const INVERSE_ACTUAL = /(unemployment rate|unemployment claims|jobless claims|initial claims|continuing claims|claimant count)/i;
+const INVERSE_ACTUAL = /(unemployment rate|unemployment claims|jobless claims|initial claims|continuing claims|claimant count|job cuts)/i;
 function actualClass(title, actual, forecast){
   const a = parseFloat(String(actual).replace(/[^0-9.\-]/g,''));
   const f = parseFloat(String(forecast).replace(/[^0-9.\-]/g,''));
@@ -760,6 +760,10 @@ async function loadLive(){
       _events = list;
       buildCcyChips();
       render();
+      if(_openEid && _eventById[_openEid]){          // card open: show the fresh numbers and read
+        const sc = document.getElementById('evCard').scrollTop;
+        openEvent(_openEid); document.getElementById('evCard').scrollTop = sc;
+      }
       setBadge(true);
       document.getElementById('lastUpd').textContent = 'last update ' + new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true}).format(new Date()) + ' ET';
       document.getElementById('srcNote').textContent = 'Economic data releases, fetched and cached by the Korvus server.';
@@ -784,6 +788,13 @@ setBadge(false);
 tick(); setInterval(tick,1000);
 loadLive();
 setInterval(loadLive, 5*60*1000);   // refresh the calendar every 5 minutes
+// ...and every minute while a release is close (10 min before to 30 min after) and
+// still has no result, so the Actual and the read land soon after the number is out.
+setInterval(function(){
+  const now = Date.now();
+  const due = (_events||[]).some(e => { const t = Date.parse(e.date||''); return !isNaN(t) && !e.actual && t-now < 10*60e3 && now-t < 30*60e3; });
+  if(due) loadLive();
+}, 60*1000);
 
 /* ============================================================================
    EVENT DETAIL, a click-in card (matches the terminal news style) that is also
@@ -805,7 +816,7 @@ const EV_DESC = [
   {re:/non[- ]?farm (payrolls|employment)/i, m:'The monthly change in the number of employed people in the US, excluding farm workers.', w:'The biggest jobs number of the month. A strong print points to a hot labor market and keeps rates higher for longer, which usually lifts the dollar.', better:'higher', fut:'jobs'},
   {re:/unemployment rate/i, m:'The share of the labor force that is looking for work and cannot find it.', w:'A rising rate points to a cooling economy and is read against the central bank employment mandate.', better:'lower', fut:'jobs'},
   {re:/(unemployment|jobless|initial|continuing) claims|claimant count/i, m:'The number of people who filed for unemployment benefits, the earliest regular read on the labor market.', w:'Fewer claims means a tighter job market. It is timely, so it moves rate expectations quickly.', better:'lower', fut:'jobs'},
-  {re:/average (hourly|cash|weekly) earnings|wage price|labor cost|labour cost|employment cost/i, m:'The {p} change in what workers are paid.', w:'A direct read on wage inflation. Hot pay growth feeds inflation worries and rate-hike bets.', better:'higher', fut:'inflation'},
+  {re:/average (hourly |cash |weekly )?earnings|wage price|labor cost|labour cost|employment cost/i, m:'The {p} change in what workers are paid.', w:'A direct read on wage inflation. Hot pay growth feeds inflation worries and rate-hike bets.', better:'higher', fut:'inflation'},
   {re:/\badp\b/i, m:'A private estimate of the change in US private payrolls from the payroll processor ADP.', w:'An early preview of the official jobs report that traders use to position ahead of it.', better:'higher', fut:'jobs'},
   {re:/jolts|job openings|job vacancies/i, m:'The number of open, unfilled job positions.', w:'A gauge of labor demand. More openings means employers are still hiring.', better:'higher', fut:'jobs'},
   {re:/challenger job cuts/i, m:'The number of job cuts announced by employers.', w:'An early warning on layoffs before they show up in the official data.', better:'lower', fut:'jobs'},
@@ -840,12 +851,13 @@ const EV_DESC = [
   {re:/rmpi|ippi|sppi|shop price|raw materials price|services producer/i, m:'The {p} change in prices at the producer, raw-material or shop level.', w:'Pipeline inflation that often passes through to consumer prices.', better:'higher', fut:'inflation'},
   {re:/vehicle sales|car registrations|visitor arrivals|tourism/i, m:'A count of vehicles sold or visitors arriving.', w:'A narrow read on consumer demand or tourism income. Usually low impact.', better:'higher'},
   {re:/foreign currency reserves|fx reserves|official reserve/i, m:'The foreign currency a central bank holds.', w:'Large changes can show the central bank is buying or selling its own currency.', better:'flat'},
+  {re:/\bgdt\b|dairy/i, m:'The change in the average price at the fortnightly global dairy auction.', w:'Dairy is New Zealand\'s largest export, so this matters mainly for NZD.', better:'higher'},
   // --- trade and flows ---
   {re:/trade balance|goods trade|current account|balance of trade/i, m:'The gap between what a country sells abroad and what it buys.', w:'A structural read on demand for the currency through trade flows.', better:'higher'},
-  {re:/tic |foreign (securities|bond|investment)|net capital flows|long[- ]term purchases/i, m:'Net purchases of a country\'s securities by foreign investors.', w:'Shows foreign appetite for the currency and its government debt.', better:'higher'},
+  {re:/\btic\b|foreign (securities|bond|investment)|net capital flows|long[- ]term purchases/i, m:'Net purchases of a country\'s securities by foreign investors.', w:'Shows foreign appetite for the currency and its government debt.', better:'higher'},
   {re:/(federal )?budget (balance|statement)|public sector net borrowing|government budget/i, m:'The gap between government income and spending.', w:'Large deficits mean more debt issuance, which can pressure bonds.', better:'higher'},
   // --- energy ---
-  {re:/crude oil|natural gas|gasoline|distillate|rig count|opec|api weekly/i, m:'The weekly change in energy stockpiles, or a report on oil supply.', w:'A bigger build than expected means supply is ahead of demand and tends to weigh on oil prices. Matters most for CL, CAD and energy shares.', better:'flat'},
+  {re:/crude oil|natural gas|gasoline|distillate|rig count|api weekly/i, m:'The weekly change in energy stockpiles, or a count of active drilling rigs.', w:'A bigger build than expected means supply is ahead of demand and tends to weigh on oil prices. Matters most for CL, CAD and energy shares.', better:'flat'},
   // --- central banks ---
   {re:/(fomc|monetary policy|mpc|rba|boe|boj|ecb|boc|rbnz|snb).*(minutes|meeting minutes|summary of opinions|accounts)|meeting minutes/i, m:'The written record of the central bank\'s last policy meeting.', w:'Shows how divided policymakers were and what would change their minds. Traders read it for hints on the next move.', better:'flat', kind:'talk'},
   {re:/(speaks|speech|testimony|testifies|press conference|gov(ernor)? |president .*speaks|chair|fomc member|mpc member)/i, m:'Public remarks from a central bank official or political leader.', w:'Tone can move markets as much as data. Traders listen for any shift in the outlook for rates.', better:'flat', kind:'talk'},
@@ -854,7 +866,7 @@ const EV_DESC = [
   {re:/auction|\b(bond|bill|note|gilt|bund|jgb|tips)\b/i, m:'A government debt sale. The number is the yield investors accepted.', w:'Weak demand pushes yields up. Usually low impact unless demand is unusually poor or strong.', better:'flat'},
   // --- no data ---
   {re:/bank holiday|holiday|thanksgiving|christmas|new year|independence day|labor day|memorial day|good friday|easter/i, m:'Banks in this country are closed for a public holiday.', w:'Expect thinner trading and wider spreads in this currency while its home market is shut.', better:'flat', kind:'none'},
-  {re:/summit|meetings|election|vote|referendum|g7|g20|opec|eurogroup|ecofin|jackson hole/i, m:'A scheduled political or policy event with no number attached.', w:'Headlines can arrive at any time during the event, so moves are driven by what is said.', better:'flat', kind:'talk'},
+  {re:/summit|meetings|election|\bvote\b|referendum|g7|g20|opec|eurogroup|ecofin|jackson hole|forecast statement|budget release|annual budget/i, m:'A scheduled political or policy event with no number attached.', w:'Headlines can arrive at any time during the event, so moves are driven by what is said.', better:'flat', kind:'talk'},
 ];
 const _EV_FALLBACK = {m:'A scheduled economic release for this currency.', w:'What matters is the surprise: the further the actual lands from the forecast, the bigger the reaction tends to be.', better:'flat', generic:true};
 const _EV_PERIODS = [[/\bm\/m\b|\bmom\b/i,'month over month'],[/\bq\/q\b|\bqoq\b/i,'quarter over quarter'],[/\by\/y\b|\byoy\b/i,'year over year'],[/\b3m\/y\b/i,'three-month average, year over year'],[/\bw\/w\b/i,'week over week']];
@@ -937,6 +949,13 @@ function _verdict(e){
     if(d.kind==='talk') return {txt: past ? 'Event has taken place' : 'Scheduled', cls:'flat'};
     return {txt: past ? 'Released, result not in yet' : 'Not released yet', cls:'flat'};
   }
+  const dd = evDesc(e.title);
+  if(dd.better==='flat'){
+    // releases with no "good" direction (energy stocks, debt sales): say where it landed, no beat/miss
+    const a = _evNum(e.actual), f = _evNum(e.forecast);
+    if(a && f && a.n!==f.n) return {txt: a.n>f.n ? 'Above forecast' : 'Below forecast', cls:'flat'};
+    return {txt: (a && f) ? 'In line with forecast' : 'Released', cls:'flat'};
+  }
   const c = actualClass(e.title, e.actual, e.forecast);   // reuse the calendar's own beat/miss logic
   if(c==='beat') return {txt:'Beat forecast', cls:'beat'};
   if(c==='miss') return {txt:'Missed forecast', cls:'miss'};
@@ -977,13 +996,16 @@ function openEvent(eid){
        <span class="evbetter">${better}</span>
        <a class="evjoin" href="https://discord.gg/ZXt7Hkq7fv" target="_blank" rel="noopener">Discuss in Eclipse-X &rsaquo;</a>
      </div>`;
+  _openEid = eid;
   document.getElementById('evModal').classList.add('open');
   document.body.style.overflow = 'hidden';
   document.querySelectorAll('.erow.flashrow').forEach(r=>r.classList.remove('flashrow'));
   const row = document.querySelector('.erow[data-eid="'+(window.CSS&&CSS.escape?CSS.escape(eid):eid)+'"]');
   if(row){ row.classList.add('flashrow'); row.scrollIntoView({block:'center',behavior:'smooth'}); }
 }
+var _openEid = null;        // the event card currently open, so a data refresh can re-draw it
 function closeEvent(){
+  _openEid = null;
   document.getElementById('evModal').classList.remove('open');
   document.body.style.overflow = '';
 }
