@@ -233,7 +233,10 @@ def test_vault_render_and_git():
     # sync renders at the real clock, and the daily filing notes only reach back
     # a week, so the fixture day drops out as the calendar moves: compare with
     # what sync itself rendered
-    assert r["pushed"] and r["changed"] == r["rendered"] and r["rendered"] >= len(files) - 1, r
+    # ... so the daily Filings/ notes are left out of the count: every other
+    # rendered file must be there whatever today's date is
+    steady = [k for k in files if not k.startswith("Filings/")]
+    assert r["pushed"] and r["changed"] == r["rendered"] and r["rendered"] >= len(steady), r
     r = vault.sync()
     assert not r["pushed"] and r["changed"] == 0, r              # nothing new -> no empty commit
 
