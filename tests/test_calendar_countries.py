@@ -53,6 +53,15 @@ def test_rows_without_country_field_still_work():
     assert k._lookup_actual(ff("Core Retail Sales q/q", "NZD", "0.8%", "0.7%", "2026-11-22T16:45:00-05:00"), rows, idx) == "1.1%"
 
 
+def test_fmp_week_starts_sunday():
+    import datetime as dt
+    # Mon 23 Nov 2026: the week opened Sun 22 Nov (NZD retail sales, 21:45 UTC)
+    assert k._fmp_window(dt.date(2026, 11, 23)) == (dt.date(2026, 11, 22), dt.date(2026, 11, 29))
+    assert k._fmp_window(dt.date(2026, 11, 28)) == (dt.date(2026, 11, 22), dt.date(2026, 11, 29))   # Saturday
+    assert k._fmp_window(dt.date(2026, 11, 22)) == (dt.date(2026, 11, 22), dt.date(2026, 11, 29))   # Sunday itself
+    assert k._fmp_window(dt.date(2026, 11, 29)) == (dt.date(2026, 11, 29), dt.date(2026, 12, 6))
+
+
 if __name__ == "__main__":
     for n, fn in list(globals().items()):
         if n.startswith("test_") and callable(fn):

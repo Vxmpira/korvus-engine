@@ -213,13 +213,24 @@ def _fmp_date_iso(s: str) -> str:
 # ----------------------------------------------------------------------------
 # Provider: Financial Modeling Prep (licensed; includes ACTUAL values)
 # ----------------------------------------------------------------------------
+def _fmp_window(today):
+    """(from, to) covering the Forex Factory week that contains `today`: the
+    Sunday that opens it through the Sunday after, in UTC dates."""
+    monday = today - dt.timedelta(days=today.weekday())
+    if today.weekday() == 6:                 # Sunday belongs to the week that is starting
+        monday = today + dt.timedelta(days=1)
+    return monday - dt.timedelta(days=1), monday + dt.timedelta(days=6)
+
+
 def _fmp() -> list:
     if not FMP_KEY:
         print("  [calendar] no FMP_KEY set - cannot use FMP")
         return []
     today = dt.date.today()
-    frm = today - dt.timedelta(days=today.weekday())     # Monday of this week
-    to  = frm + dt.timedelta(days=6)                      # Sunday
+    # Forex Factory's week opens on Sunday (Sunday evening ET is Monday morning in
+    # New Zealand, Australia and Japan). Asking FMP from Monday dropped every
+    # Sunday release, so those rows could never get an Actual.
+    frm, to = _fmp_window(today)
     params = {"from": frm.isoformat(), "to": to.isoformat(), "apikey": FMP_KEY}
 
     raw = None
@@ -872,11 +883,13 @@ def _merge() -> list:
         a = _lookup_actual(e, fmp, fmp_idx)    # FMP first (movers, already proven)
         if a is not None:
             e["actual"] = a
+            e["_src"] = "FMP"                  # who supplied the Actual (Forex Factory's own have none)
             m_fmp += 1
             continue
         a = _lookup_actual(e, te, te_idx)      # then Trading Economics (PMI, gaps)
         if a is not None:
             e["actual"] = a
+            e["_src"] = "TE"
             m_te += 1
 
     nfp = next((x for x in ff if _canon(x.get("title")) == "nonfarm payrolls"), None)
@@ -987,7 +1000,14 @@ if __name__ == "__main__":
     # FF events couldn't find an FMP actual (and what their canon key resolved to).
     if len(sys.argv) > 1 and len(sys.argv[1]) == 3 and sys.argv[1].lower() not in ("fmp",):
         CCY = sys.argv[1].upper()              # `korvus_calendar.py eur`, `nzd`, `usd`, ...
-        ff  = _cached("ff",  _forexfactory, TTL_FF) or []
+        # Use the week the server already saved when there is one: Forex Factory
+        # rate limits hard, and every extra request from here risks a 429 for
+        # the live page. Only fetch when nothing is saved.
+        ff = [dict(e, actual="") if e.get("_src") else dict(e) for e in (_cache.get("data") or [])]
+        if ff:
+            print(f"  [calendar] using the saved week ({len(ff)} events) - not calling Forex Factory")
+        else:
+            ff = _cached("ff", _forexfactory, TTL_FF) or []
         fmp = _cached("fmp", _fmp, TTL_FMP) or []
         fmp_usd = [e for e in fmp if (e.get("country") or "").upper() == CCY]
         ff_usd  = [e for e in ff  if (e.get("country") or "").upper() == CCY]
