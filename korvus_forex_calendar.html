@@ -788,13 +788,13 @@ setBadge(false);
 tick(); setInterval(tick,1000);
 loadLive();
 setInterval(loadLive, 5*60*1000);   // refresh the calendar every 5 minutes
-// ...and every minute while a release is close (10 min before to 30 min after) and
+// ...and every 30 seconds while a release is close (10 min before to 30 min after) and
 // still has no result, so the Actual and the read land soon after the number is out.
 setInterval(function(){
   const now = Date.now();
   const due = (_events||[]).some(e => { const t = Date.parse(e.date||''); return !isNaN(t) && !e.actual && t-now < 10*60e3 && now-t < 30*60e3; });
   if(due) loadLive();
-}, 60*1000);
+}, 30*1000);
 
 /* ============================================================================
    EVENT DETAIL, a click-in card (matches the terminal news style) that is also
