@@ -314,6 +314,9 @@
   .evverdict.miss{color:var(--bear);border-color:var(--bear-dim);background:rgba(255,46,77,.06);}
   .evlabel{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--crimson);margin-bottom:8px;}
   .evbody{font-size:14px;line-height:1.55;color:var(--ink-dim);margin:0 0 12px;}
+  .evbody + .evlabel{margin-top:16px;}
+  .evnote{font-size:12px;color:var(--ink-faint);margin:2px 0 12px;}
+  .evcard{max-height:calc(100vh - 40px);overflow:auto;}
   .evfoot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
     margin-top:4px;padding-top:14px;border-top:1px solid var(--line);}
   .evbetter{font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--ink-faint);}
@@ -792,36 +795,148 @@ setInterval(loadLive, 5*60*1000);   // refresh the calendar every 5 minutes
 function _slugTitle(t){ return String(t||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
 function eventId(e){ return String(e.date||'').slice(0,10) + '-' + String(e.country||'').toLowerCase() + '-' + _slugTitle(e.title); }
 
-// Plain-language read on the common releases: what it is and why it moves markets.
+// Plain-language library for calendar events: what the release is, why it moves
+// markets, and which direction is the currency-positive one. Entries are matched
+// top to bottom, so the specific ones sit above the general ones. {p} is replaced
+// with the period in the title (month over month, quarter over quarter, ...).
+// kind: 'pmi' adds the 50-line context; 'talk' and 'none' have no number to read.
 const EV_DESC = [
-  {re:/non[- ]?farm (payrolls|employment)/i, m:'The monthly change in the number of employed people, excluding farms, government, and non-profits.', w:'The single biggest jobs number of the month. A strong print signals a hot labor market and can push the Fed toward higher rates, which is usually dollar positive.', better:'higher'},
-  {re:/unemployment rate/i, m:'The share of the labor force actively looking for work but unable to find it.', w:'A rising rate points to a cooling economy and is read against the Fed employment mandate.', better:'lower'},
-  {re:/(unemployment|jobless|initial|continuing) claims|claimant count/i, m:'The number of people who filed for unemployment benefits, the earliest weekly read on the labor market.', w:'Fewer claims means a tighter job market. It is timely, so it moves rate expectations fast.', better:'lower'},
-  {re:/average hourly earnings/i, m:'The month over month change in what workers are paid per hour.', w:'A direct read on wage inflation. Hot earnings feed inflation fears and rate-hike bets.', better:'higher'},
-  {re:/\badp\b/i, m:'A private estimate of the change in non-farm private payrolls, out two days before the official jobs report.', w:'An early preview of Friday payrolls that traders use to position ahead of the main event.', better:'higher'},
-  {re:/jolts/i, m:'The number of open, unfilled job positions across the economy.', w:'A gauge of labor demand. More openings means employers are still hungry for workers.', better:'higher'},
-  {re:/core cpi/i, m:'Consumer inflation excluding food and energy, the underlying price trend the Fed watches most.', w:'The inflation read that most drives policy. A hot core number pulls forward rate-hike expectations.', better:'higher'},
-  {re:/\bcpi\b|consumer price/i, m:'The change in the price of a basket of consumer goods and services.', w:'The headline inflation gauge. It moves the dollar, bonds, and gold quickly on any surprise.', better:'higher'},
-  {re:/\bppi\b|producer price/i, m:'The change in prices producers receive for their output, a pipeline signal for consumer inflation.', w:'Producer costs often feed through to consumer prices, so it previews CPI.', better:'higher'},
-  {re:/ism manufacturing/i, m:'A survey of purchasing managers at manufacturers. Above 50 means the sector is expanding.', w:'A forward-looking read on factory activity and the wider economy.', better:'higher'},
-  {re:/ism (services|non-manufacturing)/i, m:'A survey of purchasing managers in services. Above 50 means expansion.', w:'Services are the bulk of the US economy, so this is a key growth signal.', better:'higher'},
-  {re:/retail sales/i, m:'The month over month change in total receipts at retail stores.', w:'Consumer spending drives most of the economy, so a strong number signals healthy demand.', better:'higher'},
-  {re:/\bgdp\b/i, m:'The total value of all goods and services the economy produced, the broadest measure of growth.', w:'The headline scorecard for the economy. Big surprises reset growth expectations.', better:'higher'},
-  {re:/(fomc|federal funds|interest rate|cash rate|refinancing rate|bank rate|rate decision|rate statement)/i, m:'The central bank decision on its benchmark interest rate.', w:'The most powerful driver in markets. Rate moves and the guidance around them reprice everything.', better:'higher'},
-  {re:/(fed chair|powell|press conference|governor|speaks|testimony)/i, m:'Public remarks from a central bank official on the economy and policy.', w:'Tone can move markets as much as data. Traders parse every line for policy hints.', better:'flat'},
-  {re:/consumer (confidence|sentiment)/i, m:'A survey of how households feel about the economy and their own finances.', w:'Confident consumers spend more, so it previews future demand.', better:'higher'},
-  {re:/durable goods/i, m:'The change in orders for long-lasting manufactured goods like vehicles and machinery.', w:'A read on business investment and future manufacturing activity.', better:'higher'},
-  {re:/(building permits|housing starts|home sales)/i, m:'New residential building activity and home sales.', w:'Housing is rate-sensitive and feeds through to the wider economy.', better:'higher'},
-  {re:/trade balance/i, m:'The gap between a country exports and imports.', w:'A structural read on currency demand through trade flows.', better:'higher'},
-  {re:/employment change/i, m:'The monthly change in the number of employed people.', w:'A core labor-market read. More jobs points to a stronger economy.', better:'higher'},
+  // --- jobs ---
+  {re:/non[- ]?farm (payrolls|employment)/i, m:'The monthly change in the number of employed people in the US, excluding farm workers.', w:'The biggest jobs number of the month. A strong print points to a hot labor market and keeps rates higher for longer, which usually lifts the dollar.', better:'higher', fut:'jobs'},
+  {re:/unemployment rate/i, m:'The share of the labor force that is looking for work and cannot find it.', w:'A rising rate points to a cooling economy and is read against the central bank employment mandate.', better:'lower', fut:'jobs'},
+  {re:/(unemployment|jobless|initial|continuing) claims|claimant count/i, m:'The number of people who filed for unemployment benefits, the earliest regular read on the labor market.', w:'Fewer claims means a tighter job market. It is timely, so it moves rate expectations quickly.', better:'lower', fut:'jobs'},
+  {re:/average (hourly|cash|weekly) earnings|wage price|labor cost|labour cost|employment cost/i, m:'The {p} change in what workers are paid.', w:'A direct read on wage inflation. Hot pay growth feeds inflation worries and rate-hike bets.', better:'higher', fut:'inflation'},
+  {re:/\badp\b/i, m:'A private estimate of the change in US private payrolls from the payroll processor ADP.', w:'An early preview of the official jobs report that traders use to position ahead of it.', better:'higher', fut:'jobs'},
+  {re:/jolts|job openings|job vacancies/i, m:'The number of open, unfilled job positions.', w:'A gauge of labor demand. More openings means employers are still hiring.', better:'higher', fut:'jobs'},
+  {re:/challenger job cuts/i, m:'The number of job cuts announced by employers.', w:'An early warning on layoffs before they show up in the official data.', better:'lower', fut:'jobs'},
+  {re:/participation rate/i, m:'The share of working-age people who have a job or are looking for one.', w:'Context for the unemployment rate: a falling rate can hide weakness if people stop looking.', better:'higher'},
+  {re:/employment change|non[- ]?farm productivity|productivity/i, m:'The {p} change in the number of employed people, or in output per hour worked.', w:'A core labor-market read. More jobs and higher productivity point to a stronger economy.', better:'higher', fut:'jobs'},
+  // --- inflation ---
+  {re:/inflation expectations/i, m:'A survey of where households or businesses expect inflation to be in the coming years.', w:'Central banks watch expectations closely: if people expect higher prices, they tend to get them. A rise leans toward tighter policy.', better:'higher', fut:'inflation'},
+  {re:/core pce/i, m:'The {p} change in consumer prices excluding food and energy, measured by the PCE index.', w:'The inflation gauge the Federal Reserve targets. A hot print pulls rate cuts further away.', better:'higher', fut:'inflation'},
+  {re:/\bpce\b|personal (spending|income)/i, m:'The {p} change in household income, spending, or the prices they pay.', w:'Shows how much consumers earn and spend, and feeds the Fed preferred inflation measure.', better:'higher', fut:'inflation'},
+  {re:/(core|trimmed|median|common|weighted).*(cpi|inflation)|(cpi|inflation).*(core|trimmed|median|common)/i, m:'The {p} change in consumer prices with the most volatile items stripped out, the underlying price trend.', w:'The inflation read that most drives policy. A hot core number pulls rate-hike expectations forward.', better:'higher', fut:'inflation'},
+  {re:/\b(cpi|hicp)\b|consumer price|inflation rate/i, m:'The {p} change in the price of a basket of consumer goods and services.', w:'The headline inflation gauge. A surprise moves the currency, bonds and gold quickly.', better:'higher', fut:'inflation'},
+  {re:/\b(ppi|wpi)\b|producer price|import price|export price|input price|output price/i, m:'The {p} change in prices at the producer or border level, before goods reach consumers.', w:'Pipeline inflation: these costs often pass through to consumer prices, so it previews CPI.', better:'higher', fut:'inflation'},
+  {re:/gdp (price index|deflator)/i, m:'The change in prices across everything counted in GDP.', w:'A broad inflation measure released alongside growth.', better:'higher', fut:'inflation'},
+  // --- surveys ---
+  {re:/ism manufacturing|manufacturing pmi|final manufacturing|flash manufacturing/i, m:'A monthly survey of purchasing managers at manufacturers. Above 50 means the sector is growing, below 50 means it is shrinking.', w:'A forward-looking read on factory activity. It comes out early in the cycle, so it leads the hard data.', better:'higher', kind:'pmi', fut:'growth'},
+  {re:/ism (services|non-manufacturing)|services pmi|flash services|final services/i, m:'A monthly survey of purchasing managers at service companies. Above 50 means growth, below 50 means contraction.', w:'Services are the largest part of most developed economies, so this is a key growth signal.', better:'higher', kind:'pmi', fut:'growth'},
+  {re:/composite pmi|construction pmi|\bpmi\b|ivey/i, m:'A monthly survey of purchasing managers. Above 50 means activity is growing, below 50 means it is shrinking.', w:'A fast, forward-looking read on business conditions.', better:'higher', kind:'pmi', fut:'growth'},
+  {re:/(philly|philadelphia|empire state|richmond|kansas|dallas|chicago).*(index|pmi|manufacturing)/i, m:'A regional US Federal Reserve survey of manufacturers. Above zero means conditions are improving.', w:'An early regional read that hints at the national ISM manufacturing number.', better:'higher', fut:'growth'},
+  {re:/zew|ifo|sentix|tankan|nab business|business (confidence|climate|sentiment|outlook)|small business|nfib|leading index|economic sentiment/i, m:'A survey of how businesses, investors or analysts rate current conditions and the months ahead.', w:'Sentiment tends to turn before the hard data does, so a sharp move is an early signal.', better:'higher', fut:'growth'},
+  {re:/consumer (confidence|sentiment|climate)|gfk|westpac/i, m:'A survey of how households feel about the economy and their own finances.', w:'Confident consumers spend more, so it previews future demand.', better:'higher', fut:'growth'},
+  // --- activity ---
+  {re:/core retail sales|retail sales ex/i, m:'The {p} change in retail sales with autos (and sometimes fuel) left out, which removes the most volatile part.', w:'The cleaner read on consumer spending. Consumers drive most of the economy, so a strong number signals healthy demand.', better:'higher', fut:'growth'},
+  {re:/retail sales|retail trade|household spending/i, m:'The {p} change in the total value of sales at retail stores.', w:'Consumer spending drives most of the economy, so a strong number signals healthy demand.', better:'higher', fut:'growth'},
+  {re:/\bgdp\b/i, m:'The {p} change in the total value of goods and services the economy produced, the broadest measure of growth.', w:'The headline scorecard for the economy. Big surprises reset growth and rate expectations.', better:'higher', fut:'growth'},
+  {re:/industrial production|manufacturing production|factory orders|industrial orders|capacity utilization|manufacturing sales|machinery orders|machine tool/i, m:'The {p} change in output or orders at factories, mines and utilities.', w:'A read on the goods-producing side of the economy and on business demand.', better:'higher', fut:'growth'},
+  {re:/durable goods|capital goods/i, m:'The {p} change in orders for long-lasting manufactured goods such as vehicles and machinery.', w:'A read on business investment and future factory activity.', better:'higher', fut:'growth'},
+  {re:/building (permits|approvals|consents)|housing starts|home sales|house price|hpi|construction (spending|output)|nahb|mortgage (approvals|applications|delinquencies)/i, m:'Activity in the housing market: permits, construction, sales, prices or mortgage demand.', w:'Housing is the most rate-sensitive part of the economy and feeds through to wider spending.', better:'higher', fut:'growth'},
+  {re:/business inventories|wholesale (inventories|sales)|retail inventories/i, m:'The {p} change in goods held or sold by wholesalers, retailers and manufacturers.', w:'Feeds into GDP estimates. Rising stock can mean confidence, or goods that are not selling.', better:'higher'},
+  {re:/construction work|capital expenditure|capex|business investment|corporate profits|company operating profits/i, m:'The {p} change in what businesses invest, build or earn.', w:'Business investment and profits drive hiring and future growth, and feed into GDP.', better:'higher', fut:'growth'},
+  {re:/money supply|private loans|net lending|consumer credit|credit card spending|bank lending|new loans|m3\b|m2\b/i, m:'The {p} change in the amount of money and credit in the economy.', w:'More borrowing points to stronger spending ahead. It is slow-moving, so the reaction is usually small.', better:'higher'},
+  {re:/kof|economic barometer|cbi|realized sales|industrial order expectations/i, m:'A survey-based gauge of business activity or sales.', w:'A forward-looking read: a rise suggests activity is picking up in the months ahead.', better:'higher', fut:'growth'},
+  {re:/rmpi|ippi|sppi|shop price|raw materials price|services producer/i, m:'The {p} change in prices at the producer, raw-material or shop level.', w:'Pipeline inflation that often passes through to consumer prices.', better:'higher', fut:'inflation'},
+  {re:/vehicle sales|car registrations|visitor arrivals|tourism/i, m:'A count of vehicles sold or visitors arriving.', w:'A narrow read on consumer demand or tourism income. Usually low impact.', better:'higher'},
+  {re:/foreign currency reserves|fx reserves|official reserve/i, m:'The foreign currency a central bank holds.', w:'Large changes can show the central bank is buying or selling its own currency.', better:'flat'},
+  // --- trade and flows ---
+  {re:/trade balance|goods trade|current account|balance of trade/i, m:'The gap between what a country sells abroad and what it buys.', w:'A structural read on demand for the currency through trade flows.', better:'higher'},
+  {re:/tic |foreign (securities|bond|investment)|net capital flows|long[- ]term purchases/i, m:'Net purchases of a country\'s securities by foreign investors.', w:'Shows foreign appetite for the currency and its government debt.', better:'higher'},
+  {re:/(federal )?budget (balance|statement)|public sector net borrowing|government budget/i, m:'The gap between government income and spending.', w:'Large deficits mean more debt issuance, which can pressure bonds.', better:'higher'},
+  // --- energy ---
+  {re:/crude oil|natural gas|gasoline|distillate|rig count|opec|api weekly/i, m:'The weekly change in energy stockpiles, or a report on oil supply.', w:'A bigger build than expected means supply is ahead of demand and tends to weigh on oil prices. Matters most for CL, CAD and energy shares.', better:'flat'},
+  // --- central banks ---
+  {re:/(fomc|monetary policy|mpc|rba|boe|boj|ecb|boc|rbnz|snb).*(minutes|meeting minutes|summary of opinions|accounts)|meeting minutes/i, m:'The written record of the central bank\'s last policy meeting.', w:'Shows how divided policymakers were and what would change their minds. Traders read it for hints on the next move.', better:'flat', kind:'talk'},
+  {re:/(speaks|speech|testimony|testifies|press conference|gov(ernor)? |president .*speaks|chair|fomc member|mpc member)/i, m:'Public remarks from a central bank official or political leader.', w:'Tone can move markets as much as data. Traders listen for any shift in the outlook for rates.', better:'flat', kind:'talk'},
+  {re:/(fomc|federal funds|interest rate|cash rate|refinanc|bank rate|rate decision|rate statement|official bank rate|overnight rate|policy rate|deposit facility|loan prime rate|monetary policy (statement|report)|rate statement)/i, m:'The central bank\'s decision on its benchmark interest rate, or the statement that goes with it.', w:'The most powerful driver in markets. The rate, the vote and the guidance around them reprice everything.', better:'higher', fut:'rates'},
+  // --- debt sales ---
+  {re:/auction|\b(bond|bill|note|gilt|bund|jgb|tips)\b/i, m:'A government debt sale. The number is the yield investors accepted.', w:'Weak demand pushes yields up. Usually low impact unless demand is unusually poor or strong.', better:'flat'},
+  // --- no data ---
+  {re:/bank holiday|holiday|thanksgiving|christmas|new year|independence day|labor day|memorial day|good friday|easter/i, m:'Banks in this country are closed for a public holiday.', w:'Expect thinner trading and wider spreads in this currency while its home market is shut.', better:'flat', kind:'none'},
+  {re:/summit|meetings|election|vote|referendum|g7|g20|opec|eurogroup|ecofin|jackson hole/i, m:'A scheduled political or policy event with no number attached.', w:'Headlines can arrive at any time during the event, so moves are driven by what is said.', better:'flat', kind:'talk'},
 ];
+const _EV_FALLBACK = {m:'A scheduled economic release for this currency.', w:'What matters is the surprise: the further the actual lands from the forecast, the bigger the reaction tends to be.', better:'flat', generic:true};
+const _EV_PERIODS = [[/\bm\/m\b|\bmom\b/i,'month over month'],[/\bq\/q\b|\bqoq\b/i,'quarter over quarter'],[/\by\/y\b|\byoy\b/i,'year over year'],[/\b3m\/y\b/i,'three-month average, year over year'],[/\bw\/w\b/i,'week over week']];
+const _EV_PLACES = [[/^german\b/i,'Germany'],[/^french\b/i,'France'],[/^italian\b/i,'Italy'],[/^spanish\b/i,'Spain'],[/^swiss\b/i,'Switzerland'],[/^tokyo\b/i,'the Tokyo area'],[/^chinese\b|^caixin\b/i,'China']];
 function evDesc(title){
-  for(const d of EV_DESC){ if(d.re.test(title||'')) return d; }
-  return {m:'A scheduled economic release tracked on the Korvus calendar.', w:'Watch the actual against the forecast: a clear beat or miss is what moves markets.', better:'flat'};
+  const t = String(title||'');
+  let d = EV_DESC.find(x => x.re.test(t)) || _EV_FALLBACK;
+  const per = (_EV_PERIODS.find(p => p[0].test(t)) || [])[1];
+  let m = d.m.replace('{p} ', per ? per+' ' : '');
+  const place = (_EV_PLACES.find(p => p[0].test(t)) || [])[1];
+  if(place) m += ' This one covers ' + place + '.';
+  // which estimate this is
+  let vint = '';
+  if(/\b(flash|prelim|preliminary|advance)\b/i.test(t)) vint = 'This is the first estimate, so it carries the most surprise. Later readings revise it.';
+  else if(/\b(final|revised|second estimate|third estimate)\b/i.test(t)) vint = 'This is a revision of a number already published, so it usually moves markets less unless it changes a lot.';
+  return Object.assign({}, d, {m, vint});
+}
+
+// The read on this event's own numbers. Arithmetic on what the calendar shows,
+// plus the direction this kind of release normally reads. Never a trade call.
+function _evNum(v){
+  const m = String(v==null?'':v).trim().replace(/,/g,'').match(/^([+\-]?\d+(?:\.\d+)?)\s*([KMBT%]?)$/i);
+  if(!m) return null;
+  const mul = {K:1e3,M:1e6,B:1e9,T:1e12}[(m[2]||'').toUpperCase()] || 1;
+  return {n: parseFloat(m[1])*mul, raw: String(v).trim()};
+}
+const _EV_FUT = {
+  inflation:'For index futures: hotter inflation keeps rates higher for longer, which tends to weigh on NQ and ES. Cooler inflation tends to help.',
+  jobs:'For index futures: jobs data is read through rates. A very strong print can weigh on NQ and ES by pushing yields up, while a very weak one raises growth worries.',
+  growth:'For index futures: solid growth data is usually supportive, unless it is strong enough to push rate expectations higher.',
+  rates:'For index futures: a more hawkish outcome than expected tends to weigh on NQ and ES, a more dovish one tends to lift them.',
+};
+function evRead(e, d){
+  const out = [], ccy = e.country || 'the currency';
+  const a = _evNum(e.actual), f = _evNum(e.forecast), p = _evNum(e.previous);
+  const released = !!(e.actual && String(e.actual).trim());
+  const ts = Date.parse(e.date||''), past = !isNaN(ts) && ts < Date.now();
+  const up = d.better==='lower' ? 'negative' : 'positive', dn = d.better==='lower' ? 'positive' : 'negative';
+  if(d.kind==='none') return out;
+  if(d.kind==='talk'){
+    out.push(past ? 'This has taken place. There is no number to compare; the reaction came from what was said.'
+                  : 'There is no forecast to beat. Watch the first headlines for any change in tone on rates or growth.');
+    return out;
+  }
+  // 1) what the market expects
+  if(f && p){
+    if(f.n === p.n) out.push(`The forecast of ${f.raw} matches the previous ${p.raw}, so no change is expected.`);
+    else out.push(`The forecast is ${f.raw} against ${p.raw} last time, so the market expects a ${f.n>p.n?'higher':'lower'} reading.`);
+  }else if(p && !f){
+    out.push(`No forecast is published for this one. The previous reading was ${p.raw}.`);
+  }
+  if(d.kind==='pmi'){
+    const ref = a || f || p;
+    if(ref) out.push(`${ref.raw} is ${ref.n>50?'above':ref.n<50?'below':'right on'} the 50 line, which means ${ref.n>50?'the sector is growing':ref.n<50?'the sector is shrinking':'activity is flat'}.`);
+  }
+  // 2) the result, or what to watch
+  if(released && a){
+    if(f){
+      if(a.n === f.n) out.push(`It came in at ${a.raw}, in line with the forecast. With no surprise, the reaction is usually small.`);
+      else if(d.better==='flat') out.push(`It came in at ${a.raw}, ${a.n>f.n?'above':'below'} the forecast of ${f.raw}.`);
+      else out.push(`It came in at ${a.raw}, ${a.n>f.n?'above':'below'} the forecast of ${f.raw}. That normally reads ${a.n>f.n?up:dn} for ${ccy}.`);
+    }else if(p){
+      out.push(`It came in at ${a.raw}, ${a.n>p.n?'up from':a.n<p.n?'down from':'unchanged from'} ${p.raw}.`);
+    }else out.push(`It came in at ${a.raw}.`);
+  }else if(released){
+    out.push(`Result: ${String(e.actual).trim()}.`);
+  }else if(past){
+    out.push('The scheduled time has passed, but the result has not reached the calendar yet.');
+  }else if(f && d.better!=='flat'){
+    out.push(`What to watch: a result above ${f.raw} normally reads ${up} for ${ccy}, and below it reads ${dn}.`);
+  }
+  if(String(e.country||'').toUpperCase()==='USD' && d.fut && _EV_FUT[d.fut]) out.push(_EV_FUT[d.fut]);
+  return out;
 }
 
 function _verdict(e){
-  if(!e.actual) return {txt:'Not released yet', cls:'flat'};
+  if(!e.actual){
+    const d = evDesc(e.title), ts = Date.parse(e.date||''), past = !isNaN(ts) && ts < Date.now();
+    if(d.kind==='none') return {txt:'Market holiday', cls:'flat'};
+    if(d.kind==='talk') return {txt: past ? 'Event has taken place' : 'Scheduled', cls:'flat'};
+    return {txt: past ? 'Released, result not in yet' : 'Not released yet', cls:'flat'};
+  }
   const c = actualClass(e.title, e.actual, e.forecast);   // reuse the calendar's own beat/miss logic
   if(c==='beat') return {txt:'Beat forecast', cls:'beat'};
   if(c==='miss') return {txt:'Missed forecast', cls:'miss'};
@@ -833,9 +948,12 @@ function openEvent(eid){
   const d = evDesc(e.title), v = _verdict(e), dp = rowDecimals(e);
   const num = x => x ? _fmtNum(x, dp) : '-';
   const dotcls = {high:'hi',medium:'med',low:'lo',holiday:'lo'}[impClass(e.impact)] || 'lo';
-  const better = d.better==='higher' ? 'A higher actual than forecast reads bullish'
-               : d.better==='lower'  ? 'A lower actual than forecast reads bullish'
-               : 'Watch the tone and guidance, not just the number';
+  const ccy = e.country || 'the currency';
+  const better = (d.kind==='talk' || d.kind==='none') ? 'No number to compare'
+               : d.better==='higher' ? `Higher than forecast normally reads positive for ${ccy}`
+               : d.better==='lower'  ? `Lower than forecast normally reads positive for ${ccy}`
+               : 'Read against the forecast';
+  const read = evRead(e, d);
   document.getElementById('evCard').innerHTML =
     `<button class="evx" onclick="closeEvent()" aria-label="Close">&times;</button>
      <div class="evtop">
@@ -849,9 +967,12 @@ function openEvent(eid){
        <div class="evn"><span class="k">Previous</span><span class="v">${num(e.previous)}</span></div>
      </div>
      <div class="evverdict ${v.cls}">${v.txt}</div>
-     <div class="evlabel">Korvus read</div>
-     <p class="evbody">${d.m}</p>
+     <div class="evlabel">What it is</div>
+     <p class="evbody">${d.m}${d.vint ? ' ' + d.vint : ''}</p>
+     <div class="evlabel">Why it matters</div>
      <p class="evbody">${d.w}</p>
+     ${read.length ? `<div class="evlabel">Korvus read</div>${read.map(x=>`<p class="evbody">${x}</p>`).join('')}
+     <p class="evnote">A read on the numbers, not a trade signal.</p>` : ''}
      <div class="evfoot">
        <span class="evbetter">${better}</span>
        <a class="evjoin" href="https://discord.gg/ZXt7Hkq7fv" target="_blank" rel="noopener">Discuss in Eclipse-X &rsaquo;</a>
