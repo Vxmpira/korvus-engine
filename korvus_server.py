@@ -335,6 +335,28 @@ def api_feed_floor():
     return jsonify({"items": items, "count": len(items)})
 
 
+@app.route("/api/feed/quote")
+def api_feed_quote():
+    """Server-to-server last price for one stock symbol, for the admin's trade
+    recap posts (the CMP line). Same X-Intel-Key as intel-status."""
+    import hmac
+    want = os.getenv("INTEL_STATUS_KEY", "")
+    got = request.headers.get("X-Intel-Key", "")
+    if not want or not hmac.compare_digest(want, got):
+        return jsonify({"error": "forbidden"}), 403
+    sym = re.sub(r"[^A-Z.\-]", "", (request.args.get("symbol") or "").upper())[:10]
+    if not sym:
+        return jsonify({"error": "symbol required"}), 400
+    try:
+        import korvus_intel
+        q = korvus_intel.quote(sym)
+    except Exception:
+        q = None
+    if not q:
+        return jsonify({"symbol": sym, "price": None})
+    return jsonify({"symbol": sym, "price": q.get("price"), "ts": q.get("ts"), "chg_pct": q.get("chg_pct")})
+
+
 @app.route("/api/feed/intel-status")
 def api_feed_intel_status():
     """Server-to-server live status of Korvus Intel for the BlackCrown admin's
