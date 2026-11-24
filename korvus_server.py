@@ -579,7 +579,12 @@ def _count_traffic():
             return
         key = _PUBLIC_PAGES.get(path)
         if not key and path.startswith("/p/"):
-            key = "p/" + path[3:64]
+            # only pages that exist are counted: a mistyped or dead address is
+            # not a page view, and counting it made dead pages look visited
+            nm = path[3:64]
+            if not (re.fullmatch(r"[a-z0-9][a-z0-9-]{0,60}", nm) and os.path.isfile(os.path.join(HERE, "pages", nm + ".html"))):
+                return
+            key = "p/" + nm
         if not key:
             return
         if key == "home" and current_user.is_authenticated:
@@ -788,6 +793,16 @@ def public_marketing_page(name):
         return ("not found", 404)
     fp = os.path.join(HERE, "pages", name + ".html")
     if not os.path.isfile(fp):
+        # a link that differs only by its hyphens (ict-killzones for
+        # ict-kill-zones) is sent on to the real page instead of a dead end
+        flat = name.replace("-", "")
+        try:
+            hits = [f[:-5] for f in os.listdir(os.path.join(HERE, "pages"))
+                    if f.endswith(".html") and f[:-5].replace("-", "") == flat]
+        except OSError:
+            hits = []
+        if len(hits) == 1:
+            return redirect("/p/" + hits[0], code=301)
         return ("not found", 404)
     with open(fp, encoding="utf-8") as f:
         html = f.read()
