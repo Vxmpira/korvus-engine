@@ -82,8 +82,10 @@ EXTENDED      = SESSION != "regular" and _on("BOT_EXTENDED")
 ALLOW_SHORT   = _on("BOT_ALLOW_SHORT")
 ALLOW_SCALP   = _on("BOT_ALLOW_SCALP")
 TICK_SECONDS  = max(30, int(_num("BOT_TICK_SECONDS", 60)))
-RISK_USD      = _num("BOT_RISK_USD", 100)                    # dollars lost if the stop fills where planned
-NOTIONAL      = _num("BOT_NOTIONAL", 10_000)                 # the most one position can be worth
+# Sized like a real $100,000 account: five positions of up to $20,000, each
+# risking a quarter of a percent of the account at its stop.
+RISK_USD      = _num("BOT_RISK_USD", 250)                    # dollars lost if the stop fills where planned
+NOTIONAL      = _num("BOT_NOTIONAL", 20_000)                 # the most one position can be worth
 MAX_OPEN      = int(_num("BOT_MAX_OPEN", 5))
 MAX_DAY_MOVE  = _num("BOT_MAX_DAY_MOVE_PCT", 8.0)            # skip a stock already this far in our direction today
 LOOKBACK_H    = _num("BOT_LOOKBACK_HOURS", 18)
@@ -347,6 +349,8 @@ def plan(pb: str, side: str, fill: float, q: dict, phase: str) -> dict:
     way = -1 if side == "short" else 1
     risk = RISK_USD * (EXT_RISK_MULT if ext else 1.0)
     qty = int(min(math.floor(risk / (fill * stop_pct / 100)), math.floor(NOTIONAL / fill)))
+    # round down to the lot a person would actually key in
+    qty = qty // 10 * 10 if qty >= 50 else qty // 5 * 5 if qty >= 10 else qty
     return {"stop_pct": round(stop_pct, 3), "target_pct": round(target_pct, 3),
             "stop_px": fill * (1 - way * stop_pct / 100), "target_px": fill * (1 + way * target_pct / 100),
             "qty": qty, "risk_usd": round(qty * fill * stop_pct / 100, 2)}

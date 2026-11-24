@@ -80,12 +80,12 @@ def test_filters():
     # the stop widens with the stock's own range, the size shrinks so the dollars at risk stay the same
     quiet = bot.plan("swing", "long", 100.0, {"price": 100}, "regular")
     wild = bot.plan("swing", "long", 100.0, {"price": 100, "high": 103, "low": 97}, "regular")
-    assert quiet["stop_pct"] == 1.5 and quiet["qty"] == 66 and wild["stop_pct"] == 3.0 and wild["qty"] == 33
-    assert abs(quiet["risk_usd"] - 99.0) < 1e-6 and abs(wild["risk_usd"] - 99.0) < 1e-6
+    assert quiet["stop_pct"] == 1.5 and quiet["qty"] == 160 and wild["stop_pct"] == 3.0 and wild["qty"] == 80
+    assert abs(quiet["risk_usd"] - 240.0) < 1e-6 and abs(wild["risk_usd"] - 240.0) < 1e-6
     assert bot.plan("swing", "long", 100.0, {"price": 100, "high": 110, "low": 90}, "regular")["stop_pct"] == 3.5
     ext = bot.plan("scalp", "long", 100.0, {"price": 100}, "afterhours")
-    assert ext["stop_pct"] == 1.8 and ext["qty"] == 27 and round(ext["target_pct"], 2) == 2.7   # wider stop, half risk
-    assert bot.plan("scalp", "long", 9000.0, {"price": 9000}, "regular")["qty"] == 0
+    assert ext["stop_pct"] == 1.8 and ext["qty"] == 60 and round(ext["target_pct"], 2) == 2.7   # wider stop, half risk
+    assert bot.plan("scalp", "long", 30000.0, {"price": 30000}, "regular")["qty"] == 0
     f = {"impact": "high", "direction": "bull", "confidence": 80, "catalyst": "dividend", "seen_utc": "2026-11-10T13:00:00+00:00"}
     assert bot.playbook_for(f, dt.datetime(2026, 11, 10, 10, 30, tzinfo=ET), "regular")[0] is None       # routine catalyst
     f["catalyst"] = "earnings"
@@ -118,8 +118,8 @@ def test_simulated_day():
     assert ("BBB", "-2.44% since the filing, needs +0.5% the read's way") in r["skipped"], r["skipped"]
     assert ("CCC", "-0.91% since the filing, needs +0.5% the read's way") in r["skipped"], r["skipped"]   # bear read, price not confirming
     c = intel.db(); t = dict(c.execute("SELECT * FROM trades WHERE symbol='AAA'").fetchone()); c.close()
-    assert t["playbook"] == "swing" and t["strategy"] == "v4-scalp-and-swing" and t["qty"] == 66 and t["phase"] == "regular"
-    assert abs(t["stop_px"] - 100.05 * 0.985) < 1e-3 and abs(t["target_px"] - 100.05 * 1.03) < 1e-3 and abs(t["risk_usd"] - 99.05) < 0.01
+    assert t["playbook"] == "swing" and t["strategy"] == "v4-scalp-and-swing" and t["qty"] == 160 and t["phase"] == "regular"
+    assert abs(t["stop_px"] - 100.05 * 0.985) < 1e-3 and abs(t["target_px"] - 100.05 * 1.03) < 1e-3 and abs(t["risk_usd"] - 240.12) < 0.01
     r = bot.tick(day.replace(hour=10, minute=5), q)
     assert r["entries"] == 0                                     # one trade per filing per playbook
     px["AAA"] = 101.6                                            # up one stop distance: stop goes to the entry price
@@ -143,7 +143,7 @@ def test_simulated_day():
     r = bot.tick(day.replace(hour=12, minute=45), q)
     assert r["exits"] == 1
     c = intel.db(); t = dict(c.execute("SELECT * FROM trades WHERE symbol='CCC'").fetchone()); c.close()
-    assert t["exit_reason"] == "breakeven stop" and -20 < t["pnl"] < 0 and t["mfe_pct"] > 1.5, t
+    assert t["exit_reason"] == "breakeven stop" and -60 < t["pnl"] < 0 and t["mfe_pct"] > 1.5, t
     # a swing still open late in the day is flat by 3:55 PM, never carried overnight
     c = intel.db(); c.execute("UPDATE filings SET ref_price=79 WHERE symbol='BBB'"); c.commit(); c.close()
     r, _ = _ticks(day, 13, 0, q)
@@ -155,7 +155,7 @@ def test_simulated_day():
     sb = bot.scoreboard()
     assert sb["closed_trades"] == 3 and sb["losses"] == 1 and sb["win_rate_pct"] == 66.7, sb
     assert sb["exits"] == {"target": 1, "breakeven stop": 1, "end of day": 1}, sb["exits"]
-    assert sb["trading_days"] == 1 and sb["capital_at_work"] == 50000 and sb["risk_per_trade"] == 100, sb
+    assert sb["trading_days"] == 1 and sb["capital_at_work"] == 100000 and sb["risk_per_trade"] == 250, sb
     r = bot.tick(day.replace(hour=14, minute=45), q)             # past 2:30 PM: no new swings
     assert r["entries"] == 0 and not bot.swing_window(day.replace(hour=14, minute=45), "regular")
 
@@ -209,7 +209,7 @@ def test_vault_render_and_git():
     assert any(k.startswith("Bot/Trades/") for k in files)
     assert "Sample too small" in files["Bot/Scoreboard.md"]
     sbj = json.loads(files["data/scoreboard.json"])
-    assert sbj["scoreboard"]["closed_trades"] == 5 and sbj["rules"]["risk_usd"] == 100 and sbj["min_sample"] == 30
+    assert sbj["scoreboard"]["closed_trades"] == 5 and sbj["rules"]["risk_usd"] == 250 and sbj["min_sample"] == 30
     assert sbj["rules"]["playbooks"]["swing"]["rr"] == 2.0 and len(sbj["rules"]["lines"]) >= 5
     assert "| swing |" in files["Bot/Scoreboard.md"] and "Catalyst day swing" in files["Bot/Strategy.md"]
     assert "| Playbook |" in files[next(k for k in files if k.startswith("Bot/Trades/"))]
