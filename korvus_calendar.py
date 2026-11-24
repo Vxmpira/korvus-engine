@@ -75,9 +75,9 @@ UA = "Mozilla/5.0 (compatible; korvus-engine/0.2; +https://korvus.industries)"
 
 # cache TTLs (seconds)
 TTL_FF    = 60 * 60      # Forex Factory: refresh hourly (it's rate-limited)
-TTL_FMP   = 5 * 60       # FMP: 5 minutes is plenty for actuals to land
+TTL_FMP   = 30           # FMP: one call per 30 s (plan allows 750 a minute)
 TTL_TE    = 5 * 60       # Trading Economics: 5 minutes
-TTL_MERGE = 5 * 60       # merge: recompute from the sub-caches every 5 min
+TTL_MERGE = 30           # merge: recompute from the sub-caches every 30 s
 
 # module-level cache: survives across requests within one server process
 _cache = {"data": [], "ts": 0.0, "ttl": TTL_FF, "provider": ""}
@@ -257,6 +257,7 @@ def _fmp() -> list:
         out.append({
             "title":    (e.get("event") or "").strip(),
             "country":  (ccy or "").strip().upper(),
+            "cc":       code,                    # the country itself (DE, FR, EU...): EUR alone is ambiguous
             "impact":   _norm_impact(e.get("impact")),
             "date":     _fmp_date_iso(e.get("date")),
             "forecast": str(e.get("estimate") if e.get("estimate") is not None else ""),
@@ -386,6 +387,8 @@ _TITLE_ALIASES = {
     "philly fed manufacturing index":   "philadelphia fed manufacturing index",
     "empire state manufacturing index": "ny empire state manufacturing index",
     "core retail sales mom":            "retail sales ex autos mom",
+    "core retail sales qoq":            "retail sales ex autos qoq",
+    "core retail sales yoy":            "retail sales ex autos yoy",
     "prelim gdp price index qoq":       "gdp price index qoq",
     # FF uses "UoM" / "CB" vendor labels; FMP names the same releases "Michigan"
     # / plain. The forecast/previous cross-check still guards these, so a wrong
@@ -731,59 +734,65 @@ def _note_missing(ff):
     return out
 
 
+# Forex Factory files every euro-area country under EUR and says which one in the
+# title ("German Flash Manufacturing PMI"). Providers put the country in its own
+# field and leave it out of the title. Without this, a German event was compared
+# against whichever EUR row happened to come first (often France's), failed the
+# number check, and stayed blank.
+_NATIONS = {
+    "german": "DE", "french": "FR", "italian": "IT", "spanish": "ES", "dutch": "NL",
+    "belgian": "BE", "austrian": "AT", "irish": "IE", "portuguese": "PT", "greek": "GR",
+    "finnish": "FI",
+}
+_EUR_NATIONAL = set(_NATIONS.values())
+
+def _nation(title):
+    """('DE', 'Flash Manufacturing PMI') for 'German Flash Manufacturing PMI';
+    (None, title) when the title names no country."""
+    parts = (title or "").strip().split(None, 1)
+    if len(parts) == 2 and parts[0].lower() in _NATIONS:
+        return _NATIONS[parts[0].lower()], parts[1]
+    return None, title
+
+
 def _lookup_actual(e, rows, idx):
-    """Display-ready actual for FF event `e` from one provider, or None. Tries an
-    exact (canon, ccy) hit first, then a token-overlap fallback within the same
-    currency. Identical matcher for every provider, so FMP and Trading Economics
-    behave the same."""
-    ccy   = (e.get("country") or "").upper()
-    # An exact (canon, ccy) hit is high confidence. A loose token hit is not, so
-    # it is only allowed through when the numbers confirm it (below).
-    cands = idx.get((_canon(e.get("title")), ccy))
-    exact = bool(cands)
-    if not cands:
-        etoks = set(_strip_noise(_norm_title(e.get("title"))).split())
-        best, best_ov = None, 0.0
-        for fe in rows:
-            if (fe.get("country") or "").upper() != ccy:
-                continue
-            ftoks = set(_strip_noise(_norm_title(fe.get("title"))).split())
-            if not etoks or not ftoks:
-                continue
-            ov = len(etoks & ftoks) / len(etoks | ftoks)
-            if ov > best_ov:
-                best_ov, best = ov, fe
-        # Looser bar than before (0.6 -> 0.34): a near-name now gets a chance,
-        # because the forecast/previous cross-check below is the real gate - a
-        # similar name alone can never inject a value.
-        cands = [best] if (best and best_ov >= 0.34) else None
-    if not cands:
-        # Last resort, and the one that does not depend on names at all: a row in
-        # the same currency, released at the same minute, whose forecast AND
-        # previous both equal Forex Factory's. Two feeds printing the same two
-        # numbers at the same time are describing the same release, whatever
-        # each one calls it. Must be the only such row, or nothing is filled.
-        m = _match_by_numbers(e, rows, ccy)
-        if m is None:
+    """Display-ready actual for FF event `e` from one provider, or None.
+    Country-aware first (see _NATIONS), then the plain currency-level match."""
+    ccy = (e.get("country") or "").upper()
+    cc, bare = _nation(e.get("title"))
+    if (cc or ccy == "EUR") and any(r.get("cc") for r in rows):
+        if cc:
+            sub = [r for r in rows if r.get("cc") == cc]
+        else:                                  # euro-area headline: leave national rows out
+            sub = [r for r in rows if not ((r.get("country") or "").upper() == "EUR"
+                                           and r.get("cc") in _EUR_NATIONAL)]
+        # No fallback to the other countries: their forecasts are often close enough
+        # to pass the number check, and a neighbour's result is worse than a blank.
+        if not sub:
             return None
-        act = m.get("actual")
-        if act in (None, ""):
-            return None
-        return _fmt_actual(act, e.get("forecast"), e.get("previous"))
-    m = _pick(cands, e.get("date"))
+        return _lookup_in(dict(e, title=bare) if cc else e, sub, _index_rows(sub))
+    return _lookup_in(e, rows, idx)
+
+
+def _accept(e, m, exact):
+    """The released value from provider row `m` for FF event `e`, or None when the
+    row is another occurrence, has no value, or fails the cross-check."""
     if not m:
         return None
     # Same-occurrence guard: reject a matched row whose date sits too far from the
     # FF event's - that's a previous print of the same series, not this release.
     ref, md = _ts(e.get("date")), _ts(m.get("date"))
-    if ref and md and abs((md - ref).total_seconds()) > _MATCH_WINDOW_S:
+    try:
+        if ref and md and abs((md - ref).total_seconds()) > _MATCH_WINDOW_S:
+            return None
+    except TypeError:
         return None
     act = m.get("actual")
     if act in (None, ""):
         return None
     # Cross-feed confirmation. FF's forecast/previous are authoritative; check
-    # FMP's against them before trusting FMP's number.
-    #   contradict -> FMP is on a different series: reject (keeps wrong data out).
+    # the provider's against them before trusting its number.
+    #   contradict -> the provider is on a different series: reject.
     #   loose name  -> require a positive confirm.
     #   exact name  -> accept even when we simply can't corroborate.
     status = _corroborate(e, m)
@@ -797,6 +806,44 @@ def _lookup_actual(e, rows, idx):
     if status != "confirm" and not exact:
         return None
     return _fmt_actual(act, e.get("forecast"), e.get("previous"))   # None if nonsense
+
+
+def _lookup_in(e, rows, idx):
+    """Exact (canon, ccy) hit first, then near-names confirmed by the numbers, then
+    a name-free match on time + forecast + previous. Identical for every provider."""
+    ccy   = (e.get("country") or "").upper()
+    cands = idx.get((_canon(e.get("title")), ccy))
+    if cands:
+        v = _accept(e, _pick(cands, e.get("date")), True)
+        if v is not None:
+            return v
+    else:
+        # Near-names. Every plausible row gets a turn (best overlap first), not just
+        # the single best: several EUR or GBP rows can share the same words, and the
+        # forecast/previous cross-check is what tells them apart.
+        etoks = set(_strip_noise(_norm_title(e.get("title"))).split())
+        scored = []
+        for fe in rows:
+            if (fe.get("country") or "").upper() != ccy:
+                continue
+            ftoks = set(_strip_noise(_norm_title(fe.get("title"))).split())
+            if not etoks or not ftoks:
+                continue
+            ov = len(etoks & ftoks) / len(etoks | ftoks)
+            if ov >= 0.34:
+                scored.append((ov, fe))
+        scored.sort(key=lambda x: -x[0])
+        for _ov, fe in scored[:12]:
+            v = _accept(e, fe, False)
+            if v is not None:
+                return v
+    # Last resort, and the one that does not depend on names at all: a row in the
+    # same currency, released at the same minute, whose forecast AND previous both
+    # equal Forex Factory's. It must be unambiguous, or nothing is filled.
+    m = _match_by_numbers(e, rows, ccy)
+    if m is None or m.get("actual") in (None, ""):
+        return None
+    return _fmt_actual(m.get("actual"), e.get("forecast"), e.get("previous"))
 
 
 def _merge() -> list:
@@ -938,14 +985,15 @@ if __name__ == "__main__":
     # `python korvus_calendar.py usd` -> show the USD side of the merge so a
     # missing actual is easy to trace: what FMP returns, what FF shows, and which
     # FF events couldn't find an FMP actual (and what their canon key resolved to).
-    if len(sys.argv) > 1 and sys.argv[1].lower() == "usd":
+    if len(sys.argv) > 1 and len(sys.argv[1]) == 3 and sys.argv[1].lower() not in ("fmp",):
+        CCY = sys.argv[1].upper()              # `korvus_calendar.py eur`, `nzd`, `usd`, ...
         ff  = _cached("ff",  _forexfactory, TTL_FF) or []
         fmp = _cached("fmp", _fmp, TTL_FMP) or []
-        fmp_usd = [e for e in fmp if (e.get("country") or "").upper() == "USD"]
-        ff_usd  = [e for e in ff  if (e.get("country") or "").upper() == "USD"]
-        print(f"\nFMP USD rows: {len(fmp_usd)}  (title -> canon -> actual)")
+        fmp_usd = [e for e in fmp if (e.get("country") or "").upper() == CCY]
+        ff_usd  = [e for e in ff  if (e.get("country") or "").upper() == CCY]
+        print(f"\nFMP {CCY} rows: {len(fmp_usd)}  (title -> canon -> actual)")
         for e in sorted(fmp_usd, key=lambda x: x.get("date", "")):
-            print(f"  {e.get('date','')[:16]:18} act={str(e.get('actual') or '-'):>8}  "
+            print(f"  {e.get('date','')[:16]:18} {e.get('cc','') or '':3} act={str(e.get('actual') or '-'):>8}  "
                   f"{e.get('title','')[:38]:40} -> {_canon(e.get('title'))}")
         # Resolve each FF event exactly the way the live page does: FF's own
         # actual first, then the FMP (and TE) lookup with its fuzzy fallback and
@@ -953,7 +1001,7 @@ if __name__ == "__main__":
         # it, not merely that a canon key happens to collide.
         te  = _cached("te", _tradingeconomics, TTL_TE) or []
         fmp_idx, te_idx = _index_rows(fmp), _index_rows(te)
-        print(f"\nFF USD events: {len(ff_usd)}  (✓ = the page fills it; src in brackets)")
+        print(f"\nFF {CCY} events: {len(ff_usd)}  (✓ = the page fills it; src in brackets)")
         miss = []
         for e in sorted(ff_usd, key=lambda x: x.get("date", "")):
             if _has_actual(e):
